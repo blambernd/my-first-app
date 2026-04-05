@@ -1,13 +1,7 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase-server";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,6 +9,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { LogoutButton } from "@/components/logout-button";
+import { VehicleCard, AddVehicleCard } from "@/components/vehicle-card";
+import { Car } from "lucide-react";
+import type { VehicleWithImages } from "@/lib/validations/vehicle";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -25,6 +22,15 @@ export default async function DashboardPage() {
   if (!user) {
     redirect("/login");
   }
+
+  const { data: vehicles } = await supabase
+    .from("vehicles")
+    .select("*, vehicle_images(*)")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false })
+    .limit(50);
+
+  const typedVehicles = (vehicles ?? []) as VehicleWithImages[];
 
   return (
     <div className="min-h-screen bg-muted/40">
@@ -47,21 +53,29 @@ export default async function DashboardPage() {
       </header>
 
       <main className="container mx-auto px-4 py-8">
-        <h2 className="text-2xl font-bold mb-6">Dashboard</h2>
-        <Card>
-          <CardHeader>
-            <CardTitle>Willkommen!</CardTitle>
-            <CardDescription>
-              Du bist angemeldet als {user.email}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground">
-              Hier werden bald deine Fahrzeuge angezeigt. Starte mit dem
-              Anlegen deines ersten Oldtimers.
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-bold">Meine Fahrzeuge</h2>
+        </div>
+
+        {typedVehicles.length === 0 ? (
+          <div className="text-center py-16">
+            <Car className="h-16 w-16 mx-auto text-muted-foreground/30 mb-4" />
+            <h3 className="text-lg font-semibold mb-2">Noch keine Fahrzeuge</h3>
+            <p className="text-muted-foreground mb-6">
+              Lege jetzt deinen ersten Oldtimer an und starte mit der Dokumentation.
             </p>
-          </CardContent>
-        </Card>
+            <Button asChild>
+              <Link href="/vehicles/new">Erstes Fahrzeug anlegen</Link>
+            </Button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {typedVehicles.map((vehicle) => (
+              <VehicleCard key={vehicle.id} vehicle={vehicle} />
+            ))}
+            <AddVehicleCard />
+          </div>
+        )}
       </main>
     </div>
   );

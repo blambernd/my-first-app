@@ -1,0 +1,96 @@
+import { z } from "zod";
+
+const currentYear = new Date().getFullYear();
+
+export const vehicleSchema = z.object({
+  make: z
+    .string()
+    .min(1, "Marke ist erforderlich")
+    .max(100, "Marke darf maximal 100 Zeichen lang sein"),
+  model: z
+    .string()
+    .min(1, "Modell ist erforderlich")
+    .max(100, "Modell darf maximal 100 Zeichen lang sein"),
+  year: z.coerce
+    .number()
+    .int("Baujahr muss eine ganze Zahl sein")
+    .min(1886, "Baujahr muss mindestens 1886 sein")
+    .max(currentYear, `Baujahr darf maximal ${currentYear} sein`),
+  year_estimated: z.boolean().default(false),
+  vin: z
+    .string()
+    .max(17, "FIN darf maximal 17 Zeichen lang sein")
+    .regex(/^[A-HJ-NPR-Z0-9]*$/i, "FIN darf nur Buchstaben (außer I, O, Q) und Ziffern enthalten")
+    .optional()
+    .or(z.literal("")),
+  license_plate: z
+    .string()
+    .max(15, "Kennzeichen darf maximal 15 Zeichen lang sein")
+    .optional()
+    .or(z.literal("")),
+  color: z
+    .string()
+    .max(50, "Farbe darf maximal 50 Zeichen lang sein")
+    .optional()
+    .or(z.literal("")),
+  engine_type: z
+    .string()
+    .max(100, "Motortyp darf maximal 100 Zeichen lang sein")
+    .optional()
+    .or(z.literal("")),
+  displacement_ccm: z.coerce.number().int().positive("Hubraum muss positiv sein").optional().or(z.literal("")),
+  horsepower: z.coerce.number().int().positive("Leistung muss positiv sein").optional().or(z.literal("")),
+  mileage_km: z.coerce.number().int().min(0, "Laufleistung kann nicht negativ sein").optional().or(z.literal("")),
+}).refine(
+  (data) => !data.vin || data.vin.length === 0 || data.vin.length === 17,
+  { message: "FIN muss genau 17 Zeichen lang sein", path: ["vin"] }
+);
+
+export interface VehicleFormData {
+  make: string;
+  model: string;
+  year: number;
+  year_estimated: boolean;
+  vin?: string;
+  license_plate?: string;
+  color?: string;
+  engine_type?: string;
+  displacement_ccm?: number;
+  horsepower?: number;
+  mileage_km?: number;
+}
+
+export interface Vehicle {
+  id: string;
+  user_id: string;
+  make: string;
+  model: string;
+  year: number;
+  year_estimated: boolean;
+  vin: string | null;
+  license_plate: string | null;
+  color: string | null;
+  engine_type: string | null;
+  displacement_ccm: number | null;
+  horsepower: number | null;
+  mileage_km: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface VehicleImage {
+  id: string;
+  vehicle_id: string;
+  storage_path: string;
+  position: number;
+  is_primary: boolean;
+  created_at: string;
+}
+
+export interface VehicleWithImages extends Vehicle {
+  vehicle_images: VehicleImage[];
+}
+
+export const MAX_IMAGE_SIZE_MB = 5;
+export const MAX_IMAGE_SIZE_BYTES = MAX_IMAGE_SIZE_MB * 1024 * 1024;
+export const MAX_IMAGES_PER_VEHICLE = 10;

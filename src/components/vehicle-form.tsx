@@ -1,0 +1,396 @@
+"use client";
+
+import { useState } from "react";
+import { useForm, type Resolver } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { ImageUpload, type ImageFile } from "@/components/image-upload";
+import { createClient } from "@/lib/supabase";
+import {
+  vehicleSchema,
+  type VehicleFormData,
+  type Vehicle,
+  type VehicleImage,
+} from "@/lib/validations/vehicle";
+
+interface VehicleFormProps {
+  vehicle?: Vehicle;
+  vehicleImages?: VehicleImage[];
+  mode: "create" | "edit";
+}
+
+export function VehicleForm({ vehicle, vehicleImages = [], mode }: VehicleFormProps) {
+  const router = useRouter();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [newImages, setNewImages] = useState<ImageFile[]>([]);
+  const [existingImageUrls, setExistingImageUrls] = useState<string[]>(() => {
+    if (!vehicleImages.length) return [];
+    const supabase = createClient();
+    return vehicleImages.map((img) => {
+      const { data } = supabase.storage
+        .from("vehicle-images")
+        .getPublicUrl(img.storage_path);
+      return data.publicUrl;
+    });
+  });
+  const [removedImagePaths, setRemovedImagePaths] = useState<string[]>([]);
+
+  const form = useForm<VehicleFormData>({
+    resolver: zodResolver(vehicleSchema) as Resolver<VehicleFormData>,
+    defaultValues: {
+      make: vehicle?.make ?? "",
+      model: vehicle?.model ?? "",
+      year: vehicle?.year ?? ("" as unknown as number),
+      year_estimated: vehicle?.year_estimated ?? false,
+      vin: vehicle?.vin ?? "",
+      license_plate: vehicle?.license_plate ?? "",
+      color: vehicle?.color ?? "",
+      engine_type: vehicle?.engine_type ?? "",
+      displacement_ccm: vehicle?.displacement_ccm ?? undefined,
+      horsepower: vehicle?.horsepower ?? undefined,
+      mileage_km: vehicle?.mileage_km ?? undefined,
+    },
+  });
+
+  const handleExistingImageRemove = (url: string) => {
+    const index = existingImageUrls.indexOf(url);
+    if (index !== -1 && vehicleImages[index]) {
+      setRemovedImagePaths((prev) => [...prev, vehicleImages[index].storage_path]);
+    }
+    setExistingImageUrls((prev) => prev.filter((u) => u !== url));
+  };
+
+  async function onSubmit(data: VehicleFormData) {
+    setIsSubmitting(true);
+    try {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        toast.error("Du bist nicht angemeldet.");
+        router.push("/login");
+        return;
+      }
+
+      const cleanData = {
+        make: data.make,
+        model: data.model,
+        year: data.year,
+        year_estimated: data.year_estimated,
+        vin: data.vin || null,
+        license_plate: data.license_plate || null,
+        color: data.color || null,
+        engine_type: data.engine_type || null,
+        displacement_ccm: data.displacement_ccm || null,
+        horsepower: data.horsepower || null,
+        mileage_km: data.mileage_km ?? null,
+      };
+
+      let vehicleId: string;
+
+      if (mode === "create") {
+        const { data: newVehicle, error } = await supabase
+          .from("vehicles")
+          .insert({ ...cleanData, user_id: user.id })
+          .select("id")
+          .single();
+
+        if (error) throw error;
+        vehicleId = newVehicle.id;
+      } else {
+        if (!vehicle) throw new Error("Fahrzeug nicht gefunden");
+        const { error } = await supabase
+          .from("vehicles")
+          .update({ ...cleanData, updated_at: new Date().toISOString() })
+          .eq("id", vehicle.id);
+
+        if (error) throw error;
+        vehicleId = vehicle.id;
+
+        // Remove deleted images
+        for (const path of removedImagePaths) {
+          await supabase.storage.from("vehicle-images").remove([path]);
+          await supabase
+            .from("vehicle_images")
+            .delete()
+            .eq("vehicle_id", vehicleId)
+            .eq("storage_path", path);
+        }
+      }
+
+      // Upload new images
+      const startPosition = existingImageUrls.length;
+      for (let i = 0; i < newImages.length; i++) {
+        const image = newImages[i];
+        const fileExt = image.file.name.split(".").pop();
+        const filePath = `${user.id}/${vehicleId}/${crypto.randomUUID()}.${fileExt}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from("vehicle-images")
+          .upload(filePath, image.file);
+
+        if (uploadError) {
+          console.error("Upload error:", uploadError);
+          toast.error(`Fehler beim Hochladen von "${image.file.name}"`);
+          continue;
+        }
+
+        await supabase.from("vehicle_images").insert({
+          vehicle_id: vehicleId,
+          storage_path: filePath,
+          position: startPosition + i,
+          is_primary: startPosition === 0 && i === 0,
+        });
+      }
+
+      toast.success(
+        mode === "create"
+          ? "Fahrzeug erfolgreich angelegt!"
+          : "Fahrzeug erfolgreich aktualisiert!"
+      );
+      router.push(`/vehicles/${vehicleId}`);
+      router.refresh();
+    } catch (error) {
+      console.error("Submit error:", error);
+      toast.error("Ein Fehler ist aufgetreten. Bitte versuche es erneut.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+        {/* Pflichtfelder */}
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold">Stammdaten</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="make"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Marke *</FormLabel>
+                  <FormControl>
+                    <Input placeholder="z.B. Mercedes-Benz" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="model"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Modell *</FormLabel>
+                  <FormControl>
+                    <Input placeholder="z.B. 300 SL" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="year"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Baujahr *</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      placeholder="z.B. 1955"
+                      {...field}
+                      value={field.value ?? ""}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="year_estimated"
+              render={({ field }) => (
+                <FormItem className="flex items-center gap-2 pt-8">
+                  <FormControl>
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                  <FormLabel className="!mt-0">Baujahr geschätzt</FormLabel>
+                </FormItem>
+              )}
+            />
+          </div>
+        </div>
+
+        {/* Optionale Felder */}
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold">Weitere Details</h3>
+          <p className="text-sm text-muted-foreground">Alle Felder optional</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="vin"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>FIN (Fahrgestellnummer)</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="17-stellig, z.B. WDB1980361A123456"
+                      maxLength={17}
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormDescription>17 Zeichen alphanumerisch</FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="license_plate"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Kennzeichen</FormLabel>
+                  <FormControl>
+                    <Input placeholder="z.B. S-OL 1955H" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="color"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Farbe</FormLabel>
+                  <FormControl>
+                    <Input placeholder="z.B. Silber Metallic" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="engine_type"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Motortyp</FormLabel>
+                  <FormControl>
+                    <Input placeholder="z.B. Reihen-6-Zylinder Benziner" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="displacement_ccm"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Hubraum (ccm)</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      placeholder="z.B. 2996"
+                      {...field}
+                      value={field.value ?? ""}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="horsepower"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Leistung (PS)</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      placeholder="z.B. 215"
+                      {...field}
+                      value={field.value ?? ""}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="mileage_km"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Laufleistung (km)</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      placeholder="z.B. 85000"
+                      {...field}
+                      value={field.value ?? ""}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        </div>
+
+        {/* Bildupload */}
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold">Fotos</h3>
+          <ImageUpload
+            images={newImages}
+            onImagesChange={setNewImages}
+            existingImageUrls={existingImageUrls}
+            onExistingImageRemove={mode === "edit" ? handleExistingImageRemove : undefined}
+          />
+        </div>
+
+        {/* Aktionen */}
+        <div className="flex gap-3">
+          <Button type="submit" disabled={isSubmitting}>
+            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {mode === "create" ? "Fahrzeug anlegen" : "Änderungen speichern"}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => router.back()}
+            disabled={isSubmitting}
+          >
+            Abbrechen
+          </Button>
+        </div>
+      </form>
+    </Form>
+  );
+}
