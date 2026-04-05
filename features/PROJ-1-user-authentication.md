@@ -267,6 +267,6 @@ Nutzer klickt Link in E-Mail (Bestätigung / Magic Link / Reset)
 ## Deployment
 
 **Deployed:** 2026-04-05
-**Production URL:** https://my-first-app-sigma-rosy.vercel.app/
+**Production URL:** https://my-first-8rm4vzu78-blambernds-projects.vercel.app
 **Platform:** Vercel (auto-deploy on push to main)
 **Security Headers:** X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Strict-Transport-Security
