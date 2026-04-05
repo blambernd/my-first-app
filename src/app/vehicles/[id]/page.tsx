@@ -9,8 +9,10 @@ import { ChevronLeft, Pencil, Car } from "lucide-react";
 import { Toaster } from "@/components/ui/sonner";
 import { DeleteVehicleButton } from "@/components/delete-vehicle-button";
 import { ServiceLog } from "@/components/service-log";
+import { DocumentArchive } from "@/components/document-archive";
 import type { VehicleWithImages } from "@/lib/validations/vehicle";
 import type { ServiceEntry } from "@/lib/validations/service-entry";
+import type { VehicleDocument } from "@/lib/validations/vehicle-document";
 
 interface VehicleDetailPageProps {
   params: Promise<{ id: string }>;
@@ -51,6 +53,15 @@ export default async function VehicleDetailPage({ params }: VehicleDetailPagePro
     .select("*")
     .eq("vehicle_id", id)
     .order("service_date", { ascending: false })
+    .order("created_at", { ascending: false })
+    .limit(200);
+
+  // Fetch vehicle documents
+  const { data: vehicleDocuments } = await supabase
+    .from("vehicle_documents")
+    .select("*")
+    .eq("vehicle_id", id)
+    .order("document_date", { ascending: false })
     .order("created_at", { ascending: false })
     .limit(200);
 
@@ -179,7 +190,7 @@ export default async function VehicleDetailPage({ params }: VehicleDetailPagePro
             <TabsList>
               <TabsTrigger value="service-log">Scheckheft</TabsTrigger>
               <TabsTrigger value="timeline" disabled>Timeline</TabsTrigger>
-              <TabsTrigger value="documents" disabled>Dokumente</TabsTrigger>
+              <TabsTrigger value="documents">Dokumente</TabsTrigger>
             </TabsList>
             <TabsContent value="service-log" className="mt-6">
               <ServiceLog
@@ -193,9 +204,12 @@ export default async function VehicleDetailPage({ params }: VehicleDetailPagePro
               </div>
             </TabsContent>
             <TabsContent value="documents" className="mt-6">
-              <div className="text-center py-12 text-muted-foreground">
-                <p className="text-sm">Dokumente — Kommt bald</p>
-              </div>
+              <DocumentArchive
+                vehicleId={id}
+                initialDocuments={(vehicleDocuments ?? []) as VehicleDocument[]}
+                serviceEntries={(serviceEntries ?? []) as ServiceEntry[]}
+                supabaseUrl={supabaseUrl}
+              />
             </TabsContent>
           </Tabs>
         </div>
