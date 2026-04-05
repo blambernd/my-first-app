@@ -16,7 +16,7 @@
 |----|---------|--------|------|---------|
 | PROJ-1 | User Authentication | Deployed | [PROJ-1-user-authentication.md](PROJ-1-user-authentication.md) | 2026-04-04 |
 | PROJ-2 | Fahrzeugprofil | Deployed | [PROJ-2-fahrzeugprofil.md](PROJ-2-fahrzeugprofil.md) | 2026-04-04 |
-| PROJ-3 | Digitales Scheckheft | Planned | [PROJ-3-digitales-scheckheft.md](PROJ-3-digitales-scheckheft.md) | 2026-04-04 |
+| PROJ-3 | Digitales Scheckheft | In Review | [PROJ-3-digitales-scheckheft.md](PROJ-3-digitales-scheckheft.md) | 2026-04-04 |
 | PROJ-4 | Dokumenten-Archiv | Planned | [PROJ-4-dokumenten-archiv.md](PROJ-4-dokumenten-archiv.md) | 2026-04-04 |
 | PROJ-5 | Fahrzeug-Timeline | Planned | [PROJ-5-fahrzeug-timeline.md](PROJ-5-fahrzeug-timeline.md) | 2026-04-04 |
 | PROJ-6 | Rollen & Kollaboration | Planned | [PROJ-6-rollen-kollaboration.md](PROJ-6-rollen-kollaboration.md) | 2026-04-04 |

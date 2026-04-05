@@ -4,10 +4,13 @@ import { createClient } from "@/lib/supabase-server";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ChevronLeft, Pencil, Car } from "lucide-react";
 import { Toaster } from "@/components/ui/sonner";
 import { DeleteVehicleButton } from "@/components/delete-vehicle-button";
+import { ServiceLog } from "@/components/service-log";
 import type { VehicleWithImages } from "@/lib/validations/vehicle";
+import type { ServiceEntry } from "@/lib/validations/service-entry";
 
 interface VehicleDetailPageProps {
   params: Promise<{ id: string }>;
@@ -41,6 +44,15 @@ export default async function VehicleDetailPage({ params }: VehicleDetailPagePro
 
   const typedVehicle = vehicle as VehicleWithImages;
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+
+  // Fetch service entries
+  const { data: serviceEntries } = await supabase
+    .from("service_entries")
+    .select("*")
+    .eq("vehicle_id", id)
+    .order("service_date", { ascending: false })
+    .order("created_at", { ascending: false })
+    .limit(200);
 
   const sortedImages = [...(typedVehicle.vehicle_images ?? [])].sort(
     (a, b) => a.position - b.position
@@ -162,21 +174,30 @@ export default async function VehicleDetailPage({ params }: VehicleDetailPagePro
 
           <Separator />
 
-          {/* Platzhalter für zukünftige Features */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="rounded-lg border border-dashed p-6 text-center text-muted-foreground">
-              <p className="text-sm">Scheckheft</p>
-              <p className="text-xs mt-1">Kommt bald</p>
-            </div>
-            <div className="rounded-lg border border-dashed p-6 text-center text-muted-foreground">
-              <p className="text-sm">Timeline</p>
-              <p className="text-xs mt-1">Kommt bald</p>
-            </div>
-            <div className="rounded-lg border border-dashed p-6 text-center text-muted-foreground">
-              <p className="text-sm">Dokumente</p>
-              <p className="text-xs mt-1">Kommt bald</p>
-            </div>
-          </div>
+          {/* Tabs */}
+          <Tabs defaultValue="service-log">
+            <TabsList>
+              <TabsTrigger value="service-log">Scheckheft</TabsTrigger>
+              <TabsTrigger value="timeline" disabled>Timeline</TabsTrigger>
+              <TabsTrigger value="documents" disabled>Dokumente</TabsTrigger>
+            </TabsList>
+            <TabsContent value="service-log" className="mt-6">
+              <ServiceLog
+                vehicleId={id}
+                initialEntries={(serviceEntries ?? []) as ServiceEntry[]}
+              />
+            </TabsContent>
+            <TabsContent value="timeline" className="mt-6">
+              <div className="text-center py-12 text-muted-foreground">
+                <p className="text-sm">Timeline — Kommt bald</p>
+              </div>
+            </TabsContent>
+            <TabsContent value="documents" className="mt-6">
+              <div className="text-center py-12 text-muted-foreground">
+                <p className="text-sm">Dokumente — Kommt bald</p>
+              </div>
+            </TabsContent>
+          </Tabs>
         </div>
       </main>
       <Toaster />
