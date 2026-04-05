@@ -10,9 +10,11 @@ import { Toaster } from "@/components/ui/sonner";
 import { DeleteVehicleButton } from "@/components/delete-vehicle-button";
 import { ServiceLog } from "@/components/service-log";
 import { DocumentArchive } from "@/components/document-archive";
+import { VehicleTimeline } from "@/components/vehicle-timeline";
 import type { VehicleWithImages } from "@/lib/validations/vehicle";
 import type { ServiceEntry } from "@/lib/validations/service-entry";
 import type { VehicleDocument } from "@/lib/validations/vehicle-document";
+import type { VehicleMilestone } from "@/lib/validations/milestone";
 
 interface VehicleDetailPageProps {
   params: Promise<{ id: string }>;
@@ -62,6 +64,15 @@ export default async function VehicleDetailPage({ params }: VehicleDetailPagePro
     .select("*")
     .eq("vehicle_id", id)
     .order("document_date", { ascending: false })
+    .order("created_at", { ascending: false })
+    .limit(200);
+
+  // Fetch milestones
+  const { data: vehicleMilestones } = await supabase
+    .from("vehicle_milestones")
+    .select("*")
+    .eq("vehicle_id", id)
+    .order("milestone_date", { ascending: false })
     .order("created_at", { ascending: false })
     .limit(200);
 
@@ -189,7 +200,7 @@ export default async function VehicleDetailPage({ params }: VehicleDetailPagePro
           <Tabs defaultValue="service-log">
             <TabsList>
               <TabsTrigger value="service-log">Scheckheft</TabsTrigger>
-              <TabsTrigger value="timeline" disabled>Timeline</TabsTrigger>
+              <TabsTrigger value="timeline">Timeline</TabsTrigger>
               <TabsTrigger value="documents">Dokumente</TabsTrigger>
             </TabsList>
             <TabsContent value="service-log" className="mt-6">
@@ -199,9 +210,12 @@ export default async function VehicleDetailPage({ params }: VehicleDetailPagePro
               />
             </TabsContent>
             <TabsContent value="timeline" className="mt-6">
-              <div className="text-center py-12 text-muted-foreground">
-                <p className="text-sm">Timeline — Kommt bald</p>
-              </div>
+              <VehicleTimeline
+                vehicleId={id}
+                initialServiceEntries={(serviceEntries ?? []) as ServiceEntry[]}
+                initialDocuments={(vehicleDocuments ?? []) as VehicleDocument[]}
+                initialMilestones={(vehicleMilestones ?? []) as VehicleMilestone[]}
+              />
             </TabsContent>
             <TabsContent value="documents" className="mt-6">
               <DocumentArchive
