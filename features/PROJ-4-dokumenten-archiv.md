@@ -1,6 +1,6 @@
 # PROJ-4: Dokumenten-Archiv
 
-## Status: In Review
+## Status: Deployed
 **Created:** 2026-04-04
 **Last Updated:** 2026-04-05
 
@@ -281,4 +281,8 @@ Run the SQL migration in Supabase Dashboard: SQL Editor > New query > Paste cont
 - **Recommendation:** Deploy
 
 ## Deployment
-_To be added by /deploy_
+
+**Deployed:** 2026-04-05
+**Production URL:** https://my-first-app-blambernd.vercel.app
+**Git Tag:** v1.3.0-PROJ-4
+**Commit:** 6e9a74b
