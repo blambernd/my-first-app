@@ -1,6 +1,6 @@
 # PROJ-1: User Authentication
 
-## Status: Approved
+## Status: Deployed
 **Created:** 2026-04-04
 **Last Updated:** 2026-04-05
 
@@ -265,4 +265,8 @@ Nutzer klickt Link in E-Mail (Bestätigung / Magic Link / Reset)
 - **Recommendation:** Deploy. BUG-3 (client-side rate limiting) can be addressed in next sprint.
 
 ## Deployment
-_To be added by /deploy_
+
+**Deployed:** 2026-04-05
+**Production URL:** https://my-first-app-sigma-rosy.vercel.app/
+**Platform:** Vercel (auto-deploy on push to main)
+**Security Headers:** X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Strict-Transport-Security
