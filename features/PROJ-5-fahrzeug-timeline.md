@@ -1,6 +1,6 @@
 # PROJ-5: Fahrzeug-Timeline
 
-## Status: Planned
+## Status: Deployed
 **Created:** 2026-04-04
 **Last Updated:** 2026-04-05
 
@@ -309,4 +309,20 @@ tabs, card, badge, button, calendar, popover, dialog, form, input, textarea, sep
 - **Recommendation:** Fix BUG-1 (mobile milestone actions) before deploying. BUG-2 is low priority and can be fixed later.
 
 ## Deployment
-_To be added by /deploy_
+
+**Deployed:** 2026-04-05
+**Production URL:** https://my-first-app-sigma-rosy.vercel.app
+**Git Tag:** v1.4.0-PROJ-5
+**Commit:** a5c3912
+
+### Pre-Deployment
+- [x] Build succeeds locally
+- [x] Lint passes (0 errors)
+- [x] QA approved (BUG-1 fixed, BUG-2 deferred as low priority)
+- [x] All tests pass (135 Vitest + 106 Playwright)
+
+### Database Migration Required
+Run `supabase/migrations/20260405_create_vehicle_milestones.sql` in Supabase SQL Editor before using the timeline feature.
+
+### New Dependency
+- `@react-pdf/renderer` — server-side PDF generation for timeline export
