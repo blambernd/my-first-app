@@ -77,7 +77,7 @@ export function DocumentUploadForm({
       category: "sonstiges",
       document_date: new Date().toISOString().split("T")[0],
       description: "",
-      service_entry_id: "",
+      service_entry_id: "none",
     },
   });
 
@@ -88,7 +88,7 @@ export function DocumentUploadForm({
         category: "sonstiges",
         document_date: new Date().toISOString().split("T")[0],
         description: "",
-        service_entry_id: "",
+        service_entry_id: "none",
       });
       setSelectedFile(null);
       setFileError(null);
@@ -176,7 +176,7 @@ export function DocumentUploadForm({
           file_name: selectedFile.name,
           file_size: selectedFile.size,
           mime_type: selectedFile.type,
-          service_entry_id: data.service_entry_id || null,
+          service_entry_id: data.service_entry_id && data.service_entry_id !== "none" ? data.service_entry_id : null,
         });
 
       if (insertError) {
@@ -385,7 +385,7 @@ export function DocumentUploadForm({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">Keine Verknüpfung</SelectItem>
+                        <SelectItem value="none">Keine Verknüpfung</SelectItem>
                         {serviceEntries.map((entry) => (
                           <SelectItem key={entry.id} value={entry.id}>
                             {new Date(entry.service_date).toLocaleDateString("de-DE")} — {getEntryTypeLabel(entry.entry_type)}: {entry.description.slice(0, 50)}
