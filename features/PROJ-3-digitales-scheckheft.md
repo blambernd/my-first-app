@@ -1,6 +1,6 @@
 # PROJ-3: Digitales Scheckheft
 
-## Status: In Review
+## Status: Deployed
 **Created:** 2026-04-04
 **Last Updated:** 2026-04-05
 
@@ -277,4 +277,8 @@ Run the SQL migration in Supabase Dashboard: SQL Editor > New query > Paste cont
 - **Recommendation:** Fix BUG-1 (mobile grid) before deployment. BUG-2 is cosmetic and browser-dependent.
 
 ## Deployment
-_To be added by /deploy_
+
+**Deployed:** 2026-04-05
+**Production URL:** https://my-first-app-blambernd.vercel.app
+**Git Tag:** v1.2.0-PROJ-3
+**Commit:** b224ba0
