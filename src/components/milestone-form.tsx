@@ -18,6 +18,13 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Form,
   FormControl,
   FormDescription,
@@ -35,36 +42,53 @@ import {
 import { createClient } from "@/lib/supabase";
 import {
   milestoneSchema,
+  MILESTONE_CATEGORIES,
+  CATEGORY_CONFIG,
   type MilestoneFormData,
-  type VehicleMilestone,
+  type VehicleMilestoneWithImages,
 } from "@/lib/validations/milestone";
 
 const MAX_PHOTO_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
+const MAX_PHOTOS = 10;
 
 interface MilestoneFormProps {
   vehicleId: string;
-  milestone?: VehicleMilestone;
+  supabaseUrl: string;
+  milestone?: VehicleMilestoneWithImages;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
 }
 
+interface PhotoItem {
+  id: string;
+  file?: File;
+  preview: string;
+  storagePath?: string; // existing photo
+}
+
+function getImageUrl(storagePath: string, supabaseUrl: string): string {
+  return `${supabaseUrl}/storage/v1/object/public/vehicle-images/${storagePath}`;
+}
+
 export function MilestoneForm({
   vehicleId,
+  supabaseUrl,
   milestone,
   open,
   onOpenChange,
   onSuccess,
 }: MilestoneFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null);
-  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [photos, setPhotos] = useState<PhotoItem[]>([]);
   const isEditing = !!milestone;
 
   const form = useForm<MilestoneFormData>({
     resolver: zodResolver(milestoneSchema) as Resolver<MilestoneFormData>,
     defaultValues: {
-      milestone_date: milestone?.milestone_date ?? new Date().toISOString().split("T")[0],
+      category: milestone?.category ?? "sonstiges",
+      milestone_date:
+        milestone?.milestone_date ?? new Date().toISOString().split("T")[0],
       title: milestone?.title ?? "",
       description: milestone?.description ?? "",
     },
@@ -73,21 +97,44 @@ export function MilestoneForm({
   useEffect(() => {
     if (open) {
       form.reset({
-        milestone_date: milestone?.milestone_date ?? new Date().toISOString().split("T")[0],
+        category: milestone?.category ?? "sonstiges",
+        milestone_date:
+          milestone?.milestone_date ?? new Date().toISOString().split("T")[0],
         title: milestone?.title ?? "",
         description: milestone?.description ?? "",
       });
-      setSelectedPhoto(null);
-      setPhotoPreview(null);
-    }
-  }, [open, milestone, form]);
 
-  const onDrop = useCallback((acceptedFiles: File[]) => {
-    const file = acceptedFiles[0];
-    if (!file) return;
-    setSelectedPhoto(file);
-    setPhotoPreview(URL.createObjectURL(file));
-  }, []);
+      // Load existing photos
+      if (milestone?.vehicle_milestone_images?.length) {
+        const existing: PhotoItem[] = milestone.vehicle_milestone_images
+          .sort((a, b) => a.position - b.position)
+          .map((img) => ({
+            id: img.id,
+            preview: getImageUrl(img.storage_path, supabaseUrl),
+            storagePath: img.storage_path,
+          }));
+        setPhotos(existing);
+      } else {
+        setPhotos([]);
+      }
+    }
+  }, [open, milestone, form, supabaseUrl]);
+
+  const onDrop = useCallback(
+    (acceptedFiles: File[]) => {
+      const remaining = MAX_PHOTOS - photos.length;
+      const toAdd = acceptedFiles.slice(0, remaining);
+
+      const newPhotos: PhotoItem[] = toAdd.map((file) => ({
+        id: crypto.randomUUID(),
+        file,
+        preview: URL.createObjectURL(file),
+      }));
+
+      setPhotos((prev) => [...prev, ...newPhotos]);
+    },
+    [photos.length]
+  );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -97,16 +144,27 @@ export function MilestoneForm({
       "image/webp": [".webp"],
     },
     maxSize: MAX_PHOTO_SIZE_BYTES,
-    multiple: false,
+    multiple: true,
+    disabled: photos.length >= MAX_PHOTOS,
     onDropRejected: (rejections) => {
       const err = rejections[0]?.errors[0];
       if (err?.code === "file-too-large") {
-        toast.error("Bild ist zu groß. Maximal 5 MB.");
+        toast.error("Bild ist zu groß. Maximal 5 MB pro Bild.");
       } else if (err?.code === "file-invalid-type") {
         toast.error("Nur JPG, PNG und WebP sind erlaubt.");
       }
     },
   });
+
+  const removePhoto = (photoId: string) => {
+    setPhotos((prev) => {
+      const photo = prev.find((p) => p.id === photoId);
+      if (photo && !photo.storagePath) {
+        URL.revokeObjectURL(photo.preview);
+      }
+      return prev.filter((p) => p.id !== photoId);
+    });
+  };
 
   async function onSubmit(data: MilestoneFormData) {
     setIsSubmitting(true);
@@ -117,30 +175,15 @@ export function MilestoneForm({
       } = await supabase.auth.getUser();
       if (!user) throw new Error("Nicht eingeloggt");
 
-      let photoPath: string | null = milestone?.photo_path ?? null;
-
-      // Upload photo if selected
-      if (selectedPhoto) {
-        const ext = selectedPhoto.name.split(".").pop()?.toLowerCase() ?? "jpg";
-        const photoId = crypto.randomUUID();
-        photoPath = `${user.id}/${vehicleId}/milestones/${photoId}.${ext}`;
-
-        const { error: uploadError } = await supabase.storage
-          .from("vehicle-images")
-          .upload(photoPath, selectedPhoto, {
-            contentType: selectedPhoto.type,
-            upsert: false,
-          });
-        if (uploadError) throw uploadError;
-      }
-
       const cleanData = {
         vehicle_id: vehicleId,
+        category: data.category,
         milestone_date: data.milestone_date,
         title: data.title,
         description: data.description || null,
-        photo_path: photoPath,
       };
+
+      let milestoneId: string;
 
       if (isEditing) {
         const { error } = await supabase
@@ -148,15 +191,75 @@ export function MilestoneForm({
           .update({ ...cleanData, updated_at: new Date().toISOString() })
           .eq("id", milestone.id);
         if (error) throw error;
-        toast.success("Meilenstein aktualisiert");
+        milestoneId = milestone.id;
+
+        // Delete removed photos
+        const existingIds = milestone.vehicle_milestone_images?.map(
+          (img) => img.id
+        ) ?? [];
+        const currentExistingIds = photos
+          .filter((p) => p.storagePath)
+          .map((p) => p.id);
+        const deletedIds = existingIds.filter(
+          (id) => !currentExistingIds.includes(id)
+        );
+
+        if (deletedIds.length > 0) {
+          // Delete from storage
+          const deletedPaths = milestone.vehicle_milestone_images
+            ?.filter((img) => deletedIds.includes(img.id))
+            .map((img) => img.storage_path) ?? [];
+          if (deletedPaths.length > 0) {
+            await supabase.storage.from("vehicle-images").remove(deletedPaths);
+          }
+          // Delete from DB
+          await supabase
+            .from("vehicle_milestone_images")
+            .delete()
+            .in("id", deletedIds);
+        }
       } else {
-        const { error } = await supabase
+        const { data: inserted, error } = await supabase
           .from("vehicle_milestones")
-          .insert(cleanData);
+          .insert(cleanData)
+          .select("id")
+          .single();
         if (error) throw error;
-        toast.success("Meilenstein erstellt");
+        milestoneId = inserted.id;
       }
 
+      // Upload new photos
+      const newPhotos = photos.filter((p) => p.file);
+      const startPosition = photos.filter((p) => p.storagePath).length;
+
+      for (let i = 0; i < newPhotos.length; i++) {
+        const photo = newPhotos[i];
+        const ext =
+          photo.file!.name.split(".").pop()?.toLowerCase() ?? "jpg";
+        const photoId = crypto.randomUUID();
+        const storagePath = `${user.id}/${vehicleId}/milestones/${photoId}.${ext}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from("vehicle-images")
+          .upload(storagePath, photo.file!, {
+            contentType: photo.file!.type,
+            upsert: false,
+          });
+        if (uploadError) throw uploadError;
+
+        const { error: dbError } = await supabase
+          .from("vehicle_milestone_images")
+          .insert({
+            milestone_id: milestoneId,
+            storage_path: storagePath,
+            position: startPosition + i,
+          });
+        if (dbError) throw dbError;
+      }
+
+      toast.success(
+        isEditing ? "Meilenstein aktualisiert" : "Meilenstein erstellt"
+      );
       onOpenChange(false);
       onSuccess();
     } catch (error) {
@@ -169,14 +272,45 @@ export function MilestoneForm({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {isEditing ? "Meilenstein bearbeiten" : "Neuer Meilenstein"}
           </DialogTitle>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 mt-4">
+          <form
+            onSubmit={form.handleSubmit(onSubmit)}
+            className="space-y-5 mt-4"
+          >
+            <FormField
+              control={form.control}
+              name="category"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Kategorie *</FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    value={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Kategorie wählen" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {MILESTONE_CATEGORIES.map((cat) => (
+                        <SelectItem key={cat} value={cat}>
+                          {CATEGORY_CONFIG[cat].label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             <FormField
               control={form.control}
               name="milestone_date"
@@ -204,7 +338,11 @@ export function MilestoneForm({
                       <PopoverContent className="w-auto p-0" align="start">
                         <Calendar
                           mode="single"
-                          selected={dateValue && !isNaN(dateValue.getTime()) ? dateValue : undefined}
+                          selected={
+                            dateValue && !isNaN(dateValue.getTime())
+                              ? dateValue
+                              : undefined
+                          }
                           onSelect={(date) => {
                             if (date) field.onChange(format(date, "yyyy-MM-dd"));
                           }}
@@ -226,7 +364,10 @@ export function MilestoneForm({
                 <FormItem>
                   <FormLabel>Titel *</FormLabel>
                   <FormControl>
-                    <Input placeholder="z.B. Kauf, Erstzulassung, Lackierung" {...field} />
+                    <Input
+                      placeholder="z.B. Kauf bei Händler Stuttgart"
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -242,44 +383,52 @@ export function MilestoneForm({
                   <FormControl>
                     <Textarea
                       placeholder="Optionale Beschreibung..."
-                      className="min-h-[60px]"
-                      maxLength={1000}
+                      className="min-h-[80px]"
+                      maxLength={2000}
                       {...field}
                     />
                   </FormControl>
                   <FormDescription>
-                    {field.value?.length ?? 0}/1000 Zeichen
+                    {field.value?.length ?? 0}/2000 Zeichen
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
             />
 
-            {/* Photo upload */}
+            {/* Multi-photo upload */}
             <div className="space-y-2">
-              <p className="text-sm font-medium">Foto (optional)</p>
-              {photoPreview || (isEditing && milestone?.photo_path) ? (
-                <div className="relative w-full aspect-video rounded-lg overflow-hidden bg-muted">
-                  <img
-                    src={photoPreview ?? ""}
-                    alt="Vorschau"
-                    className="w-full h-full object-cover"
-                  />
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    size="icon"
-                    className="absolute top-2 right-2 h-7 w-7"
-                    onClick={() => {
-                      setSelectedPhoto(null);
-                      if (photoPreview) URL.revokeObjectURL(photoPreview);
-                      setPhotoPreview(null);
-                    }}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
+              <p className="text-sm font-medium">
+                Fotos (optional, max. {MAX_PHOTOS})
+              </p>
+
+              {photos.length > 0 && (
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                  {photos.map((photo) => (
+                    <div
+                      key={photo.id}
+                      className="relative aspect-square rounded-md overflow-hidden bg-muted"
+                    >
+                      <img
+                        src={photo.preview}
+                        alt=""
+                        className="w-full h-full object-cover"
+                      />
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="icon"
+                        className="absolute top-1 right-1 h-6 w-6"
+                        onClick={() => removePhoto(photo.id)}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  ))}
                 </div>
-              ) : (
+              )}
+
+              {photos.length < MAX_PHOTOS && (
                 <div
                   {...getRootProps()}
                   className={`border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors ${
@@ -296,7 +445,8 @@ export function MilestoneForm({
                       <ImageIcon className="h-6 w-6 text-muted-foreground" />
                     )}
                     <p className="text-xs text-muted-foreground">
-                      JPG, PNG oder WebP · Max. 5 MB
+                      JPG, PNG oder WebP · Max. 5 MB pro Bild ·{" "}
+                      {photos.length}/{MAX_PHOTOS}
                     </p>
                   </div>
                 </div>
@@ -305,7 +455,9 @@ export function MilestoneForm({
 
             <div className="flex gap-3 pt-2">
               <Button type="submit" disabled={isSubmitting} className="flex-1">
-                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {isSubmitting && (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                )}
                 {isEditing ? "Speichern" : "Meilenstein erstellen"}
               </Button>
               <Button

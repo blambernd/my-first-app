@@ -148,11 +148,153 @@ Zugriffskontrolle: RLS über Fahrzeug-Ownership
 
 `@react-pdf/renderer` ist bereits installiert.
 
-## Implementation Notes
-_To be added by /frontend and /backend_
+## Implementation Notes (Frontend v2)
 
-## QA Test Results
-_To be added by /qa_
+### Rewritten Files
+- `src/lib/validations/milestone.ts` — Added 8 milestone categories with CATEGORY_CONFIG (labels, colors), getCategoryLabel helper, VehicleMilestoneImage and VehicleMilestoneWithImages types, increased description max to 2000
+- `src/components/vehicle-timeline.tsx` — Milestone-only timeline with category icons/colors, category filter chips, date range filter, photo gallery per milestone, PDF export with category param
+- `src/components/milestone-form.tsx` — Category select, multi-photo upload (max 10 × 5MB), existing photo management on edit, photo deletion support
+
+### Modified Files
+- `src/app/vehicles/[id]/page.tsx` — Fetches milestones with images join, passes supabaseUrl to timeline, removed service/document props from VehicleTimeline
+- `src/app/api/vehicles/[id]/timeline-pdf/route.tsx` — Milestone-only PDF with category labels, category filter param
+
+### Removed Files
+- `src/lib/validations/timeline.ts` — Aggregation logic no longer needed
+- `src/lib/validations/timeline.test.ts` — Tests for removed aggregation
+
+### Notes
+- Timeline is now a standalone vehicle history — no mixing with Scheckheft or Documents
+- Each category has a unique icon (lucide-react) and color
+- Multi-photo stored in new `vehicle_milestone_images` table (to be created by /backend)
+- Existing `vehicle_milestones` table needs `category` column + `photo_path` removal (to be done by /backend)
+
+## Implementation Notes (Backend v2)
+
+### Database Migration
+- `supabase/migrations/20260406_v2_milestones_categories_images.sql` — Run AFTER the v1 migration
+  - Adds `category` column to `vehicle_milestones` (CHECK constraint, 8 values, default 'sonstiges')
+  - Increases description limit from 1000 to 2000 characters
+  - Drops `photo_path` column (replaced by images table)
+  - Creates `vehicle_milestone_images` table (milestone_id FK with CASCADE, storage_path, position)
+  - Full RLS on `vehicle_milestone_images` via milestone → vehicle ownership (2-level JOIN)
+  - Index on (vehicle_id, category) for category filtering
+
+### API Route Changes
+- `GET /api/vehicles/[id]/timeline-pdf` — Now milestone-only, supports `?category=` filter param
+
+### Migration Order
+1. First run `20260405_create_vehicle_milestones.sql` (creates base table)
+2. Then run `20260406_v2_milestones_categories_images.sql` (adds categories + images)
+
+## QA Test Results (v2)
+
+**Tested:** 2026-04-06
+**App URL:** http://localhost:3000
+**Tester:** QA Engineer (AI)
+
+### Acceptance Criteria Status
+
+#### AC-1: Timeline zeigt nur Meilensteine (keine Scheckheft/Dokumente)
+- [x] Timeline component only receives and displays milestones
+- [x] No service entries or documents in the timeline
+- [x] timeline.ts aggregation logic removed
+
+#### AC-2: 8 Meilenstein-Kategorien mit Icons und Farben
+- [x] All 8 categories defined: erstzulassung, kauf, restauration, unfall, trophaee, lackierung, umbau, sonstiges
+- [x] Each category has unique icon (lucide-react) and color (Tailwind)
+- [x] CATEGORY_CONFIG provides labels and colors for all categories
+- [x] getCategoryLabel returns correct German labels (unit tested)
+
+#### AC-3: Meilenstein CRUD mit Kategorie-Select
+- [x] Create dialog has category Select dropdown (all 8 categories)
+- [x] Edit preserves existing category
+- [x] Delete with confirmation dialog
+- [x] Mobile: inline edit/delete buttons (sm:hidden pattern)
+- [x] Desktop: hover overlay (hidden sm:flex pattern)
+
+#### AC-4: Multi-Photo Upload (max 10 × 5MB)
+- [x] Dropzone accepts multiple images (JPG, PNG, WebP)
+- [x] Photo grid preview in form (3-4 columns)
+- [x] Individual photo removal with X button
+- [x] Existing photos loaded on edit with storage URL
+- [x] Counter shows current/max photos
+- [x] Disabled when max reached
+
+#### AC-5: Beschreibung bis 2000 Zeichen
+- [x] Schema validates max 2000 characters (unit tested)
+- [x] Character counter shows 0/2000
+- [x] Textarea has increased min-height for longer text
+
+#### AC-6: Kategorie-Filter
+- [x] Filter chips for all 8 categories + "Alle"
+- [x] Filter resets pagination when changed
+- [x] Empty state shows "Keine Meilensteine für den gewählten Filter"
+
+#### AC-7: Zeitraum-Filter (Von/Bis)
+- [x] Calendar-based date pickers
+- [x] "Zurücksetzen" button clears filters
+- [x] Filters work correctly on milestone dates
+
+#### AC-8: PDF-Export (nur Meilensteine)
+- [x] API route authenticates user (401 for unauthenticated — E2E tested)
+- [x] API route checks vehicle ownership (user_id filter)
+- [x] PDF contains only milestones with category labels
+- [x] Supports `?category=` filter param (E2E tested)
+- [x] Supports `?from=&to=` date range params
+- [x] Filename: `{Make}_{Model}_Historie.pdf`
+
+#### AC-9: Leere Timeline
+- [x] Empty state: "Dokumentiere die Geschichte deines Fahrzeugs."
+- [x] "Ersten Meilenstein hinzufügen" button in empty state
+
+#### AC-10: Foto-Galerie in Timeline
+- [x] Milestone cards show horizontal thumbnail gallery
+- [x] Images loaded from Supabase storage via public URL
+
+### Edge Cases Status
+
+#### EC-1: Meilensteine am selben Tag → gruppiert
+- [x] Grouped under shared date heading
+
+#### EC-2: 100+ Meilensteine → Pagination
+- [x] "Mehr laden" button (ITEMS_PER_PAGE = 50)
+
+#### EC-3: PDF-Export mit Kategorie-Filter
+- [x] Category param passed to API route
+
+#### EC-4: Foto-Löschung bei Bearbeitung
+- [x] Removed photos deleted from storage + DB
+- [x] Only deleted photos are affected, remaining photos preserved
+
+### Security Audit Results
+- [x] Authentication: PDF API route returns 401 for unauthenticated requests
+- [x] Authorization: Vehicle query filters by user_id — RLS as second line of defense
+- [x] Input validation: Zod schema validates category (enum), title (max 200), description (max 2000)
+- [x] DB validation: CHECK constraints on category + description length
+- [x] RLS policies: Full CRUD on vehicle_milestones (EXISTS subquery via vehicle ownership)
+- [x] RLS policies: Full CRUD on vehicle_milestone_images (2-level JOIN: image → milestone → vehicle → user)
+- [x] Storage: Photo uploads use existing vehicle-images bucket policies
+- [x] No secrets exposed in client code
+
+### Bugs Found
+
+No bugs found.
+
+### Automated Tests
+
+#### Unit Tests (Vitest) — 17 new tests
+- `src/lib/validations/milestone.test.ts` — 17 tests: schema with categories, boundary checks, getCategoryLabel, CATEGORY_CONFIG coverage
+
+#### E2E Tests (Playwright) — 22 tests (11 × 2 browsers)
+- `tests/PROJ-5-fahrzeug-timeline.spec.ts` — Timeline tab, PDF API auth (401), category filter param, responsive viewports, regression checks
+
+### Summary
+- **Acceptance Criteria:** 10/10 passed
+- **Bugs Found:** 0
+- **Security:** Pass — authentication, authorization, input validation, RLS all correct
+- **Production Ready:** YES
+- **Recommendation:** Deploy
 
 ## Deployment
 _To be added by /deploy_

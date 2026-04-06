@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase-server";
 import ReactPDF from "@react-pdf/renderer";
 import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
-import { getEntryTypeLabel, formatCentsToEur } from "@/lib/validations/service-entry";
-import { getCategoryLabel, formatFileSize } from "@/lib/validations/vehicle-document";
+import { getCategoryLabel, type MilestoneCategory } from "@/lib/validations/milestone";
 
 const styles = StyleSheet.create({
   page: { padding: 40, fontSize: 10, fontFamily: "Helvetica" },
@@ -26,10 +25,9 @@ const styles = StyleSheet.create({
     borderLeftWidth: 2,
     borderLeftColor: "#d1d5db",
   },
+  entryCategory: { fontSize: 8, color: "#6b7280", marginBottom: 2 },
   entryTitle: { fontSize: 10, fontFamily: "Helvetica-Bold" },
-  entryType: { fontSize: 8, color: "#6b7280", marginBottom: 2 },
   entryDesc: { fontSize: 9, color: "#374151", marginTop: 2 },
-  entryMeta: { fontSize: 8, color: "#9ca3af", marginTop: 2 },
   footer: {
     position: "absolute",
     bottom: 30,
@@ -41,18 +39,11 @@ const styles = StyleSheet.create({
   },
 });
 
-interface TimelinePdfEntry {
+interface PdfMilestone {
   date: string;
-  sourceType: string;
+  category: string;
   title: string;
   description: string | null;
-  entryType?: string;
-  mileageKm?: number;
-  costCents?: number | null;
-  workshopName?: string | null;
-  documentCategory?: string;
-  fileName?: string;
-  fileSize?: number;
 }
 
 function formatDate(dateStr: string): string {
@@ -64,15 +55,6 @@ function formatDate(dateStr: string): string {
   });
 }
 
-function sourceLabel(type: string): string {
-  switch (type) {
-    case "service": return "Scheckheft";
-    case "document": return "Dokument";
-    case "milestone": return "Meilenstein";
-    default: return type;
-  }
-}
-
 function TimelinePdfDocument({
   vehicleName,
   vehicleYear,
@@ -81,11 +63,11 @@ function TimelinePdfDocument({
 }: {
   vehicleName: string;
   vehicleYear: number;
-  entries: TimelinePdfEntry[];
+  entries: PdfMilestone[];
   dateRange: string;
 }) {
   // Group by date
-  const groups = new Map<string, TimelinePdfEntry[]>();
+  const groups = new Map<string, PdfMilestone[]>();
   for (const entry of entries) {
     const existing = groups.get(entry.date);
     if (existing) {
@@ -101,11 +83,11 @@ function TimelinePdfDocument({
         <View style={styles.header}>
           <Text style={styles.title}>{vehicleName}</Text>
           <Text style={styles.subtitle}>
-            Baujahr {vehicleYear} — Fahrzeug-Timeline
+            Baujahr {vehicleYear} — Fahrzeug-Historie
           </Text>
           <Text style={styles.meta}>
-            {entries.length} Einträge{dateRange ? ` · ${dateRange}` : ""} · Erstellt am{" "}
-            {new Date().toLocaleDateString("de-DE")}
+            {entries.length} Meilensteine{dateRange ? ` · ${dateRange}` : ""} ·
+            Erstellt am {new Date().toLocaleDateString("de-DE")}
           </Text>
         </View>
 
@@ -114,33 +96,13 @@ function TimelinePdfDocument({
             <Text style={styles.dateHeading}>{formatDate(date)}</Text>
             {groupEntries.map((entry, i) => (
               <View key={`${date}-${i}`} style={styles.entry}>
-                <Text style={styles.entryType}>{sourceLabel(entry.sourceType)}</Text>
-                <Text style={styles.entryTitle}>
-                  {entry.entryType ? `${getEntryTypeLabel(entry.entryType as "inspection")}: ` : ""}
-                  {entry.documentCategory
-                    ? `${getCategoryLabel(entry.documentCategory as "rechnung")}: `
-                    : ""}
-                  {entry.title}
+                <Text style={styles.entryCategory}>
+                  {getCategoryLabel(entry.category)}
                 </Text>
+                <Text style={styles.entryTitle}>{entry.title}</Text>
                 {entry.description && (
                   <Text style={styles.entryDesc}>{entry.description}</Text>
                 )}
-                <Text style={styles.entryMeta}>
-                  {[
-                    entry.mileageKm !== undefined
-                      ? `${entry.mileageKm.toLocaleString("de-DE")} km`
-                      : null,
-                    entry.costCents
-                      ? formatCentsToEur(entry.costCents)
-                      : null,
-                    entry.workshopName,
-                    entry.fileName
-                      ? `${entry.fileName} (${formatFileSize(entry.fileSize ?? 0)})`
-                      : null,
-                  ]
-                    .filter(Boolean)
-                    .join(" · ")}
-                </Text>
               </View>
             ))}
           </View>
@@ -173,7 +135,7 @@ export async function GET(
     return NextResponse.json({ error: "Nicht eingeloggt" }, { status: 401 });
   }
 
-  // Fetch vehicle (authorization via RLS)
+  // Fetch vehicle (authorization via user_id)
   const { data: vehicle } = await supabase
     .from("vehicles")
     .select("make, model, year")
@@ -182,80 +144,46 @@ export async function GET(
     .single();
 
   if (!vehicle) {
-    return NextResponse.json({ error: "Fahrzeug nicht gefunden" }, { status: 404 });
+    return NextResponse.json(
+      { error: "Fahrzeug nicht gefunden" },
+      { status: 404 }
+    );
   }
 
-  // Parse date range from query params
+  // Parse query params
   const searchParams = request.nextUrl.searchParams;
   const dateFrom = searchParams.get("from") ?? "";
   const dateTo = searchParams.get("to") ?? "";
+  const category = searchParams.get("category") ?? "";
 
-  // Fetch all three sources
-  const [serviceResult, docResult, milestoneResult] = await Promise.all([
-    supabase
-      .from("service_entries")
-      .select("*")
-      .eq("vehicle_id", id)
-      .order("service_date", { ascending: false })
-      .limit(500),
-    supabase
-      .from("vehicle_documents")
-      .select("*")
-      .eq("vehicle_id", id)
-      .order("document_date", { ascending: false })
-      .limit(500),
-    supabase
-      .from("vehicle_milestones")
-      .select("*")
-      .eq("vehicle_id", id)
-      .order("milestone_date", { ascending: false })
-      .limit(500),
-  ]);
+  // Fetch milestones
+  let query = supabase
+    .from("vehicle_milestones")
+    .select("*")
+    .eq("vehicle_id", id)
+    .order("milestone_date", { ascending: false })
+    .limit(500);
 
-  // Build timeline entries
-  const entries: TimelinePdfEntry[] = [];
-
-  for (const e of serviceResult.data ?? []) {
-    entries.push({
-      date: e.service_date,
-      sourceType: "service",
-      title: e.description,
-      description: e.notes,
-      entryType: e.entry_type,
-      mileageKm: e.mileage_km,
-      costCents: e.cost_cents,
-      workshopName: e.workshop_name,
-    });
+  if (category) {
+    query = query.eq("category", category);
   }
 
-  for (const d of docResult.data ?? []) {
-    entries.push({
-      date: d.document_date,
-      sourceType: "document",
-      title: d.title,
-      description: d.description,
-      documentCategory: d.category,
-      fileName: d.file_name,
-      fileSize: d.file_size,
-    });
-  }
+  const { data: milestones } = await query;
 
-  for (const m of milestoneResult.data ?? []) {
-    entries.push({
-      date: m.milestone_date,
-      sourceType: "milestone",
-      title: m.title,
-      description: m.description,
-    });
-  }
+  // Build entries
+  let entries: PdfMilestone[] = (milestones ?? []).map((m) => ({
+    date: m.milestone_date,
+    category: m.category,
+    title: m.title,
+    description: m.description,
+  }));
 
   // Filter by date range
-  let filtered = entries;
-  if (dateFrom) filtered = filtered.filter((e) => e.date >= dateFrom);
-  if (dateTo) filtered = filtered.filter((e) => e.date <= dateTo);
+  if (dateFrom) entries = entries.filter((e) => e.date >= dateFrom);
+  if (dateTo) entries = entries.filter((e) => e.date <= dateTo);
 
   // Sort descending
-  filtered.sort((a, b) => b.date.localeCompare(a.date));
+  entries.sort((a, b) => b.date.localeCompare(a.date));
 
   // Build date range label
   let dateRange = "";
@@ -272,12 +200,12 @@ export async function GET(
     <TimelinePdfDocument
       vehicleName={`${vehicle.make} ${vehicle.model}`}
       vehicleYear={vehicle.year}
-      entries={filtered}
+      entries={entries}
       dateRange={dateRange}
     />
   );
 
-  // Convert Node stream to Web ReadableStream
+  // Convert Node stream to buffer
   const reader = pdfStream as unknown as AsyncIterable<Uint8Array>;
   const chunks: Uint8Array[] = [];
   for await (const chunk of reader) {
@@ -285,7 +213,10 @@ export async function GET(
   }
   const buffer = Buffer.concat(chunks);
 
-  const fileName = `${vehicle.make}_${vehicle.model}_Timeline.pdf`.replace(/\s+/g, "_");
+  const fileName = `${vehicle.make}_${vehicle.model}_Historie.pdf`.replace(
+    /\s+/g,
+    "_"
+  );
 
   return new NextResponse(buffer, {
     headers: {

@@ -14,7 +14,7 @@ import { VehicleTimeline } from "@/components/vehicle-timeline";
 import type { VehicleWithImages } from "@/lib/validations/vehicle";
 import type { ServiceEntry } from "@/lib/validations/service-entry";
 import type { VehicleDocument } from "@/lib/validations/vehicle-document";
-import type { VehicleMilestone } from "@/lib/validations/milestone";
+import type { VehicleMilestoneWithImages } from "@/lib/validations/milestone";
 
 interface VehicleDetailPageProps {
   params: Promise<{ id: string }>;
@@ -67,10 +67,10 @@ export default async function VehicleDetailPage({ params }: VehicleDetailPagePro
     .order("created_at", { ascending: false })
     .limit(200);
 
-  // Fetch milestones
+  // Fetch milestones with images
   const { data: vehicleMilestones } = await supabase
     .from("vehicle_milestones")
-    .select("*")
+    .select("*, vehicle_milestone_images(*)")
     .eq("vehicle_id", id)
     .order("milestone_date", { ascending: false })
     .order("created_at", { ascending: false })
@@ -212,9 +212,8 @@ export default async function VehicleDetailPage({ params }: VehicleDetailPagePro
             <TabsContent value="timeline" className="mt-6">
               <VehicleTimeline
                 vehicleId={id}
-                initialServiceEntries={(serviceEntries ?? []) as ServiceEntry[]}
-                initialDocuments={(vehicleDocuments ?? []) as VehicleDocument[]}
-                initialMilestones={(vehicleMilestones ?? []) as VehicleMilestone[]}
+                supabaseUrl={supabaseUrl}
+                initialMilestones={(vehicleMilestones ?? []) as VehicleMilestoneWithImages[]}
               />
             </TabsContent>
             <TabsContent value="documents" className="mt-6">
