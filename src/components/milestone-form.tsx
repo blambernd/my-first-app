@@ -338,6 +338,9 @@ export function MilestoneForm({
                       <PopoverContent className="w-auto p-0" align="start">
                         <Calendar
                           mode="single"
+                          captionLayout="dropdown"
+                          startMonth={new Date(1940, 0)}
+                          endMonth={new Date()}
                           selected={
                             dateValue && !isNaN(dateValue.getTime())
                               ? dateValue
