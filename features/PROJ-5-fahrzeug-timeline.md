@@ -1,6 +1,6 @@
 # PROJ-5: Fahrzeug-Timeline
 
-## Status: Architected
+## Status: Deployed
 **Created:** 2026-04-04
 **Last Updated:** 2026-04-05
 
@@ -297,4 +297,19 @@ No bugs found.
 - **Recommendation:** Deploy
 
 ## Deployment
-_To be added by /deploy_
+
+**Deployed:** 2026-04-06
+**Production URL:** https://my-first-app-sigma-rosy.vercel.app
+**Git Tag:** v1.5.0-PROJ-5
+**Commit:** 76c7814
+
+### Pre-Deployment
+- [x] Build succeeds locally
+- [x] Lint passes (0 errors)
+- [x] QA approved (0 bugs)
+- [x] All tests pass (131 Vitest + 106 Playwright)
+
+### Database Migrations Required
+Run in order in Supabase SQL Editor:
+1. `supabase/migrations/20260405_create_vehicle_milestones.sql` (if not already run)
+2. `supabase/migrations/20260406_v2_milestones_categories_images.sql` (categories + images table)
