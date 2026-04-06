@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useDropzone } from "react-dropzone";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, Upload, FileText, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -37,6 +38,45 @@ export function VehicleForm({ vehicle, vehicleImages = [], mode }: VehicleFormPr
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [newImages, setNewImages] = useState<ImageFile[]>([]);
+  const [datenkarte, setDatekarte] = useState<File | null>(null);
+  const [datenkartePreview, setDatenkartePreview] = useState<string | null>(null);
+
+  const onDatenkarteDropped = useCallback((acceptedFiles: File[]) => {
+    const file = acceptedFiles[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("Datenkarte darf maximal 10 MB groß sein.");
+      return;
+    }
+    setDatekarte(file);
+    if (file.type.startsWith("image/")) {
+      setDatenkartePreview(URL.createObjectURL(file));
+    } else {
+      setDatenkartePreview(null);
+    }
+  }, []);
+
+  const {
+    getRootProps: getDatenkarteRootProps,
+    getInputProps: getDatenkarteInputProps,
+    isDragActive: isDatenkarteActive,
+  } = useDropzone({
+    onDrop: onDatenkarteDropped,
+    accept: {
+      "image/jpeg": [".jpg", ".jpeg"],
+      "image/png": [".png"],
+      "image/webp": [".webp"],
+      "application/pdf": [".pdf"],
+    },
+    maxFiles: 1,
+    multiple: false,
+  });
+
+  const removeDatekarte = () => {
+    if (datenkartePreview) URL.revokeObjectURL(datenkartePreview);
+    setDatekarte(null);
+    setDatenkartePreview(null);
+  };
   const [existingImageUrls, setExistingImageUrls] = useState<string[]>(() => {
     if (!vehicleImages.length) return [];
     const supabase = createClient();
@@ -157,6 +197,49 @@ export function VehicleForm({ vehicle, vehicleImages = [], mode }: VehicleFormPr
           position: startPosition + i,
           is_primary: startPosition === 0 && i === 0,
         });
+      }
+
+      // Upload Datenkarte and create Erstzulassung milestone
+      if (mode === "create" && datenkarte) {
+        try {
+          const datenkarteExt =
+            datenkarte.name.split(".").pop()?.toLowerCase() ?? "jpg";
+          const datenkarteId = crypto.randomUUID();
+          const datenkartePath = `${user.id}/${vehicleId}/milestones/${datenkarteId}.${datenkarteExt}`;
+
+          const { error: dkUploadError } = await supabase.storage
+            .from("vehicle-images")
+            .upload(datenkartePath, datenkarte, {
+              contentType: datenkarte.type,
+              upsert: false,
+            });
+          if (dkUploadError) throw dkUploadError;
+
+          // Create milestone with approximate delivery date (Jan 1 of build year)
+          const deliveryDate = `${data.year}-01-01`;
+          const { data: milestone, error: msError } = await supabase
+            .from("vehicle_milestones")
+            .insert({
+              vehicle_id: vehicleId,
+              category: "erstzulassung",
+              milestone_date: deliveryDate,
+              title: "Auslieferung / Erstzulassung",
+              description: "Datenkarte zum Auslieferungszustand hinterlegt.",
+            })
+            .select("id")
+            .single();
+          if (msError) throw msError;
+
+          // Link Datenkarte as milestone image
+          await supabase.from("vehicle_milestone_images").insert({
+            milestone_id: milestone.id,
+            storage_path: datenkartePath,
+            position: 0,
+          });
+        } catch (dkError) {
+          console.error("Datenkarte error:", dkError);
+          toast.error("Datenkarte konnte nicht gespeichert werden.");
+        }
       }
 
       toast.success(
@@ -374,6 +457,70 @@ export function VehicleForm({ vehicle, vehicleImages = [], mode }: VehicleFormPr
             onExistingImageRemove={mode === "edit" ? handleExistingImageRemove : undefined}
           />
         </div>
+
+        {/* Datenkarte */}
+        {mode === "create" && (
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold">Datenkarte</h3>
+            <p className="text-sm text-muted-foreground">
+              Die Datenkarte dokumentiert den Auslieferungszustand des Fahrzeugs.
+              Bei Upload wird automatisch ein Meilenstein in der Historie erstellt.
+            </p>
+
+            {datenkarte ? (
+              <div className="flex items-center gap-3 rounded-lg border p-3">
+                {datenkartePreview ? (
+                  <img
+                    src={datenkartePreview}
+                    alt="Datenkarte Vorschau"
+                    className="h-16 w-16 rounded object-cover bg-muted"
+                  />
+                ) : (
+                  <div className="flex h-16 w-16 items-center justify-center rounded bg-muted">
+                    <FileText className="h-6 w-6 text-muted-foreground" />
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">
+                    {datenkarte.name}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {(datenkarte.size / 1024 / 1024).toFixed(1)} MB
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="shrink-0"
+                  onClick={removeDatekarte}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ) : (
+              <div
+                {...getDatenkarteRootProps()}
+                className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${
+                  isDatenkarteActive
+                    ? "border-primary bg-primary/5"
+                    : "border-muted-foreground/25 hover:border-primary/50"
+                }`}
+              >
+                <input {...getDatenkarteInputProps()} />
+                <div className="flex flex-col items-center gap-2">
+                  <Upload className="h-8 w-8 text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground">
+                    Datenkarte hierher ziehen oder klicken
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    JPG, PNG, WebP oder PDF · Max. 10 MB
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Aktionen */}
         <div className="flex gap-3">
