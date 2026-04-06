@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { format, parse } from "date-fns";
@@ -12,6 +12,8 @@ import {
   Pencil,
   Trash2,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Clock,
   FileCheck,
   HandCoins,
@@ -44,7 +46,6 @@ import {
 import { MilestoneForm } from "@/components/milestone-form";
 import { createClient } from "@/lib/supabase";
 import {
-  MILESTONE_CATEGORIES,
   CATEGORY_CONFIG,
   type MilestoneCategory,
   type VehicleMilestoneWithImages,
@@ -76,9 +77,64 @@ function getImageUrl(storagePath: string, supabaseUrl: string): string {
 function MilestoneCard({
   milestone,
   supabaseUrl,
+  isSelected,
+  onClick,
 }: {
   milestone: VehicleMilestoneWithImages;
   supabaseUrl: string;
+  isSelected: boolean;
+  onClick: () => void;
+}) {
+  const config = CATEGORY_CONFIG[milestone.category];
+  const Icon = CATEGORY_ICONS[milestone.category];
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex flex-col items-center text-center w-24 sm:w-28 shrink-0 cursor-pointer group transition-opacity ${
+        isSelected ? "opacity-100" : "opacity-50 hover:opacity-80"
+      }`}
+    >
+      {/* Connector dot on the line */}
+      <div className="relative mb-3">
+        <div
+          className={`h-3 w-3 rounded-full border-2 border-background transition-transform ${
+            isSelected ? "bg-primary scale-125" : "bg-border"
+          }`}
+        />
+      </div>
+
+      {/* Category icon */}
+      <div
+        className={`flex items-center justify-center h-9 w-9 rounded-full shrink-0 ${config.color}`}
+      >
+        <Icon className="h-4 w-4" />
+      </div>
+
+      {/* Date */}
+      <p className="text-[11px] text-muted-foreground mt-2 leading-tight">
+        {format(parse(milestone.milestone_date, "yyyy-MM-dd", new Date()), "MMM yyyy", { locale: de })}
+      </p>
+
+      {/* Title */}
+      <p className="text-xs font-medium mt-0.5 leading-tight line-clamp-2">
+        {milestone.title}
+      </p>
+    </button>
+  );
+}
+
+function MilestoneDetail({
+  milestone,
+  supabaseUrl,
+  onEdit,
+  onDelete,
+}: {
+  milestone: VehicleMilestoneWithImages;
+  supabaseUrl: string;
+  onEdit: () => void;
+  onDelete: () => void;
 }) {
   const config = CATEGORY_CONFIG[milestone.category];
   const Icon = CATEGORY_ICONS[milestone.category];
@@ -87,48 +143,95 @@ function MilestoneCard({
   );
 
   return (
-    <div className="flex gap-3">
-      {/* Category icon */}
-      <div
-        className={`flex items-center justify-center h-8 w-8 rounded-full shrink-0 ${config.color}`}
-      >
-        <Icon className="h-4 w-4" />
-      </div>
-
-      {/* Content */}
-      <div className="flex-1 min-w-0 pb-4">
-        <Badge variant="outline" className="text-xs">
-          {config.label}
-        </Badge>
-
-        <p className="text-sm font-medium mt-1 line-clamp-2">
-          {milestone.title}
-        </p>
-
-        {milestone.description && (
-          <p className="text-xs text-muted-foreground mt-0.5 whitespace-pre-line line-clamp-4">
-            {milestone.description}
-          </p>
-        )}
-
-        {/* Photo gallery */}
-        {images.length > 0 && (
-          <div className="flex gap-2 mt-2 overflow-x-auto">
-            {images.map((img) => (
-              <div
-                key={img.id}
-                className="shrink-0 w-20 h-20 rounded-md overflow-hidden bg-muted"
-              >
-                <img
-                  src={getImageUrl(img.storage_path, supabaseUrl)}
-                  alt=""
-                  className="w-full h-full object-cover"
-                />
-              </div>
-            ))}
+    <div className="bg-muted/30 rounded-lg p-5 sm:p-6">
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex items-start gap-3 min-w-0">
+          <div
+            className={`flex items-center justify-center h-9 w-9 rounded-full shrink-0 ${config.color}`}
+          >
+            <Icon className="h-4 w-4" />
           </div>
-        )}
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <Badge variant="outline" className="text-xs">
+                {config.label}
+              </Badge>
+              <span className="text-xs text-muted-foreground">
+                {format(
+                  parse(milestone.milestone_date, "yyyy-MM-dd", new Date()),
+                  "dd. MMMM yyyy",
+                  { locale: de }
+                )}
+              </span>
+            </div>
+            <h3 className="text-base font-medium mt-1.5">{milestone.title}</h3>
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="flex gap-1 shrink-0">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-muted-foreground"
+            onClick={onEdit}
+          >
+            <Pencil className="h-3.5 w-3.5" />
+          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-destructive"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Meilenstein löschen?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Dieser Meilenstein wird unwiderruflich gelöscht.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={onDelete}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  Löschen
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
       </div>
+
+      {milestone.description && (
+        <p className="text-sm text-muted-foreground mt-3 whitespace-pre-line">
+          {milestone.description}
+        </p>
+      )}
+
+      {/* Photo gallery */}
+      {images.length > 0 && (
+        <div className="flex gap-2 mt-4 overflow-x-auto pb-1">
+          {images.map((img) => (
+            <div
+              key={img.id}
+              className="shrink-0 w-28 h-28 rounded-md overflow-hidden bg-muted"
+            >
+              <img
+                src={getImageUrl(img.storage_path, supabaseUrl)}
+                alt=""
+                className="w-full h-full object-cover"
+              />
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -139,11 +242,9 @@ export function VehicleTimeline({
   initialMilestones,
 }: VehicleTimelineProps) {
   const router = useRouter();
+  const scrollRef = useRef<HTMLDivElement>(null);
   const [milestones, setMilestones] =
     useState<VehicleMilestoneWithImages[]>(initialMilestones);
-  const [filterCategory, setFilterCategory] = useState<
-    MilestoneCategory | "all"
-  >("all");
   const [dateFrom, setDateFrom] = useState<string>("");
   const [dateTo, setDateTo] = useState<string>("");
   const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE);
@@ -151,20 +252,23 @@ export function VehicleTimeline({
   const [editingMilestone, setEditingMilestone] = useState<
     VehicleMilestoneWithImages | undefined
   >();
+  const [selectedMilestoneId, setSelectedMilestoneId] = useState<string | null>(
+    null
+  );
   const [isExporting, setIsExporting] = useState(false);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
 
   useEffect(() => {
     setMilestones(initialMilestones);
   }, [initialMilestones]);
 
   const filteredMilestones = useMemo(() => {
+    // Sort oldest first for left-to-right timeline
     let entries = [...milestones].sort((a, b) =>
-      b.milestone_date.localeCompare(a.milestone_date)
+      a.milestone_date.localeCompare(b.milestone_date)
     );
 
-    if (filterCategory !== "all") {
-      entries = entries.filter((e) => e.category === filterCategory);
-    }
     if (dateFrom) {
       entries = entries.filter((e) => e.milestone_date >= dateFrom);
     }
@@ -173,24 +277,52 @@ export function VehicleTimeline({
     }
 
     return entries;
-  }, [milestones, filterCategory, dateFrom, dateTo]);
+  }, [milestones, dateFrom, dateTo]);
 
   const visibleMilestones = filteredMilestones.slice(0, visibleCount);
   const hasMore = visibleCount < filteredMilestones.length;
 
-  // Group by date
-  const dateGroups = useMemo(() => {
-    const groups = new Map<string, VehicleMilestoneWithImages[]>();
-    for (const ms of visibleMilestones) {
-      const existing = groups.get(ms.milestone_date);
-      if (existing) {
-        existing.push(ms);
-      } else {
-        groups.set(ms.milestone_date, [ms]);
-      }
+  const selectedMilestone = useMemo(
+    () => visibleMilestones.find((ms) => ms.id === selectedMilestoneId) ?? null,
+    [visibleMilestones, selectedMilestoneId]
+  );
+
+  // Auto-select first milestone when filter changes
+  useEffect(() => {
+    if (visibleMilestones.length > 0 && !selectedMilestone) {
+      setSelectedMilestoneId(visibleMilestones[0].id);
     }
-    return groups;
-  }, [visibleMilestones]);
+  }, [visibleMilestones, selectedMilestone]);
+
+  // Scroll state tracking
+  const updateScrollState = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    setCanScrollLeft(el.scrollLeft > 0);
+    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 1);
+  }, []);
+
+  useEffect(() => {
+    updateScrollState();
+    const el = scrollRef.current;
+    if (!el) return;
+    el.addEventListener("scroll", updateScrollState);
+    const observer = new ResizeObserver(updateScrollState);
+    observer.observe(el);
+    return () => {
+      el.removeEventListener("scroll", updateScrollState);
+      observer.disconnect();
+    };
+  }, [updateScrollState, visibleMilestones]);
+
+  const scroll = (direction: "left" | "right") => {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollBy({
+      left: direction === "left" ? -200 : 200,
+      behavior: "smooth",
+    });
+  };
 
   const refreshMilestones = useCallback(() => {
     router.refresh();
@@ -215,6 +347,7 @@ export function VehicleTimeline({
         .eq("id", msId);
       if (error) throw error;
       toast.success("Meilenstein gelöscht");
+      setSelectedMilestoneId(null);
       refreshMilestones();
     } catch {
       toast.error("Fehler beim Löschen");
@@ -227,7 +360,6 @@ export function VehicleTimeline({
       const params = new URLSearchParams();
       if (dateFrom) params.set("from", dateFrom);
       if (dateTo) params.set("to", dateTo);
-      if (filterCategory !== "all") params.set("category", filterCategory);
 
       const response = await fetch(
         `/api/vehicles/${vehicleId}/timeline-pdf?${params.toString()}`
@@ -251,21 +383,10 @@ export function VehicleTimeline({
     }
   };
 
-  const filterButtons: {
-    value: MilestoneCategory | "all";
-    label: string;
-  }[] = [
-    { value: "all", label: "Alle" },
-    ...MILESTONE_CATEGORIES.map((cat) => ({
-      value: cat,
-      label: CATEGORY_CONFIG[cat].label,
-    })),
-  ];
-
   return (
     <div>
-      {/* Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+      {/* Actions bar */}
+      <div className="flex items-center justify-between gap-3 mb-6">
         <h3 className="text-lg font-semibold">Fahrzeug-Historie</h3>
         <div className="flex gap-2">
           <Button
@@ -286,24 +407,6 @@ export function VehicleTimeline({
             Meilenstein
           </Button>
         </div>
-      </div>
-
-      {/* Category filter */}
-      <div className="flex flex-wrap gap-2 mb-4">
-        {filterButtons.map((btn) => (
-          <Button
-            key={btn.value}
-            variant={filterCategory === btn.value ? "default" : "outline"}
-            size="sm"
-            className="text-xs"
-            onClick={() => {
-              setFilterCategory(btn.value);
-              setVisibleCount(ITEMS_PER_PAGE);
-            }}
-          >
-            {btn.label}
-          </Button>
-        ))}
       </div>
 
       {/* Date range filter */}
@@ -379,7 +482,7 @@ export function VehicleTimeline({
         )}
       </div>
 
-      {/* Timeline */}
+      {/* Horizontal timeline */}
       {filteredMilestones.length === 0 ? (
         <div className="text-center py-12">
           <Clock className="h-12 w-12 mx-auto text-muted-foreground/30 mb-3" />
@@ -401,139 +504,85 @@ export function VehicleTimeline({
           )}
         </div>
       ) : (
-        <div className="relative">
-          {/* Vertical line */}
-          <div className="absolute left-4 top-0 bottom-0 w-px bg-border" />
+        <>
+          {/* Timeline rail */}
+          <div className="relative mb-6">
+            {/* Scroll arrows */}
+            {canScrollLeft && (
+              <button
+                type="button"
+                onClick={() => scroll("left")}
+                className="absolute left-0 top-1/2 -translate-y-1/2 z-10 h-8 w-8 flex items-center justify-center rounded-full bg-background border border-border shadow-sm hover:bg-muted transition-colors"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+            )}
+            {canScrollRight && (
+              <button
+                type="button"
+                onClick={() => scroll("right")}
+                className="absolute right-0 top-1/2 -translate-y-1/2 z-10 h-8 w-8 flex items-center justify-center rounded-full bg-background border border-border shadow-sm hover:bg-muted transition-colors"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            )}
 
-          {Array.from(dateGroups.entries()).map(([date, groupMilestones]) => (
-            <div key={date} className="relative mb-6">
-              {/* Date heading */}
-              <div className="flex items-center gap-3 mb-3">
-                <div className="relative z-10 flex items-center justify-center h-8 w-8 rounded-full bg-background border-2 border-border">
-                  <CalendarIcon className="h-3.5 w-3.5 text-muted-foreground" />
+            {/* Scrollable container */}
+            <div
+              ref={scrollRef}
+              className="overflow-x-auto scrollbar-hide px-6"
+            >
+              <div className="relative flex items-start gap-4 sm:gap-6 pt-4 pb-2 min-w-min">
+                {/* Horizontal timeline line — aligned to center of dots (dot is 12px, mb-3=12px from top of card, so center at 6px + 16px padding = 22px) */}
+                <div className="absolute left-0 right-0 top-[22px] h-[2px] bg-gradient-to-r from-border via-border to-transparent" />
+
+                {/* Start cap */}
+                <div className="absolute left-0 top-[19px] h-2 w-2 rounded-full bg-primary/40" />
+
+                {/* Arrow end */}
+                <div className="absolute right-0 top-[18px]">
+                  <svg width="10" height="10" viewBox="0 0 10 10" className="text-border">
+                    <path d="M0 0 L10 5 L0 10" fill="currentColor" />
+                  </svg>
                 </div>
-                <p className="text-sm font-semibold">
-                  {format(
-                    parse(date, "yyyy-MM-dd", new Date()),
-                    "dd. MMMM yyyy",
-                    { locale: de }
-                  )}
-                </p>
-              </div>
 
-              {/* Milestones for this date */}
-              <div className="ml-12 space-y-3">
-                {groupMilestones.map((ms) => (
-                  <div key={ms.id} className="group relative">
-                    <MilestoneCard
-                      milestone={ms}
-                      supabaseUrl={supabaseUrl}
-                    />
-
-                    {/* Desktop: hover overlay */}
-                    <div className="absolute top-0 right-0 hidden sm:flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7"
-                        onClick={() => handleEditMilestone(ms)}
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                      </Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 text-destructive"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>
-                              Meilenstein löschen?
-                            </AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Dieser Meilenstein wird unwiderruflich gelöscht.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => handleDeleteMilestone(ms.id)}
-                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                            >
-                              Löschen
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
-
-                    {/* Mobile: always-visible inline buttons */}
-                    <div className="flex gap-1 mt-1 ml-11 sm:hidden">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 text-xs"
-                        onClick={() => handleEditMilestone(ms)}
-                      >
-                        <Pencil className="h-3 w-3 mr-1" />
-                        Bearbeiten
-                      </Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 px-2 text-xs text-destructive"
-                          >
-                            <Trash2 className="h-3 w-3 mr-1" />
-                            Löschen
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>
-                              Meilenstein löschen?
-                            </AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Dieser Meilenstein wird unwiderruflich gelöscht.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => handleDeleteMilestone(ms.id)}
-                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                            >
-                              Löschen
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
-                  </div>
+                {visibleMilestones.map((ms) => (
+                  <MilestoneCard
+                    key={ms.id}
+                    milestone={ms}
+                    supabaseUrl={supabaseUrl}
+                    isSelected={selectedMilestoneId === ms.id}
+                    onClick={() => setSelectedMilestoneId(ms.id)}
+                  />
                 ))}
               </div>
             </div>
-          ))}
 
-          {/* Load more */}
-          {hasMore && (
-            <div className="text-center pt-4">
-              <Button
-                variant="outline"
-                onClick={() => setVisibleCount((c) => c + ITEMS_PER_PAGE)}
-              >
-                <ChevronDown className="h-4 w-4 mr-1.5" />
-                Mehr laden ({filteredMilestones.length - visibleCount} weitere)
-              </Button>
-            </div>
+            {/* Load more inline */}
+            {hasMore && (
+              <div className="text-center mt-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setVisibleCount((c) => c + ITEMS_PER_PAGE)}
+                >
+                  <ChevronDown className="h-4 w-4 mr-1.5" />
+                  Mehr laden ({filteredMilestones.length - visibleCount} weitere)
+                </Button>
+              </div>
+            )}
+          </div>
+
+          {/* Selected milestone detail */}
+          {selectedMilestone && (
+            <MilestoneDetail
+              milestone={selectedMilestone}
+              supabaseUrl={supabaseUrl}
+              onEdit={() => handleEditMilestone(selectedMilestone)}
+              onDelete={() => handleDeleteMilestone(selectedMilestone.id)}
+            />
           )}
-        </div>
+        </>
       )}
 
       <MilestoneForm

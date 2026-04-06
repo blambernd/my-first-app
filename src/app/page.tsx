@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { BrandLogoWithText } from "@/components/brand-logo";
 
 export default function Home() {
   return (
     <div className="min-h-screen flex flex-col">
       <header className="border-b bg-background">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
-          <h1 className="text-xl font-bold">Oldtimer Garage</h1>
+          <BrandLogoWithText />
           <div className="flex gap-2">
             <Button variant="ghost" asChild>
               <Link href="/login">Anmelden</Link>

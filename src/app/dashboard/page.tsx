@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { LogoutButton } from "@/components/logout-button";
 import { VehicleCard, AddVehicleCard } from "@/components/vehicle-card";
+import { BrandLogoWithText } from "@/components/brand-logo";
 import { Car } from "lucide-react";
 import type { VehicleWithImages } from "@/lib/validations/vehicle";
 
@@ -36,7 +37,7 @@ export default async function DashboardPage() {
     <div className="min-h-screen bg-muted/40">
       <header className="border-b bg-background">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
-          <h1 className="text-xl font-bold">Oldtimer Garage</h1>
+          <BrandLogoWithText />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="text-sm">
