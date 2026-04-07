@@ -118,6 +118,15 @@ export function VehicleForm({ vehicle, vehicleImages = [], mode }: VehicleFormPr
     setIsSubmitting(true);
     try {
       const supabase = createClient();
+
+      // Refresh session to ensure a valid JWT is sent to the database
+      const { error: refreshError } = await supabase.auth.refreshSession();
+      if (refreshError) {
+        toast.error("Sitzung abgelaufen. Bitte melde dich erneut an.");
+        router.push("/login");
+        return;
+      }
+
       const {
         data: { user },
       } = await supabase.auth.getUser();
@@ -145,13 +154,27 @@ export function VehicleForm({ vehicle, vehicleImages = [], mode }: VehicleFormPr
       let vehicleId: string;
 
       if (mode === "create") {
-        const { data: newVehicle, error } = await supabase
+        // Step 1: Insert vehicle (without .select() to avoid SELECT RLS issues)
+        const insertPayload = { ...cleanData, user_id: user.id };
+        const { error: insertError } = await supabase
           .from("vehicles")
-          .insert({ ...cleanData, user_id: user.id })
+          .insert(insertPayload);
+
+        if (insertError) throw insertError;
+
+        // Step 2: Fetch the newly created vehicle separately
+        const { data: newVehicle, error: selectError } = await supabase
+          .from("vehicles")
           .select("id")
+          .eq("user_id", user.id)
+          .eq("make", data.make)
+          .eq("model", data.model)
+          .eq("year", data.year)
+          .order("created_at", { ascending: false })
+          .limit(1)
           .single();
 
-        if (error) throw error;
+        if (selectError || !newVehicle) throw selectError ?? new Error("Fahrzeug konnte nicht gefunden werden");
         vehicleId = newVehicle.id;
       } else {
         if (!vehicle) throw new Error("Fahrzeug nicht gefunden");
