@@ -6,7 +6,6 @@ import { toast } from "sonner";
 import Link from "next/link";
 import {
   Bell,
-  BellOff,
   Plus,
   Pencil,
   Trash2,
@@ -31,6 +30,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { CreateAlertDialog } from "@/components/create-alert-dialog";
+import { EditAlertDialog } from "@/components/edit-alert-dialog";
 import { createClient } from "@/lib/supabase";
 import {
   formatPriceCents,
@@ -55,11 +55,13 @@ function AlertCard({
   alert,
   onToggleStatus,
   onDelete,
+  onEdit,
   isToggling,
 }: {
   alert: PartAlert;
   onToggleStatus: () => void;
   onDelete: () => void;
+  onEdit: () => void;
   isToggling: boolean;
 }) {
   const isActive = alert.status === "active";
@@ -104,6 +106,14 @@ function AlertCard({
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={onEdit}
+            >
+              <Pencil className="h-3.5 w-3.5" />
+            </Button>
             <div className="flex items-center gap-1.5">
               {isToggling ? (
                 <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
@@ -162,6 +172,7 @@ export function PartsAlertList({
   const router = useRouter();
   const [alerts, setAlerts] = useState<PartAlert[]>(initialAlerts);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [editingAlert, setEditingAlert] = useState<PartAlert | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -242,6 +253,7 @@ export function PartsAlertList({
               alert={alert}
               onToggleStatus={() => handleToggleStatus(alert)}
               onDelete={() => handleDelete(alert.id)}
+              onEdit={() => setEditingAlert(alert)}
               isToggling={togglingId === alert.id}
             />
           ))}
@@ -280,6 +292,16 @@ export function PartsAlertList({
         onOpenChange={setCreateDialogOpen}
         onSuccess={refreshAlerts}
       />
+
+      {editingAlert && (
+        <EditAlertDialog
+          vehicleId={vehicleId}
+          alert={editingAlert}
+          open={!!editingAlert}
+          onOpenChange={(open) => { if (!open) setEditingAlert(null); }}
+          onSuccess={refreshAlerts}
+        />
+      )}
     </div>
   );
 }

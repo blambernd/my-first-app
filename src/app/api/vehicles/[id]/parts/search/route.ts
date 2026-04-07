@@ -3,6 +3,29 @@ import { createClient } from "@/lib/supabase-server";
 import { searchParts } from "@/lib/parts-search";
 import { z } from "zod";
 
+// Rate limiting: max 10 searches per user per hour
+const MAX_SEARCHES_PER_HOUR = 10;
+const WINDOW_MS = 60 * 60 * 1000; // 1 hour
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+
+function checkRateLimit(userId: string): { allowed: boolean; remaining: number; resetAt: number } {
+  const now = Date.now();
+  const entry = rateLimitMap.get(userId);
+
+  if (!entry || now >= entry.resetAt) {
+    const resetAt = now + WINDOW_MS;
+    rateLimitMap.set(userId, { count: 1, resetAt });
+    return { allowed: true, remaining: MAX_SEARCHES_PER_HOUR - 1, resetAt };
+  }
+
+  if (entry.count >= MAX_SEARCHES_PER_HOUR) {
+    return { allowed: false, remaining: 0, resetAt: entry.resetAt };
+  }
+
+  entry.count++;
+  return { allowed: true, remaining: MAX_SEARCHES_PER_HOUR - entry.count, resetAt: entry.resetAt };
+}
+
 const searchQuerySchema = z.object({
   query: z.string().min(2).max(200),
   make: z.string().min(1),
@@ -29,6 +52,19 @@ export async function GET(
 
   if (!user) {
     return NextResponse.json({ error: "Nicht angemeldet" }, { status: 401 });
+  }
+
+  // Rate limit check
+  const rateLimit = checkRateLimit(user.id);
+  if (!rateLimit.allowed) {
+    const retryAfterSeconds = Math.ceil((rateLimit.resetAt - Date.now()) / 1000);
+    return NextResponse.json(
+      { error: `Zu viele Suchanfragen. Bitte warte ${Math.ceil(retryAfterSeconds / 60)} Minute(n).` },
+      {
+        status: 429,
+        headers: { "Retry-After": String(retryAfterSeconds) },
+      }
+    );
   }
 
   // Verify vehicle access (owner or member)

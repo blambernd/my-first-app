@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { BrandLogoWithText } from "@/components/brand-logo";
 import { DeleteVehicleButton } from "@/components/delete-vehicle-button";
 import { VehicleProfileNav } from "@/components/vehicle-profile-nav";
+import { NotificationBell } from "@/components/notification-bell";
 import { Pencil, Shield, ArrowRightLeft } from "lucide-react";
 import { Toaster } from "@/components/ui/sonner";
 import type { VehicleWithImages } from "@/lib/validations/vehicle";
@@ -73,6 +74,8 @@ export default async function VehicleLayout({
           >
             <BrandLogoWithText />
           </Link>
+          <div className="flex items-center gap-2">
+            <NotificationBell />
           {isOwner && (
             <div className="flex gap-3">
               <Button
@@ -114,6 +117,7 @@ export default async function VehicleLayout({
               />
             </div>
           )}
+          </div>
         </div>
       </header>
 

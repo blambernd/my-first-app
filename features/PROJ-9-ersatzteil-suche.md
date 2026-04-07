@@ -233,7 +233,105 @@ Notification-Bereich (Header, global)
 - `/api/cron/check-alerts` — API: Cron-Endpoint für Alert-Prüfung
 
 ## QA Test Results
-_To be added by /qa_
+
+**Tested:** 2026-04-07
+**App URL:** http://localhost:3000
+**Tester:** QA Engineer (AI)
+
+### Acceptance Criteria Status
+
+#### AC-1: Ersatzteil-Suche
+- [x] Nutzer kann von der Fahrzeug-Detailseite eine Ersatzteil-Suche starten — "Ersatzteile" Tab in Navigation vorhanden
+- [x] Fahrzeugdaten (Marke, Modell, Baujahr) werden automatisch angezeigt — Fahrzeug-Kontext oben auf der Seite
+- [x] Nutzer kann ein Ersatzteil per Freitext-Suchfeld suchen — Input mit Zod Validierung (min 2, max 200 Zeichen)
+- [x] Suche durchsucht mehrere Plattformen — 4 Adapter (eBay, Mobile.de, Oldtimer-Markt, Classic-Trader) parallel
+- [x] Ergebnisse werden gruppiert angezeigt, günstigstes zuerst — Gruppierung by normalized title, sort by lowestPrice
+- [x] Jedes Ergebnis zeigt: Teilename, Preis, Zustand, Plattform, Link — ListingCard Komponente mit allen Feldern
+- [x] Filter verfügbar: Zustand, Preisspanne, Plattform — Collapsible Filter-Bereich mit allen drei
+- [x] Standardmäßig werden neue und gebrauchte Teile angezeigt — condition default "all"
+- [x] Klick öffnet Angebot auf externer Plattform in neuem Tab — `target="_blank" rel="noopener noreferrer"`
+
+#### AC-2: Preis-Alerts
+- [x] Nutzer kann aus Suchergebnissen oder direkt einen Alert erstellen — "Alert erstellen" Button + Dialog
+- [x] Alert-Formular enthält: Suchbegriff, Maximalpreis, Zustand-Filter — CreateAlertDialog mit allen Feldern
+- [x] Alert läuft unbegrenzt bis manuell deaktiviert — Kein Ablaufdatum, nur manuell pausieren/löschen
+- [x] Anzahl aktiver Alerts abhängig vom Plan — MAX_ALERTS_FREE = 5 im API, 429 bei Limit
+- [x] Benachrichtigung per E-Mail — Cron API Route `/api/cron/check-alerts` mit Resend E-Mail
+- [x] In-App Notification Badge/Glocke — NotificationBell Komponente im Header mit Realtime-Subscription
+- [x] Alerts-Übersichtsseite zeigt alle Alerts — /vehicles/[id]/ersatzteile/alerts mit AlertCard
+- [x] Nutzer kann Alerts bearbeiten (Maximalpreis, Filter) — EditAlertDialog mit PATCH API
+- [x] Nutzer kann Alerts pausieren und wieder aktivieren — Switch Toggle mit Supabase Update
+- [x] Nutzer kann Alerts löschen — Delete mit AlertDialog Bestätigung
+
+#### AC-3: UI / Navigation
+- [x] Neuer Menüpunkt "Ersatzteile" in der Fahrzeug-Navigation — Cog Icon, in VehicleProfileNav
+- [x] Suchergebnisse sind responsiv — Tailwind responsive classes, flex-wrap
+- [x] Ladezustand während Suche — SearchSkeleton mit Skeleton Komponente
+- [x] Leerer Zustand mit Alert-Vorschlag — "Keine Ersatzteile gefunden" + Alert-Button
+
+### Edge Cases Status
+
+#### EC-1: Keine Ergebnisse
+- [x] Hinweis "Keine Ersatzteile gefunden" mit Alert-Vorschlag wird angezeigt
+
+#### EC-2: Plattform nicht erreichbar
+- [x] Suche läuft weiter mit verfügbaren Plattformen — Promise.allSettled + platformErrors Array
+- [x] Hinweis welche Plattform nicht verfügbar — Warning-Toast + amber Banner
+
+#### EC-3: Sehr viele Ergebnisse
+- [x] Pagination mit max 20 pro Seite — pageSize=20 in searchParts(), Pagination Komponente
+
+#### EC-4: Alert-Limit erreicht
+- [x] API gibt 429 mit Hinweis-Text zurück — MAX_ALERTS_FREE enforced
+
+#### EC-5: Duplikat-Alert
+- [x] API gibt 409 mit Warnung zurück — Exakte search_query + vehicle_id + status Check
+
+#### EC-6: Nutzer löscht Fahrzeug
+- [x] Alerts werden via ON DELETE CASCADE automatisch gelöscht — FK part_alerts.vehicle_id → vehicles(id)
+
+### Security Audit Results
+
+- [x] Authentication: Alle API Routes prüfen `supabase.auth.getUser()`, 401 bei fehlendem Login
+- [x] Authorization: Vehicle-Access Check (owner OR member) vor Suche und Alerts
+- [x] Authorization: Alert CRUD prüft `user_id = auth.uid()` — kein Zugriff auf fremde Alerts
+- [x] Input validation: Zod-Schemas auf allen POST/PATCH Endpoints, searchQuerySchema auf GET
+- [x] XSS: React auto-escapes alle Daten in JSX, `rel="noopener noreferrer"` auf externen Links
+- [x] SQL Injection: Supabase parameterized queries, keine Raw-SQL
+- [x] Secret exposure: SERPAPI_API_KEY nur server-seitig, nie im Frontend-Bundle
+- [x] RLS: Alle 3 Tabellen (part_alerts, part_alert_matches, notifications) haben RLS enabled mit korrekte Policies
+- [x] Rate Limiting: Max 10 Suchen/Stunde pro Nutzer, 429 + Retry-After Header bei Überschreitung
+
+### Bugs Found
+
+#### BUG-1: E-Mail-Benachrichtigungen fehlen — FIXED
+- **Severity:** Medium
+- **Fix:** Cron API Route `/api/cron/check-alerts` implementiert. Prüft aktive Alerts via SerpAPI, speichert neue Treffer, erstellt In-App Notifications, sendet E-Mail-Zusammenfassung via Resend.
+
+#### BUG-2: In-App Notification Badge fehlt — FIXED
+- **Severity:** Medium
+- **Fix:** NotificationBell Komponente im Vehicle Layout Header. Zeigt ungelesene Notifications mit Badge, Popover-Dropdown, Supabase Realtime für Live-Updates, "Alle gelesen" Funktion.
+
+#### BUG-3: Alert-Bearbeitung fehlt im Frontend — FIXED
+- **Severity:** Low
+- **Fix:** EditAlertDialog Komponente + Pencil-Button in AlertCard. Suchbegriff, Maximalpreis und Zustand-Filter editierbar via PATCH API.
+
+#### BUG-4: Rate Limiting fehlt auf Search-API — FIXED
+- **Severity:** High
+- **Fix:** In-memory Rate Limiter implementiert (max 10 Suchen/Stunde/Nutzer, 429 + Retry-After Header)
+
+### Regression Tests
+- [x] 143 bestehende Unit Tests: Alle bestanden
+- [x] 22 neue Validation-Tests: Alle bestanden (165 total)
+- [x] VehicleProfileNav: Alle bisherigen Tabs weiterhin vorhanden
+- [x] Build: Erfolgreich, keine TypeScript-Fehler
+
+### Summary
+- **Acceptance Criteria:** 23/23 passed
+- **Bugs Found:** 4 total — all FIXED (0 critical, 1 high, 2 medium, 1 low)
+- **Security:** Pass (Rate Limiting + Cron Auth implementiert)
+- **Production Ready:** YES
+- **Recommendation:** Deploy
 
 ## Deployment
 _To be added by /deploy_
