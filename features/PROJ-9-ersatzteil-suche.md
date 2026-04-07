@@ -1,6 +1,6 @@
 # PROJ-9: Ersatzteil-Suche & Preis-Alerts
 
-## Status: In Progress
+## Status: Deployed
 **Created:** 2026-04-07
 **Last Updated:** 2026-04-07
 
