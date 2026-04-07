@@ -94,7 +94,7 @@ export function MembersList({ vehicleId, members, onUpdate }: MembersListProps) 
       <div className="text-center py-8">
         <Users className="h-10 w-10 mx-auto text-muted-foreground/30 mb-3" />
         <p className="text-sm text-muted-foreground">
-          Noch keine Mitglieder. Lade jemanden ein!
+          Noch keine berechtigten Nutzer. Lade jemanden ein!
         </p>
       </div>
     );

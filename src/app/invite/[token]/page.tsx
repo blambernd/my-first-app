@@ -43,48 +43,33 @@ export default function InviteAcceptPage() {
 
   async function loadInvite() {
     try {
-      const supabase = createClient();
+      // Use API route to load invite (avoids client-side RLS issues)
+      const res = await fetch(`/api/invites/${token}`);
+      const data = await res.json();
 
-      // Look up the invitation
-      const { data: invitation, error } = await supabase
-        .from("vehicle_invitations")
-        .select("*, vehicles(make, model, year)")
-        .eq("token", token)
-        .single();
-
-      if (error || !invitation) {
+      if (!res.ok || data.status === "invalid") {
         setState({ status: "invalid" });
         return;
       }
 
-      if (invitation.status === "angenommen") {
+      if (data.status === "accepted") {
         setState({ status: "accepted" });
         return;
       }
 
-      if (
-        invitation.status === "widerrufen" ||
-        invitation.status === "abgelaufen"
-      ) {
+      if (data.status === "expired") {
         setState({ status: "expired" });
         return;
       }
 
-      if (new Date(invitation.expires_at) < new Date()) {
-        setState({ status: "expired" });
-        return;
-      }
-
-      const vehicle = invitation.vehicles as { make: string; model: string; year: number } | null;
       const info: InviteInfo = {
-        vehicleName: vehicle
-          ? `${vehicle.make} ${vehicle.model} (${vehicle.year})`
-          : "Fahrzeug",
-        role: invitation.role,
-        expiresAt: invitation.expires_at,
+        vehicleName: data.vehicleName,
+        role: data.role,
+        expiresAt: data.expiresAt,
       };
 
       // Check if user is logged in
+      const supabase = createClient();
       const {
         data: { user },
       } = await supabase.auth.getUser();

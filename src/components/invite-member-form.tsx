@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { Send } from "lucide-react";
+import { Send, Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -35,6 +35,8 @@ interface InviteMemberFormProps {
 
 export function InviteMemberForm({ vehicleId, onSuccess }: InviteMemberFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [inviteLink, setInviteLink] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const form = useForm<InviteMemberFormData>({
     resolver: zodResolver(inviteMemberSchema),
@@ -75,17 +77,29 @@ export function InviteMemberForm({ vehicleId, onSuccess }: InviteMemberFormProps
         throw error;
       }
 
-      toast.success(`Einladung an ${data.email} gesendet`);
+      const link = `${window.location.origin}/invite/${token}`;
+      setInviteLink(link);
+      setCopied(false);
+      toast.success("Einladung erstellt — teile den Link mit dem Nutzer");
       form.reset();
       onSuccess();
     } catch {
-      toast.error("Fehler beim Senden der Einladung");
+      toast.error("Fehler beim Erstellen der Einladung");
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  const copyLink = async () => {
+    if (!inviteLink) return;
+    await navigator.clipboard.writeText(inviteLink);
+    setCopied(true);
+    toast.success("Link kopiert!");
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   return (
+    <div className="space-y-4">
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="flex gap-3 items-end">
         <FormField
@@ -134,5 +148,25 @@ export function InviteMemberForm({ vehicleId, onSuccess }: InviteMemberFormProps
         </Button>
       </form>
     </Form>
+
+    {inviteLink && (
+      <div className="flex items-center gap-2 rounded-md border bg-muted/50 p-3">
+        <code className="flex-1 text-sm truncate">{inviteLink}</code>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={copyLink}
+          className="shrink-0"
+        >
+          {copied ? (
+            <Check className="h-4 w-4 text-green-600" />
+          ) : (
+            <Copy className="h-4 w-4" />
+          )}
+        </Button>
+      </div>
+    )}
+    </div>
   );
 }

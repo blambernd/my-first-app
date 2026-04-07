@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BookOpen, Clock, FileText, Car, Users } from "lucide-react";
+import { BookOpen, Clock, FileText, Car } from "lucide-react";
 
 interface VehicleProfileNavProps {
   vehicleId: string;
@@ -32,19 +32,11 @@ const navItems = [
   },
 ];
 
-const ownerOnlyItems = [
-  {
-    label: "Mitglieder",
-    href: "/mitglieder",
-    icon: Users,
-  },
-];
-
-export function VehicleProfileNav({ vehicleId, isOwner = true }: VehicleProfileNavProps) {
+export function VehicleProfileNav({ vehicleId }: VehicleProfileNavProps) {
   const pathname = usePathname();
   const basePath = `/vehicles/${vehicleId}`;
 
-  const allItems = isOwner ? [...navItems, ...ownerOnlyItems] : navItems;
+  const allItems = navItems;
 
   return (
     <nav className="flex gap-1 py-2 -mx-2 overflow-x-auto">

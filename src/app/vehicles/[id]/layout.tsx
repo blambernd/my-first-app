@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { BrandLogoWithText } from "@/components/brand-logo";
 import { DeleteVehicleButton } from "@/components/delete-vehicle-button";
 import { VehicleProfileNav } from "@/components/vehicle-profile-nav";
-import { Pencil } from "lucide-react";
+import { Pencil, Shield } from "lucide-react";
 import { Toaster } from "@/components/ui/sonner";
 import type { VehicleWithImages } from "@/lib/validations/vehicle";
 import type { MemberRole } from "@/lib/validations/member";
@@ -75,6 +75,17 @@ export default async function VehicleLayout({
           </Link>
           {isOwner && (
             <div className="flex gap-3">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-muted-foreground hover:text-foreground"
+                asChild
+              >
+                <Link href={`/vehicles/${id}/mitglieder`}>
+                  <Shield className="h-3.5 w-3.5 mr-1.5" />
+                  Freigabe
+                </Link>
+              </Button>
               <Button
                 variant="ghost"
                 size="sm"

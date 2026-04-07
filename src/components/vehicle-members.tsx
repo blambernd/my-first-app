@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import { MembersList } from "@/components/members-list";
 import { InviteMemberForm } from "@/components/invite-member-form";
 import { PendingInvitations } from "@/components/pending-invitations";
@@ -41,7 +40,7 @@ export function VehicleMembers({
       {/* Invite section */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Mitglied einladen</CardTitle>
+          <CardTitle className="text-base">Nutzer einladen</CardTitle>
         </CardHeader>
         <CardContent>
           <InviteMemberForm vehicleId={vehicleId} onSuccess={refresh} />
@@ -54,7 +53,7 @@ export function VehicleMembers({
       {/* Members list */}
       <div>
         <h3 className="text-xs font-medium tracking-widest uppercase text-muted-foreground/60 mb-3">
-          Mitglieder
+          Berechtigte Nutzer
         </h3>
         <MembersList
           vehicleId={vehicleId}
