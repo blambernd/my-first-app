@@ -225,6 +225,7 @@ export function VehicleForm({ vehicle, vehicleImages = [], mode }: VehicleFormPr
               milestone_date: deliveryDate,
               title: "Auslieferung / Erstzulassung",
               description: "Datenkarte zum Auslieferungszustand hinterlegt.",
+              created_by: user.id,
             })
             .select("id")
             .single();
