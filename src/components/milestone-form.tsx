@@ -221,7 +221,7 @@ export function MilestoneForm({
       } else {
         const { data: inserted, error } = await supabase
           .from("vehicle_milestones")
-          .insert(cleanData)
+          .insert({ ...cleanData, created_by: user.id })
           .select("id")
           .single();
         if (error) throw error;

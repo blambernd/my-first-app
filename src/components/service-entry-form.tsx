@@ -126,6 +126,8 @@ export function ServiceEntryForm({
     setIsSubmitting(true);
     try {
       const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Nicht eingeloggt");
 
       const cleanData = {
         vehicle_id: vehicleId,
@@ -149,7 +151,7 @@ export function ServiceEntryForm({
       } else {
         const { error } = await supabase
           .from("service_entries")
-          .insert(cleanData);
+          .insert({ ...cleanData, created_by: user.id });
         if (error) throw error;
         toast.success("Eintrag erstellt");
       }

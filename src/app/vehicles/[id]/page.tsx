@@ -25,12 +25,29 @@ export default async function VehicleDetailPage({
     redirect("/login");
   }
 
-  const { data: vehicle } = await supabase
-    .from("vehicles")
-    .select("*, vehicle_images(*)")
-    .eq("id", id)
-    .eq("user_id", user.id)
-    .single();
+  // Try owner first, then member
+  let vehicle = (
+    await supabase
+      .from("vehicles")
+      .select("*, vehicle_images(*)")
+      .eq("id", id)
+      .eq("user_id", user.id)
+      .single()
+  ).data;
+
+  if (!vehicle) {
+    // Check membership
+    const { data: membership } = await supabase
+      .from("vehicle_members")
+      .select("vehicle_id, vehicles(*, vehicle_images(*))")
+      .eq("vehicle_id", id)
+      .eq("user_id", user.id)
+      .single();
+
+    if (membership?.vehicles) {
+      vehicle = membership.vehicles as unknown as VehicleWithImages & Record<string, unknown>;
+    }
+  }
 
   if (!vehicle) {
     notFound();

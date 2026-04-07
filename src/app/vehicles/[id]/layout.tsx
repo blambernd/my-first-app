@@ -8,6 +8,7 @@ import { VehicleProfileNav } from "@/components/vehicle-profile-nav";
 import { Pencil } from "lucide-react";
 import { Toaster } from "@/components/ui/sonner";
 import type { VehicleWithImages } from "@/lib/validations/vehicle";
+import type { MemberRole } from "@/lib/validations/member";
 
 interface VehicleLayoutProps {
   children: React.ReactNode;
@@ -28,18 +29,38 @@ export default async function VehicleLayout({
     redirect("/login");
   }
 
-  const { data: vehicle } = await supabase
+  // First try: user is the owner
+  const { data: ownedVehicle } = await supabase
     .from("vehicles")
     .select("*, vehicle_images(*)")
     .eq("id", id)
     .eq("user_id", user.id)
     .single();
 
-  if (!vehicle) {
-    notFound();
+  let typedVehicle: VehicleWithImages;
+  let userRole: MemberRole;
+
+  if (ownedVehicle) {
+    typedVehicle = ownedVehicle as VehicleWithImages;
+    userRole = "besitzer";
+  } else {
+    // Second try: user is a member
+    const { data: membership } = await supabase
+      .from("vehicle_members")
+      .select("role, vehicles(*, vehicle_images(*))")
+      .eq("vehicle_id", id)
+      .eq("user_id", user.id)
+      .single();
+
+    if (!membership?.vehicles) {
+      notFound();
+    }
+
+    typedVehicle = membership.vehicles as unknown as VehicleWithImages;
+    userRole = membership.role as MemberRole;
   }
 
-  const typedVehicle = vehicle as VehicleWithImages;
+  const isOwner = userRole === "besitzer";
 
   return (
     <div className="min-h-screen bg-background">
@@ -52,23 +73,25 @@ export default async function VehicleLayout({
           >
             <BrandLogoWithText />
           </Link>
-          <div className="flex gap-3">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-muted-foreground hover:text-foreground"
-              asChild
-            >
-              <Link href={`/vehicles/${id}/edit`}>
-                <Pencil className="h-3.5 w-3.5 mr-1.5" />
-                Bearbeiten
-              </Link>
-            </Button>
-            <DeleteVehicleButton
-              vehicleId={id}
-              vehicleName={`${typedVehicle.make} ${typedVehicle.model}`}
-            />
-          </div>
+          {isOwner && (
+            <div className="flex gap-3">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-muted-foreground hover:text-foreground"
+                asChild
+              >
+                <Link href={`/vehicles/${id}/edit`}>
+                  <Pencil className="h-3.5 w-3.5 mr-1.5" />
+                  Bearbeiten
+                </Link>
+              </Button>
+              <DeleteVehicleButton
+                vehicleId={id}
+                vehicleName={`${typedVehicle.make} ${typedVehicle.model}`}
+              />
+            </div>
+          )}
         </div>
       </header>
 
@@ -85,7 +108,7 @@ export default async function VehicleLayout({
               </h1>
             </div>
           </div>
-          <VehicleProfileNav vehicleId={id} />
+          <VehicleProfileNav vehicleId={id} isOwner={isOwner} />
         </div>
       </div>
 

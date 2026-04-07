@@ -177,6 +177,7 @@ export function DocumentUploadForm({
           file_size: selectedFile.size,
           mime_type: selectedFile.type,
           service_entry_id: data.service_entry_id && data.service_entry_id !== "none" ? data.service_entry_id : null,
+          created_by: user.id,
         });
 
       if (insertError) {

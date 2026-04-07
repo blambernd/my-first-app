@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase-server";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,6 +14,7 @@ import { VehicleCard, AddVehicleCard } from "@/components/vehicle-card";
 import { BrandLogoWithText } from "@/components/brand-logo";
 import { Car } from "lucide-react";
 import type { VehicleWithImages } from "@/lib/validations/vehicle";
+import { ROLE_LABELS, type MemberRole } from "@/lib/validations/member";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -24,6 +26,7 @@ export default async function DashboardPage() {
     redirect("/login");
   }
 
+  // Own vehicles
   const { data: vehicles } = await supabase
     .from("vehicles")
     .select("*, vehicle_images(*)")
@@ -32,6 +35,20 @@ export default async function DashboardPage() {
     .limit(50);
 
   const typedVehicles = (vehicles ?? []) as VehicleWithImages[];
+
+  // Shared vehicles (where user is a member)
+  const { data: memberships } = await supabase
+    .from("vehicle_members")
+    .select("role, vehicles(*, vehicle_images(*))")
+    .eq("user_id", user.id)
+    .limit(50);
+
+  const sharedVehicles = (memberships ?? [])
+    .filter((m) => m.vehicles)
+    .map((m) => ({
+      vehicle: m.vehicles as unknown as VehicleWithImages,
+      role: m.role as MemberRole,
+    }));
 
   return (
     <div className="min-h-screen bg-muted/40">
@@ -76,6 +93,28 @@ export default async function DashboardPage() {
             ))}
             <AddVehicleCard />
           </div>
+        )}
+
+        {/* Shared vehicles */}
+        {sharedVehicles.length > 0 && (
+          <>
+            <div className="flex items-center justify-between mb-6 mt-12">
+              <h2 className="text-2xl font-bold">Geteilte Fahrzeuge</h2>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {sharedVehicles.map(({ vehicle, role }) => (
+                <div key={vehicle.id} className="relative">
+                  <VehicleCard vehicle={vehicle} />
+                  <Badge
+                    variant="secondary"
+                    className="absolute top-2 left-2 text-xs"
+                  >
+                    {ROLE_LABELS[role]}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          </>
         )}
       </main>
     </div>
