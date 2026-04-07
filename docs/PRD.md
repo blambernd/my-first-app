@@ -29,6 +29,7 @@ Eine SaaS-Plattform für Oldtimer-Besitzer, die es ermöglicht, die komplette Hi
 | P1 | PROJ-6: Rollen & Kollaboration | Planned |
 | P1 | PROJ-7: Fahrzeug-Transfer | Planned |
 | P2 | PROJ-8: Freemium-Modell | Planned |
+| P2 | PROJ-9: Ersatzteil-Suche & Preis-Alerts | Planned |
 
 ## Success Metrics
 - **Registrierungen:** 500 Nutzer in den ersten 3 Monaten
