@@ -20,25 +20,25 @@ export default function ImpressumPage() {
           <section>
             <h2 className="text-xl font-semibold mb-3">Angaben gemäß § 5 TMG</h2>
             <p>
-              Max Mustermann<br />
-              Musterstraße 1<br />
-              12345 Musterstadt
+              Bernhard Lambernd<br />
+              Hans-Mayer-Siedlung 58<br />
+              21502 Geesthacht
             </p>
           </section>
 
           <section>
             <h2 className="text-xl font-semibold mb-3">Kontakt</h2>
             <p>
-              E-Mail: max@example.com
+              E-Mail: b.lambernd@gmail.com
             </p>
           </section>
 
           <section>
             <h2 className="text-xl font-semibold mb-3">Verantwortlich für den Inhalt nach § 55 Abs. 2 RStV</h2>
             <p>
-              Max Mustermann<br />
-              Musterstraße 1<br />
-              12345 Musterstadt
+              Bernhard Lambernd<br />
+              Hans-Mayer-Siedlung 58<br />
+              21502 Geesthacht
             </p>
           </section>
 

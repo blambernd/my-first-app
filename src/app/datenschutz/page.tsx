@@ -37,10 +37,10 @@ export default function DatenschutzPage() {
               Website ist:
             </p>
             <p>
-              Max Mustermann<br />
-              Musterstraße 1<br />
-              12345 Musterstadt<br />
-              E-Mail: max@example.com
+              Bernhard Lambernd<br />
+              Hans-Mayer-Siedlung 58<br />
+              21502 Geesthacht<br />
+              E-Mail: b.lambernd@gmail.com
             </p>
             <p>
               Verantwortliche Stelle ist die natürliche oder juristische Person, die
