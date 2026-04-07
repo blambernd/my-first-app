@@ -1,6 +1,6 @@
 # PROJ-7: Fahrzeug-Transfer
 
-## Status: Planned
+## Status: Architected
 **Created:** 2026-04-04
 **Last Updated:** 2026-04-04
 
@@ -39,7 +39,93 @@
 <!-- Sections below are added by subsequent skills -->
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture_
+
+### Component Structure
+```
+Fahrzeug-Detailseite (Header)
++-- "Transfer"-Button (nur für Besitzer, neben Freigabe/Bearbeiten/Löschen)
+
+Transfer-Seite (/vehicles/[id]/transfer)
++-- Transfer-Info-Header (Fahrzeugname, Hinweis)
++-- Transfer-Formular
+|   +-- E-Mail-Eingabe (neuer Besitzer)
+|   +-- Checkbox: "Als Betrachter verknüpft bleiben"
+|   +-- "Transfer starten"-Button
++-- Aktiver Transfer (wenn bereits gestartet)
+|   +-- Status-Anzeige (Ausstehend / Angenommen / Abgelehnt)
+|   +-- Kopierbarer Transfer-Link
+|   +-- "Transfer abbrechen"-Button
+
+Transfer-Annahme-Seite (/transfer/[token])
++-- Fahrzeug-Details (Marke, Modell, Jahr)
++-- Info: "Du wirst neuer Besitzer dieses Fahrzeugs"
++-- "Transfer annehmen" / "Transfer ablehnen"-Buttons
++-- Login/Registrierung (wenn nicht angemeldet)
+```
+
+### Data Model
+```
+vehicle_transfers:
+- id: UUID (Primary Key)
+- vehicle_id: UUID → vehicles(id)
+- from_user_id: UUID → auth.users(id)
+- to_email: Text (E-Mail des neuen Besitzers)
+- token: UUID (einmalig, für Transfer-Link)
+- keep_as_viewer: Boolean (alter Besitzer bleibt als Betrachter)
+- status: Text (offen / angenommen / abgelehnt / abgebrochen)
+- expires_at: Timestamp (14 Tage nach Erstellung)
+- created_at: Timestamp
+
+Constraints:
+- Nur ein aktiver Transfer (status = 'offen') pro Fahrzeug
+- Token ist unique
+- 14 Tage Gültigkeit
+```
+
+### Tech Decisions
+| Decision | Choice | Why |
+|---|---|---|
+| E-Mail-Versand | Resend | Modern, einfach, 3.000 Mails/Monat gratis, ideal für Next.js |
+| Transfer-Link | Gleicher Ansatz wie Einladungen | Konsistenz, bewährtes Muster |
+| Atomare Transaktion | Supabase RPC-Funktion | Verhindert Zwischenzustand ohne Besitzer |
+| Token-Gültigkeit | 14 Tage | Genug Zeit, sicher genug |
+| E-Mail auch für Einladungen | Ja | Gleiche Resend-Integration für PROJ-6 nachnutzbar |
+
+### New Files & Routes
+```
+Pages:
+- /vehicles/[id]/transfer        → Transfer-Formular (nur Besitzer)
+- /transfer/[token]              → Transfer-Annahme (öffentlich)
+
+API Routes:
+- /api/transfers                 → POST: Transfer erstellen + E-Mail senden
+- /api/transfers/[token]         → GET: Transfer-Details laden
+- /api/transfers/[token]/accept  → POST: Transfer annehmen (atomar)
+- /api/transfers/[token]/decline → POST: Transfer ablehnen
+
+Components:
+- transfer-form.tsx              → Formular zum Starten
+- transfer-status.tsx            → Anzeige des aktiven Transfers
+
+Email Templates:
+- emails/transfer-invite.tsx     → E-Mail an neuen Besitzer
+
+Database:
+- New table: vehicle_transfers
+- New RPC function: accept_vehicle_transfer (atomar)
+```
+
+### Dependencies
+- resend — E-Mail-Versand-API
+- @react-email/components — E-Mail-Vorlagen als React-Komponenten
+
+### Security
+- Nur aktueller Besitzer kann Transfer starten
+- Nur ein aktiver Transfer pro Fahrzeug
+- Token = UUID (nicht erratbar)
+- Annahme erfordert Authentifizierung
+- Besitzerwechsel atomar (keine Race-Conditions)
+- E-Mail-Adresse wird bei Annahme abgeglichen
 
 ## QA Test Results
 _To be added by /qa_
