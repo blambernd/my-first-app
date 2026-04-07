@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { BrandLogoWithText } from "@/components/brand-logo";
+import { SiteFooter } from "@/components/site-footer";
 
 export default function Home() {
   return (
@@ -39,12 +40,7 @@ export default function Home() {
         </div>
       </main>
 
-      <footer className="border-t py-6">
-        <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
-          &copy; {new Date().getFullYear()} Oldtimer Garage. Alle Rechte
-          vorbehalten.
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }
