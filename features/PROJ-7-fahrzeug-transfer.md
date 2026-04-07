@@ -1,6 +1,6 @@
 # PROJ-7: Fahrzeug-Transfer
 
-## Status: In Progress
+## Status: Deployed
 **Created:** 2026-04-04
 **Last Updated:** 2026-04-07
 
@@ -200,4 +200,6 @@ Database:
 **READY** — No Critical or High bugs remaining. 1 Medium bug (BUG-4: client state sync) is non-blocking.
 
 ## Deployment
-_To be added by /deploy_
+**Deployed:** 2026-04-07
+**Commit:** `feat(PROJ-7): Implement Fahrzeug-Transfer with Resend email integration`
+**Platform:** Vercel (auto-deploy on push to main)
