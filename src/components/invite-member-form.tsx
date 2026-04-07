@@ -22,7 +22,6 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { createClient } from "@/lib/supabase";
 import {
   inviteMemberSchema,
   type InviteMemberFormData,
@@ -49,38 +48,28 @@ export function InviteMemberForm({ vehicleId, onSuccess }: InviteMemberFormProps
   const onSubmit = async (data: InviteMemberFormData) => {
     setIsSubmitting(true);
     try {
-      const supabase = createClient();
-
-      // Generate a random token
-      const token = crypto.randomUUID();
-      const expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + 7);
-
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Nicht angemeldet");
-
-      const { error } = await supabase.from("vehicle_invitations").insert({
-        vehicle_id: vehicleId,
-        email: data.email.toLowerCase().trim(),
-        token,
-        role: data.role,
-        invited_by: user.id,
-        expires_at: expiresAt.toISOString(),
-        status: "offen",
+      const res = await fetch(`/api/vehicles/${vehicleId}/invitations`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
       });
 
-      if (error) {
-        if (error.code === "23505") {
-          toast.error("Diese E-Mail wurde bereits eingeladen");
-          return;
-        }
-        throw error;
+      const result = await res.json();
+
+      if (!res.ok) {
+        toast.error(result.error || "Fehler beim Erstellen der Einladung");
+        return;
       }
 
-      const link = `${window.location.origin}/invite/${token}`;
-      setInviteLink(link);
+      setInviteLink(result.inviteUrl);
       setCopied(false);
-      toast.success("Einladung erstellt — teile den Link mit dem Nutzer");
+
+      if (result.emailSent) {
+        toast.success("Einladung per E-Mail versendet");
+      } else {
+        toast.success("Einladung erstellt — teile den Link mit dem Nutzer");
+      }
+
       form.reset();
       onSuccess();
     } catch {
