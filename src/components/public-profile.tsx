@@ -9,6 +9,8 @@ import {
   Loader2,
   AlertTriangle,
   Download,
+  Eye,
+  X,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -71,12 +73,19 @@ interface ProfileData {
     category: string | null;
     document_date: string | null;
     file_type: string | null;
+    storage_path: string;
+    mime_type: string;
   }[];
 }
 
 function getImageUrl(storagePath: string): string {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
   return `${supabaseUrl}/storage/v1/object/public/vehicle-images/${storagePath}`;
+}
+
+function getDocumentUrl(storagePath: string): string {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+  return `${supabaseUrl}/storage/v1/object/public/vehicle-documents/${storagePath}`;
 }
 
 function formatDate(dateStr: string): string {
@@ -98,6 +107,7 @@ export function PublicProfile({ token }: PublicProfileProps) {
   const [data, setData] = useState<ProfileData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [viewingDoc, setViewingDoc] = useState<NonNullable<ProfileData["dokumente"]>[0] | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -399,30 +409,87 @@ export function PublicProfile({ token }: PublicProfileProps) {
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                {data.dokumente.map((doc) => (
-                  <div
-                    key={doc.id}
-                    className="flex items-center justify-between text-sm py-1.5"
-                  >
-                    <div className="flex items-center gap-2">
-                      <FileText className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span>{doc.title}</span>
+                {data.dokumente.map((doc) => {
+                  const isImage = doc.mime_type?.startsWith("image/");
+                  return (
+                    <div
+                      key={doc.id}
+                      className="flex items-center justify-between text-sm py-1.5"
+                    >
+                      <div className="flex items-center gap-2">
+                        <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span>{doc.title}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        {doc.category && (
+                          <Badge variant="outline" className="text-xs">
+                            {doc.category}
+                          </Badge>
+                        )}
+                        {doc.document_date && (
+                          <span>{formatDate(doc.document_date)}</span>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          onClick={() => setViewingDoc(doc)}
+                          title={isImage ? "Bild anzeigen" : "Dokument anzeigen"}
+                        >
+                          <Eye className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      {doc.category && (
-                        <Badge variant="outline" className="text-xs">
-                          {doc.category}
-                        </Badge>
-                      )}
-                      {doc.document_date && (
-                        <span>{formatDate(doc.document_date)}</span>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
+        )}
+
+        {/* Document viewer overlay */}
+        {viewingDoc && (
+          <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
+            <div className="bg-background rounded-lg w-full max-w-4xl max-h-[90vh] flex flex-col">
+              <div className="flex items-center justify-between p-4 border-b">
+                <div>
+                  <h3 className="font-medium text-sm">{viewingDoc.title}</h3>
+                  {viewingDoc.category && (
+                    <Badge variant="outline" className="text-xs mt-1">
+                      {viewingDoc.category}
+                    </Badge>
+                  )}
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setViewingDoc(null)}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+              <div className="flex-1 overflow-auto p-4 flex items-center justify-center min-h-[300px]">
+                {viewingDoc.mime_type?.startsWith("image/") ? (
+                  <img
+                    src={getDocumentUrl(viewingDoc.storage_path)}
+                    alt={viewingDoc.title}
+                    className="max-w-full max-h-[70vh] object-contain"
+                  />
+                ) : viewingDoc.mime_type === "application/pdf" ? (
+                  <iframe
+                    src={`${getDocumentUrl(viewingDoc.storage_path)}#toolbar=0&navpanes=0`}
+                    className="w-full h-[70vh] border-0 rounded"
+                    title={viewingDoc.title}
+                  />
+                ) : (
+                  <div className="text-center text-muted-foreground">
+                    <FileText className="h-12 w-12 mx-auto mb-2 opacity-30" />
+                    <p className="text-sm">Vorschau nicht verfügbar</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         )}
 
         {/* PDF Download */}
