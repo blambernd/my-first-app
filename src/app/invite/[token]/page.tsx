@@ -88,59 +88,21 @@ export default function InviteAcceptPage() {
   async function acceptInvite() {
     setAccepting(true);
     try {
-      const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const res = await fetch(`/api/invites/${token}/accept`, {
+        method: "POST",
+      });
 
-      if (!user) {
-        setState({
-          status: "needs_auth",
-          info: (state as { info: InviteInfo }).info,
-        });
-        return;
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Einladung konnte nicht angenommen werden");
       }
-
-      // Get the invitation details
-      const { data: invitation } = await supabase
-        .from("vehicle_invitations")
-        .select("*")
-        .eq("token", token)
-        .eq("status", "offen")
-        .single();
-
-      if (!invitation) {
-        setState({ status: "invalid" });
-        return;
-      }
-
-      // Create the membership
-      const { error: memberError } = await supabase
-        .from("vehicle_members")
-        .insert({
-          vehicle_id: invitation.vehicle_id,
-          user_id: user.id,
-          role: invitation.role,
-          user_email: user.email,
-        });
-
-      if (memberError) {
-        if (memberError.code === "23505") {
-          setState({ status: "error", message: "Du bist bereits Mitglied dieses Fahrzeugs" });
-          return;
-        }
-        throw memberError;
-      }
-
-      // Mark invitation as accepted
-      await supabase
-        .from("vehicle_invitations")
-        .update({ status: "angenommen" })
-        .eq("id", invitation.id);
 
       setState({ status: "accepted" });
-    } catch {
-      setState({ status: "error", message: "Einladung konnte nicht angenommen werden" });
+    } catch (err) {
+      setState({
+        status: "error",
+        message: err instanceof Error ? err.message : "Einladung konnte nicht angenommen werden",
+      });
     } finally {
       setAccepting(false);
     }
