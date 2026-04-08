@@ -62,6 +62,7 @@ const TYPE_COLORS: Record<ServiceEntryType, string> = {
 interface ServiceLogProps {
   vehicleId: string;
   initialEntries: ServiceEntry[];
+  canEdit?: boolean;
 }
 
 const DUE_STATUS_STYLES = {
@@ -162,10 +163,12 @@ function ServiceEntryCard({
   entry,
   onEdit,
   onDelete,
+  canEdit,
 }: {
   entry: ServiceEntry;
   onEdit: () => void;
   onDelete: () => void;
+  canEdit: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
   const isLong = entry.description.length > 150;
@@ -222,41 +225,43 @@ function ServiceEntryCard({
             </p>
           )}
         </div>
-        <div className="flex gap-1 shrink-0">
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onEdit}>
-            <Pencil className="h-3.5 w-3.5" />
-          </Button>
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive">
-                <Trash2 className="h-3.5 w-3.5" />
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Eintrag löschen?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Dieser Scheckheft-Eintrag wird unwiderruflich gelöscht.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Abbrechen</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={onDelete}
-                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                >
-                  Löschen
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        </div>
+        {canEdit && (
+          <div className="flex gap-1 shrink-0">
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onEdit}>
+              <Pencil className="h-3.5 w-3.5" />
+            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive">
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Eintrag löschen?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Dieser Scheckheft-Eintrag wird unwiderruflich gelöscht.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={onDelete}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    Löschen
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-export function ServiceLog({ vehicleId, initialEntries }: ServiceLogProps) {
+export function ServiceLog({ vehicleId, initialEntries, canEdit = true }: ServiceLogProps) {
   const router = useRouter();
   const [entries, setEntries] = useState<ServiceEntry[]>(initialEntries);
   const [filterType, setFilterType] = useState<string>("all");
@@ -326,10 +331,12 @@ export function ServiceLog({ vehicleId, initialEntries }: ServiceLogProps) {
             </SelectContent>
           </Select>
         </div>
-        <Button size="sm" onClick={handleNew}>
-          <Plus className="h-4 w-4 mr-1.5" />
-          Neuer Eintrag
-        </Button>
+        {canEdit && (
+          <Button size="sm" onClick={handleNew}>
+            <Plus className="h-4 w-4 mr-1.5" />
+            Neuer Eintrag
+          </Button>
+        )}
       </div>
 
       {filteredEntries.length === 0 ? (
@@ -347,6 +354,7 @@ export function ServiceLog({ vehicleId, initialEntries }: ServiceLogProps) {
             <ServiceEntryCard
               key={entry.id}
               entry={entry}
+              canEdit={canEdit}
               onEdit={() => handleEdit(entry)}
               onDelete={() => handleDelete(entry.id)}
             />

@@ -19,7 +19,8 @@ export default async function HistoriePage({ params }: HistoriePageProps) {
     redirect("/login");
   }
 
-  // Verify vehicle ownership or membership
+  // Verify vehicle ownership or membership and determine role
+  let canEdit = true;
   const { data: ownedVehicle } = await supabase
     .from("vehicles")
     .select("id")
@@ -30,7 +31,7 @@ export default async function HistoriePage({ params }: HistoriePageProps) {
   if (!ownedVehicle) {
     const { data: membership } = await supabase
       .from("vehicle_members")
-      .select("vehicle_id")
+      .select("vehicle_id, role")
       .eq("vehicle_id", id)
       .eq("user_id", user.id)
       .single();
@@ -38,6 +39,7 @@ export default async function HistoriePage({ params }: HistoriePageProps) {
     if (!membership) {
       notFound();
     }
+    canEdit = membership.role !== "betrachter";
   }
 
   const { data: vehicleMilestones } = await supabase
@@ -55,6 +57,7 @@ export default async function HistoriePage({ params }: HistoriePageProps) {
       initialMilestones={
         (vehicleMilestones ?? []) as VehicleMilestoneWithImages[]
       }
+      canEdit={canEdit}
     />
   );
 }

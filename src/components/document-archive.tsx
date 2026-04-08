@@ -60,6 +60,7 @@ interface DocumentArchiveProps {
   initialDocuments: VehicleDocument[];
   serviceEntries: ServiceEntry[];
   supabaseUrl: string;
+  canEdit?: boolean;
 }
 
 function DocumentCard({
@@ -67,11 +68,13 @@ function DocumentCard({
   supabaseUrl,
   onDelete,
   onDownload,
+  canEdit,
 }: {
   document: VehicleDocument;
   supabaseUrl: string;
   onDelete: () => void;
   onDownload: () => void;
+  canEdit: boolean;
 }) {
   const isImage = isImageMimeType(document.mime_type);
   const fileUrl = `${supabaseUrl}/storage/v1/object/public/vehicle-documents/${document.storage_path}`;
@@ -100,34 +103,36 @@ function DocumentCard({
           >
             <Download className="h-4 w-4" />
           </Button>
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button
-                variant="destructive"
-                size="icon"
-                className="h-8 w-8"
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Dokument löschen?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  &ldquo;{document.title}&rdquo; wird unwiderruflich gelöscht.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Abbrechen</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={onDelete}
-                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          {canEdit && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="destructive"
+                  size="icon"
+                  className="h-8 w-8"
                 >
-                  Löschen
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Dokument löschen?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    &ldquo;{document.title}&rdquo; wird unwiderruflich gelöscht.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={onDelete}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    Löschen
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
         </div>
       </div>
       <CardContent className="p-3 space-y-1.5">
@@ -158,34 +163,36 @@ function DocumentCard({
             >
               <Download className="h-3.5 w-3.5" />
             </Button>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7 text-destructive"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Dokument löschen?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    &ldquo;{document.title}&rdquo; wird unwiderruflich gelöscht.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Abbrechen</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={onDelete}
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            {canEdit && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 text-destructive"
                   >
-                    Löschen
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Dokument löschen?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      &ldquo;{document.title}&rdquo; wird unwiderruflich gelöscht.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={onDelete}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      Löschen
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
           </div>
         </div>
       </CardContent>
@@ -198,6 +205,7 @@ export function DocumentArchive({
   initialDocuments,
   serviceEntries,
   supabaseUrl,
+  canEdit = true,
 }: DocumentArchiveProps) {
   const router = useRouter();
   const [documents, setDocuments] = useState<VehicleDocument[]>(initialDocuments);
@@ -308,10 +316,12 @@ export function DocumentArchive({
             </SelectContent>
           </Select>
         </div>
-        <Button size="sm" onClick={() => setUploadOpen(true)}>
-          <Plus className="h-4 w-4 mr-1.5" />
-          Hochladen
-        </Button>
+        {canEdit && (
+          <Button size="sm" onClick={() => setUploadOpen(true)}>
+            <Plus className="h-4 w-4 mr-1.5" />
+            Hochladen
+          </Button>
+        )}
       </div>
 
       {/* Document grid */}
@@ -331,6 +341,7 @@ export function DocumentArchive({
               key={doc.id}
               document={doc}
               supabaseUrl={supabaseUrl}
+              canEdit={canEdit}
               onDelete={() => handleDelete(doc)}
               onDownload={() => handleDownload(doc)}
             />

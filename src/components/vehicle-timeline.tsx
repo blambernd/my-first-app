@@ -70,6 +70,7 @@ interface VehicleTimelineProps {
   vehicleId: string;
   supabaseUrl: string;
   initialMilestones: VehicleMilestoneWithImages[];
+  canEdit?: boolean;
 }
 
 function getImageUrl(storagePath: string, supabaseUrl: string): string {
@@ -132,11 +133,13 @@ function MilestoneDetail({
   supabaseUrl,
   onEdit,
   onDelete,
+  canEdit,
 }: {
   milestone: VehicleMilestoneWithImages;
   supabaseUrl: string;
   onEdit: () => void;
   onDelete: () => void;
+  canEdit: boolean;
 }) {
   const config = CATEGORY_CONFIG[milestone.category];
   const Icon = CATEGORY_ICONS[milestone.category];
@@ -171,44 +174,46 @@ function MilestoneDetail({
         </div>
 
         {/* Actions */}
-        <div className="flex gap-1 shrink-0">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-muted-foreground"
-            onClick={onEdit}
-          >
-            <Pencil className="h-3.5 w-3.5" />
-          </Button>
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-destructive"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Meilenstein löschen?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Dieser Meilenstein wird unwiderruflich gelöscht.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Abbrechen</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={onDelete}
-                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+        {canEdit && (
+          <div className="flex gap-1 shrink-0">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-muted-foreground"
+              onClick={onEdit}
+            >
+              <Pencil className="h-3.5 w-3.5" />
+            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-destructive"
                 >
-                  Löschen
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        </div>
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Meilenstein löschen?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Dieser Meilenstein wird unwiderruflich gelöscht.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={onDelete}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    Löschen
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+        )}
       </div>
 
       {milestone.description && (
@@ -242,6 +247,7 @@ export function VehicleTimeline({
   vehicleId,
   supabaseUrl,
   initialMilestones,
+  canEdit = true,
 }: VehicleTimelineProps) {
   const router = useRouter();
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -404,10 +410,12 @@ export function VehicleTimeline({
             )}
             PDF
           </Button>
-          <Button size="sm" onClick={handleNewMilestone}>
-            <Plus className="h-4 w-4 mr-1.5" />
-            Meilenstein
-          </Button>
+          {canEdit && (
+            <Button size="sm" onClick={handleNewMilestone}>
+              <Plus className="h-4 w-4 mr-1.5" />
+              Meilenstein
+            </Button>
+          )}
         </div>
       </div>
 
@@ -580,6 +588,7 @@ export function VehicleTimeline({
             <MilestoneDetail
               milestone={selectedMilestone}
               supabaseUrl={supabaseUrl}
+              canEdit={canEdit}
               onEdit={() => handleEditMilestone(selectedMilestone)}
               onDelete={() => handleDeleteMilestone(selectedMilestone.id)}
             />

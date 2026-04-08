@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase-server";
 import { Button } from "@/components/ui/button";
 import { BrandLogoWithText } from "@/components/brand-logo";
 import { DeleteVehicleButton } from "@/components/delete-vehicle-button";
+import { LeaveVehicleButton } from "@/components/leave-vehicle-button";
 import { VehicleProfileNav } from "@/components/vehicle-profile-nav";
 import { NotificationBell } from "@/components/notification-bell";
 import { Pencil, Shield, ArrowRightLeft } from "lucide-react";
@@ -76,7 +77,7 @@ export default async function VehicleLayout({
           </Link>
           <div className="flex items-center gap-2">
             <NotificationBell />
-          {isOwner && (
+          {isOwner ? (
             <div className="flex gap-3">
               <Button
                 variant="ghost"
@@ -116,6 +117,11 @@ export default async function VehicleLayout({
                 vehicleName={`${typedVehicle.make} ${typedVehicle.model}`}
               />
             </div>
+          ) : (
+            <LeaveVehicleButton
+              vehicleId={id}
+              vehicleName={`${typedVehicle.make} ${typedVehicle.model}`}
+            />
           )}
           </div>
         </div>
