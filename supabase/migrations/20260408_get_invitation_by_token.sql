@@ -39,6 +39,7 @@ BEGIN
   RETURN json_build_object(
     'status', 'valid',
     'role', v_invite.role,
+    'email', v_invite.email,
     'expiresAt', v_invite.expires_at,
     'vehicleName', COALESCE(
       v_vehicle.make || ' ' || v_vehicle.model || ' (' || v_vehicle.year || ')',

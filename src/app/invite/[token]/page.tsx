@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { Car, CheckCircle, XCircle, Clock, Loader2 } from "lucide-react";
+import { Car, CheckCircle, XCircle, Clock, Loader2, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -21,6 +21,7 @@ interface InviteInfo {
   vehicleName: string;
   role: MemberRole;
   expiresAt: string;
+  email: string;
 }
 
 type InviteState =
@@ -30,7 +31,8 @@ type InviteState =
   | { status: "expired" }
   | { status: "invalid" }
   | { status: "error"; message: string }
-  | { status: "needs_auth"; info: InviteInfo };
+  | { status: "needs_auth"; info: InviteInfo }
+  | { status: "wrong_account"; info: InviteInfo; loggedInEmail: string };
 
 export default function InviteAcceptPage() {
   const { token } = useParams<{ token: string }>();
@@ -66,6 +68,7 @@ export default function InviteAcceptPage() {
         vehicleName: data.vehicleName,
         role: data.role,
         expiresAt: data.expiresAt,
+        email: data.email,
       };
 
       // Check if user is logged in
@@ -76,6 +79,12 @@ export default function InviteAcceptPage() {
 
       if (!user) {
         setState({ status: "needs_auth", info });
+        return;
+      }
+
+      // Check if logged-in user matches the invited email
+      if (user.email?.toLowerCase() !== info.email.toLowerCase()) {
+        setState({ status: "wrong_account", info, loggedInEmail: user.email || "" });
         return;
       }
 
@@ -192,6 +201,45 @@ export default function InviteAcceptPage() {
                   )}
                 </Button>
               )}
+            </CardContent>
+          </Card>
+        )}
+
+        {state.status === "wrong_account" && (
+          <Card>
+            <CardHeader className="text-center">
+              <div className="mx-auto mb-3 h-12 w-12 rounded-full bg-yellow-100 flex items-center justify-center">
+                <AlertTriangle className="h-6 w-6 text-yellow-600" />
+              </div>
+              <CardTitle>Falscher Account</CardTitle>
+              <CardDescription>
+                Diese Einladung wurde an eine andere E-Mail-Adresse gesendet
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="bg-muted/50 rounded-lg p-4 space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Eingeladen</span>
+                  <span className="font-medium">{state.info.email}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Eingeloggt als</span>
+                  <span className="font-medium">{state.loggedInEmail}</span>
+                </div>
+              </div>
+              <p className="text-sm text-center text-muted-foreground">
+                Melde dich mit der richtigen E-Mail-Adresse an, um die Einladung anzunehmen.
+              </p>
+              <div className="flex gap-2">
+                <Button className="flex-1" asChild>
+                  <Link href={`/login?redirect=/invite/${token}`}>
+                    Neu anmelden
+                  </Link>
+                </Button>
+                <Button variant="outline" className="flex-1" asChild>
+                  <Link href="/dashboard">Zum Dashboard</Link>
+                </Button>
+              </div>
             </CardContent>
           </Card>
         )}
