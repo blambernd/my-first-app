@@ -51,10 +51,26 @@ export default async function ScheckheftPage({ params }: ScheckheftPageProps) {
     .order("created_at", { ascending: false })
     .limit(200);
 
+  // Fetch document counts per service entry
+  const { data: docCounts } = await supabase
+    .from("vehicle_documents")
+    .select("service_entry_id, id")
+    .eq("vehicle_id", id)
+    .not("service_entry_id", "is", null);
+
+  const documentCountMap: Record<string, number> = {};
+  if (docCounts) {
+    for (const doc of docCounts) {
+      const key = doc.service_entry_id!;
+      documentCountMap[key] = (documentCountMap[key] || 0) + 1;
+    }
+  }
+
   return (
     <ServiceLog
       vehicleId={id}
       initialEntries={(serviceEntries ?? []) as ServiceEntry[]}
+      documentCounts={documentCountMap}
       canEdit={canEdit}
       canEditAll={canEditAll}
       userId={user.id}

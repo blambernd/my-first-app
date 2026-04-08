@@ -14,6 +14,7 @@ import {
   Calendar,
   Gauge,
   Banknote,
+  FileText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -62,6 +63,7 @@ const TYPE_COLORS: Record<ServiceEntryType, string> = {
 interface ServiceLogProps {
   vehicleId: string;
   initialEntries: ServiceEntry[];
+  documentCounts?: Record<string, number>;
   canEdit?: boolean;
   canEditAll?: boolean;
   userId?: string;
@@ -166,11 +168,13 @@ function ServiceEntryCard({
   onEdit,
   onDelete,
   canEdit,
+  documentCount,
 }: {
   entry: ServiceEntry;
   onEdit: () => void;
   onDelete: () => void;
   canEdit: boolean;
+  documentCount: number;
 }) {
   const [expanded, setExpanded] = useState(false);
   const isLong = entry.description.length > 150;
@@ -215,6 +219,12 @@ function ServiceEntryCard({
               <span className="flex items-center gap-1">
                 <Banknote className="h-3 w-3" />
                 {formatCentsToEur(entry.cost_cents)}
+              </span>
+            )}
+            {documentCount > 0 && (
+              <span className="flex items-center gap-1" title={`${documentCount} Dokument${documentCount !== 1 ? "e" : ""}`}>
+                <FileText className="h-3 w-3" />
+                {documentCount}
               </span>
             )}
             {entry.workshop_name && (
@@ -263,7 +273,7 @@ function ServiceEntryCard({
   );
 }
 
-export function ServiceLog({ vehicleId, initialEntries, canEdit = true, canEditAll = true, userId }: ServiceLogProps) {
+export function ServiceLog({ vehicleId, initialEntries, documentCounts = {}, canEdit = true, canEditAll = true, userId }: ServiceLogProps) {
   const router = useRouter();
   const [entries, setEntries] = useState<ServiceEntry[]>(initialEntries);
   const [filterType, setFilterType] = useState<string>("all");
@@ -359,6 +369,7 @@ export function ServiceLog({ vehicleId, initialEntries, canEdit = true, canEditA
                 key={entry.id}
                 entry={entry}
                 canEdit={canEditThis}
+                documentCount={documentCounts[entry.id] || 0}
                 onEdit={() => handleEdit(entry)}
                 onDelete={() => handleDelete(entry.id)}
               />
