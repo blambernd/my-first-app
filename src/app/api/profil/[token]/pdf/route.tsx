@@ -78,7 +78,7 @@ function formatCents(cents: number): string {
 interface PdfData {
   vehicle: { make: string; model: string; year: number; factory_code: string | null };
   stammdaten?: Record<string, unknown>;
-  scheckheft?: { title: string; service_date: string; description: string | null; mileage_km: number | null; cost_cents: number | null; provider_name: string | null }[];
+  scheckheft?: { description: string; service_date: string; entry_type: string; notes: string | null; mileage_km: number | null; cost_cents: number | null; workshop_name: string | null }[];
   meilensteine?: { title: string; milestone_date: string; description: string | null; category: string | null }[];
   dokumente?: { title: string; category: string | null; document_date: string | null }[];
 }
@@ -89,6 +89,8 @@ const STAMMDATEN_LABELS: Record<string, string> = {
   displacement_ccm: "Hubraum",
   horsepower: "Leistung",
   mileage_km: "Laufleistung",
+  body_type: "Karosserie",
+  factory_code: "Werksbezeichnung",
 };
 
 function formatStammdatenValue(key: string, value: unknown): string {
@@ -143,10 +145,10 @@ function ProfilePdfDocument({ data }: { data: PdfData }) {
             </Text>
             {data.scheckheft.map((entry, i) => (
               <View key={i} style={styles.entry}>
-                <Text style={styles.entryTitle}>{entry.title}</Text>
+                <Text style={styles.entryTitle}>{entry.description}</Text>
                 <Text style={styles.entryMeta}>
                   {formatDate(entry.service_date)}
-                  {entry.provider_name ? ` — ${entry.provider_name}` : ""}
+                  {entry.workshop_name ? ` — ${entry.workshop_name}` : ""}
                   {entry.mileage_km
                     ? ` — ${entry.mileage_km.toLocaleString("de-DE")} km`
                     : ""}
@@ -154,8 +156,8 @@ function ProfilePdfDocument({ data }: { data: PdfData }) {
                     ? ` — ${formatCents(entry.cost_cents)}`
                     : ""}
                 </Text>
-                {entry.description && (
-                  <Text style={styles.entryDesc}>{entry.description}</Text>
+                {entry.notes && (
+                  <Text style={styles.entryDesc}>{entry.notes}</Text>
                 )}
               </View>
             ))}
@@ -249,7 +251,7 @@ export async function GET(
   // Fetch vehicle
   const { data: vehicle } = await supabase
     .from("vehicles")
-    .select("make, model, year, factory_code, color, engine_type, displacement_ccm, horsepower, mileage_km")
+    .select("make, model, year, factory_code, color, engine_type, displacement_ccm, horsepower, mileage_km, body_type")
     .eq("id", vehicleId)
     .single();
 
@@ -274,13 +276,15 @@ export async function GET(
       displacement_ccm: vehicle.displacement_ccm,
       horsepower: vehicle.horsepower,
       mileage_km: vehicle.mileage_km,
+      body_type: vehicle.body_type,
+      factory_code: vehicle.factory_code,
     };
   }
 
   if (config.sections.scheckheft) {
     let query = supabase
       .from("service_entries")
-      .select("title, description, service_date, mileage_km, cost_cents, provider_name")
+      .select("description, service_date, mileage_km, cost_cents, workshop_name, entry_type, notes")
       .eq("vehicle_id", vehicleId)
       .order("service_date", { ascending: false });
 

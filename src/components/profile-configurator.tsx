@@ -27,7 +27,7 @@ import {
 interface ProfileConfiguratorProps {
   vehicleId: string;
   images: { id: string; storage_path: string; position: number }[];
-  serviceEntries: { id: string; title: string; service_date: string }[];
+  serviceEntries: { id: string; description: string; service_date: string }[];
   milestones: { id: string; title: string; milestone_date: string }[];
   documents: { id: string; title: string; category: string }[];
 }
@@ -309,7 +309,7 @@ export function ProfileConfigurator({
                     <ItemSelector
                       items={serviceEntries.map((e) => ({
                         id: e.id,
-                        label: `${e.title} (${new Date(e.service_date).toLocaleDateString("de-DE")})`,
+                        label: `${e.description} (${new Date(e.service_date).toLocaleDateString("de-DE")})`,
                       }))}
                       selected={selectedServiceEntries}
                       setSelected={setSelectedServiceEntries}

@@ -50,7 +50,7 @@ export async function GET(
   // Fetch vehicle data
   const { data: vehicle } = await supabase
     .from("vehicles")
-    .select("make, model, year, year_estimated, factory_code, color, engine_type, displacement_ccm, horsepower, mileage_km")
+    .select("make, model, year, year_estimated, factory_code, color, engine_type, displacement_ccm, horsepower, mileage_km, body_type")
     .eq("id", vehicleId)
     .single();
 
@@ -80,6 +80,8 @@ export async function GET(
       displacement_ccm: vehicle.displacement_ccm,
       horsepower: vehicle.horsepower,
       mileage_km: vehicle.mileage_km,
+      body_type: vehicle.body_type,
+      factory_code: vehicle.factory_code,
     };
   }
 
@@ -103,7 +105,7 @@ export async function GET(
   if (config.sections.scheckheft) {
     let query = supabase
       .from("service_entries")
-      .select("id, title, description, service_date, mileage_km, cost_cents, provider_name, category")
+      .select("id, description, service_date, mileage_km, cost_cents, workshop_name, entry_type, notes")
       .eq("vehicle_id", vehicleId)
       .order("service_date", { ascending: false });
 

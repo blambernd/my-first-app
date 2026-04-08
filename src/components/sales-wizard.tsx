@@ -44,7 +44,7 @@ interface SalesWizardProps {
   vehicleMileageKm: number | null;
   // Step 2: ProfileConfigurator props
   images: { id: string; storage_path: string; position: number }[];
-  serviceEntries: { id: string; title: string; service_date: string }[];
+  serviceEntries: { id: string; description: string; service_date: string }[];
   milestones: { id: string; title: string; milestone_date: string }[];
   documents: { id: string; title: string; category: string }[];
   // Step 3: ListingEditor props

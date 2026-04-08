@@ -34,6 +34,8 @@ interface ProfileData {
     displacement_ccm: number | null;
     horsepower: number | null;
     mileage_km: number | null;
+    body_type: string | null;
+    factory_code: string | null;
   };
   fotos?: {
     id: string;
@@ -43,13 +45,13 @@ interface ProfileData {
   }[];
   scheckheft?: {
     id: string;
-    title: string;
-    description: string | null;
+    description: string;
     service_date: string;
     mileage_km: number | null;
     cost_cents: number | null;
-    provider_name: string | null;
-    category: string | null;
+    workshop_name: string | null;
+    entry_type: string | null;
+    notes: string | null;
   }[];
   meilensteine?: {
     id: string;
@@ -231,6 +233,18 @@ export function PublicProfile({ token }: PublicProfileProps) {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
+                {data.stammdaten.factory_code && (
+                  <div>
+                    <p className="text-muted-foreground text-xs">Werksbezeichnung</p>
+                    <p className="font-medium">{data.stammdaten.factory_code}</p>
+                  </div>
+                )}
+                {data.stammdaten.body_type && (
+                  <div>
+                    <p className="text-muted-foreground text-xs">Karosserie</p>
+                    <p className="font-medium">{data.stammdaten.body_type}</p>
+                  </div>
+                )}
                 {data.stammdaten.color && (
                   <div>
                     <p className="text-muted-foreground text-xs">Farbe</p>
@@ -290,19 +304,19 @@ export function PublicProfile({ token }: PublicProfileProps) {
                 {data.scheckheft.map((entry) => (
                   <div key={entry.id} className="text-sm">
                     <div className="flex items-center justify-between">
-                      <span className="font-medium">{entry.title}</span>
+                      <span className="font-medium">{entry.description}</span>
                       <span className="text-muted-foreground text-xs">
                         {formatDate(entry.service_date)}
                       </span>
                     </div>
-                    {entry.description && (
+                    {entry.notes && (
                       <p className="text-muted-foreground text-xs mt-0.5">
-                        {entry.description}
+                        {entry.notes}
                       </p>
                     )}
                     <div className="flex gap-3 mt-1 text-xs text-muted-foreground">
-                      {entry.provider_name && (
-                        <span>{entry.provider_name}</span>
+                      {entry.workshop_name && (
+                        <span>{entry.workshop_name}</span>
                       )}
                       {entry.mileage_km && (
                         <span>

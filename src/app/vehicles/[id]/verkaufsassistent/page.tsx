@@ -52,7 +52,7 @@ export default async function VerkaufsassistentPage({
     // Step 2: Service entries
     supabase
       .from("service_entries")
-      .select("id, title, service_date")
+      .select("id, description, service_date")
       .eq("vehicle_id", id)
       .order("service_date", { ascending: false }),
     // Step 2: Milestones
