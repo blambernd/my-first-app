@@ -25,7 +25,7 @@
 | PROJ-9 | Ersatzteil-Suche & Preis-Alerts | Deployed | [PROJ-9-ersatzteil-suche.md](PROJ-9-ersatzteil-suche.md) | 2026-04-07 |
 | PROJ-10 | Fahrzeug-Kurzprofil (öffentlich) | Deployed | [PROJ-10-fahrzeug-kurzprofil.md](PROJ-10-fahrzeug-kurzprofil.md) | 2026-04-08 |
 | PROJ-11 | Marktpreis-Analyse | Deployed | [PROJ-11-marktpreis-analyse.md](PROJ-11-marktpreis-analyse.md) | 2026-04-08 |
-| PROJ-12 | Verkaufsinserat erstellen | In Progress | [PROJ-12-verkaufsinserat.md](PROJ-12-verkaufsinserat.md) | 2026-04-08 |
+| PROJ-12 | Verkaufsinserat erstellen | Approved | [PROJ-12-verkaufsinserat.md](PROJ-12-verkaufsinserat.md) | 2026-04-08 |
 | PROJ-13 | Inserat veröffentlichen | Planned | [PROJ-13-inserat-veroeffentlichen.md](PROJ-13-inserat-veroeffentlichen.md) | 2026-04-08 |
 
 <!-- Add features above this line -->
