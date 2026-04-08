@@ -1,6 +1,6 @@
 # PROJ-13: Inserat veröffentlichen
 
-## Status: In Review
+## Status: Deployed
 **Created:** 2026-04-08
 **Last Updated:** 2026-04-08
 
@@ -261,4 +261,6 @@ Kein neuer Datensatz nötig — wir erweitern die bestehende vehicle_listings Ta
 - **Recommendation:** Fix BUG-1 (platform URL save fails on unsaved listing), then deploy. BUG-2 and BUG-3 can be fixed in a later sprint.
 
 ## Deployment
-_To be added by /deploy_
+- **Deployed:** 2026-04-08
+- **Commit:** ea0113c
+- **Migration required:** `ALTER TABLE vehicle_listings ADD COLUMN IF NOT EXISTS published_platforms JSONB NOT NULL DEFAULT '[]'::jsonb;`
