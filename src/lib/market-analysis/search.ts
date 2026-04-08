@@ -1,5 +1,6 @@
 import { getJson } from "serpapi";
 import type { MarketSearchParams, MarketListing, MarketSearchResult } from "./types";
+import { isSparePartListing, parsePrice, isPricePlausible } from "./filters";
 
 /**
  * Build a Google Search query for finding vehicle listings on a specific platform.
@@ -16,43 +17,20 @@ function buildVehicleQuery(params: MarketSearchParams): string {
   }
   parts.push(`"${params.model}"`);
 
+  // Body type for more precise results (e.g. "Coupé", "Cabriolet")
+  if (params.bodyType && params.bodyType !== "Sonstige") {
+    parts.push(params.bodyType);
+  }
+
   // Year range: ±3 years to find comparable vehicles
   const yearLow = params.year - 3;
   const yearHigh = params.year + 3;
   parts.push(`${yearLow}..${yearHigh}`);
 
+  // Exclude spare parts from results
+  parts.push("-Ersatzteil -Ersatzteile -Modellauto -Teile");
+
   return parts.join(" ");
-}
-
-/**
- * Parse a price from text (German format: "25.000 €", "25000€", "EUR 25.000").
- * Returns null if no price found.
- */
-function parsePrice(text: string): number | null {
-  // Match patterns like "25.000 €", "€25.000", "EUR 25.000", "25,000€"
-  const patterns = [
-    /(\d{1,3}(?:\.\d{3})+)\s*€/,
-    /€\s*(\d{1,3}(?:\.\d{3})+)/,
-    /EUR\s*(\d{1,3}(?:\.\d{3})+)/,
-    /(\d{4,7})\s*€/,
-    /€\s*(\d{4,7})/,
-    /EUR\s*(\d{4,7})/,
-    /Preis[:\s]*(\d{1,3}(?:\.\d{3})+)/i,
-    /VB\s*(\d{1,3}(?:\.\d{3})+)/i,
-  ];
-
-  for (const pattern of patterns) {
-    const match = text.match(pattern);
-    if (match) {
-      const priceStr = match[1].replace(/\./g, "");
-      const price = parseInt(priceStr, 10);
-      // Sanity check: vehicle prices should be between 500 and 5,000,000 EUR
-      if (!isNaN(price) && price >= 500 && price <= 5_000_000) {
-        return price;
-      }
-    }
-  }
-  return null;
 }
 
 /**
@@ -96,10 +74,10 @@ async function searchPlatform(
       const snippet = String(item.snippet || "");
       const link = String(item.link || "");
 
-      // Try to extract price from title first, then snippet
-      const price = parsePrice(title) ?? parsePrice(snippet);
+      // Filter: skip spare parts listings
+      if (isSparePartListing(title, snippet)) continue;
 
-      // Basic relevance filter: title should mention the make
+      // Relevance filter: title should mention the make
       const titleLower = title.toLowerCase();
       const makeLower = params.make.toLowerCase();
       const makeAliases = [makeLower];
@@ -108,6 +86,12 @@ async function searchPlatform(
 
       const isMakeRelevant = makeAliases.some((a) => titleLower.includes(a));
       if (!isMakeRelevant) continue;
+
+      // Try to extract price from title first, then snippet
+      const price = parsePrice(title) ?? parsePrice(snippet);
+
+      // Validate price plausibility
+      if (price !== null && !isPricePlausible(price, title, snippet)) continue;
 
       listings.push({
         title,
@@ -136,6 +120,7 @@ async function searchEbay(params: MarketSearchParams): Promise<{ listings: Marke
   try {
     const queryParts = [params.make, params.model];
     if (params.factoryCode) queryParts.push(params.factoryCode);
+    if (params.bodyType && params.bodyType !== "Sonstige") queryParts.push(params.bodyType);
     queryParts.push(String(params.year));
 
     const result = await Promise.race([
@@ -163,8 +148,11 @@ async function searchEbay(params: MarketSearchParams): Promise<{ listings: Marke
       const priceInfo = item.price as Record<string, unknown> | undefined;
       const price = priceInfo?.extracted ? Number(priceInfo.extracted) : null;
 
+      // Filter: skip spare parts
+      if (isSparePartListing(title)) continue;
+
       // Filter: price must be in vehicle range (not accessories/parts)
-      if (price !== null && (price < 500 || price > 5_000_000)) continue;
+      if (price !== null && (price < 1000 || price > 5_000_000)) continue;
 
       // Relevance filter
       const titleLower = title.toLowerCase();
@@ -227,3 +215,4 @@ export async function searchMarketListings(
 
   return { listings: allListings, platformErrors };
 }
+

@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, it, expect } from "vitest";
 import { calculatePriceStatistics } from "./statistics";
 import type { MarketListing } from "./types";

@@ -3,6 +3,7 @@ export interface MarketSearchParams {
   model: string;
   year: number;
   factoryCode?: string | null;
+  bodyType?: string | null;
   mileageKm?: number | null;
 }
 

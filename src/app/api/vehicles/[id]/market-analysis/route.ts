@@ -100,7 +100,7 @@ export async function POST(request: Request, { params }: RouteContext) {
   // Only vehicle owner can trigger analyses
   const { data: vehicle } = await supabase
     .from("vehicles")
-    .select("id, make, model, year, factory_code, mileage_km")
+    .select("id, make, model, year, factory_code, body_type, mileage_km")
     .eq("id", vehicleId)
     .eq("user_id", user.id)
     .single();
@@ -143,6 +143,7 @@ export async function POST(request: Request, { params }: RouteContext) {
     model: vehicle.model,
     year: vehicle.year,
     factoryCode: vehicle.factory_code,
+    bodyType: vehicle.body_type,
     mileageKm: vehicle.mileage_km,
   };
 

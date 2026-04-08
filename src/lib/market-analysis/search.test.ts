@@ -1,36 +1,6 @@
+// @vitest-environment node
 import { describe, it, expect } from "vitest";
-
-// We test the price parsing logic by importing the module and calling parsePrice indirectly.
-// Since parsePrice is not exported, we test it through the public API behavior.
-// However, we CAN test the exported searchMarketListings with mocked serpapi.
-
-// For now, test the price parsing patterns directly (extracted for testability):
-// We'll test via regex patterns matching the same logic used in search.ts
-
-const PRICE_PATTERNS = [
-  /(\d{1,3}(?:\.\d{3})+)\s*€/,
-  /€\s*(\d{1,3}(?:\.\d{3})+)/,
-  /EUR\s*(\d{1,3}(?:\.\d{3})+)/,
-  /(\d{4,7})\s*€/,
-  /€\s*(\d{4,7})/,
-  /EUR\s*(\d{4,7})/,
-  /Preis[:\s]*(\d{1,3}(?:\.\d{3})+)/i,
-  /VB\s*(\d{1,3}(?:\.\d{3})+)/i,
-];
-
-function parsePrice(text: string): number | null {
-  for (const pattern of PRICE_PATTERNS) {
-    const match = text.match(pattern);
-    if (match) {
-      const priceStr = match[1].replace(/\./g, "");
-      const price = parseInt(priceStr, 10);
-      if (!isNaN(price) && price >= 500 && price <= 5_000_000) {
-        return price;
-      }
-    }
-  }
-  return null;
-}
+import { isSparePartListing, parsePrice, isPricePlausible } from "./filters";
 
 describe("parsePrice", () => {
   it("parses German format: 25.000 €", () => {
@@ -61,9 +31,10 @@ describe("parsePrice", () => {
     expect(parsePrice("Ferrari 250 GTO - 150.000 €")).toBe(150000);
   });
 
-  it("rejects prices below 500 (likely parts, not vehicles)", () => {
+  it("rejects prices below 1.000 (likely parts, not vehicles)", () => {
     expect(parsePrice("Türgriff 25 €")).toBeNull();
     expect(parsePrice("Spiegel 150€")).toBeNull();
+    expect(parsePrice("Bremse 500€")).toBeNull();
   });
 
   it("rejects prices above 5,000,000", () => {
@@ -77,5 +48,69 @@ describe("parsePrice", () => {
 
   it("picks first valid price in text", () => {
     expect(parsePrice("15.000 € - 20.000 €")).toBe(15000);
+  });
+});
+
+describe("isSparePartListing", () => {
+  it("detects obvious spare parts listings", () => {
+    expect(isSparePartListing("Mercedes W123 Motorhaube")).toBe(true);
+    expect(isSparePartListing("BMW E30 Stoßstange vorne")).toBe(true);
+    expect(isSparePartListing("Porsche 911 Scheinwerfer links")).toBe(true);
+    expect(isSparePartListing("VW Käfer Kotflügel")).toBe(true);
+    expect(isSparePartListing("Ersatzteile Mercedes W123")).toBe(true);
+  });
+
+  it("detects parts via snippet when title is clean", () => {
+    expect(isSparePartListing("Mercedes W123", "Ersatzteil für W123")).toBe(true);
+  });
+
+  it("detects model cars and collectibles", () => {
+    expect(isSparePartListing("Mercedes 300SL Modell 1:18")).toBe(true);
+    expect(isSparePartListing("BMW 2002 Modellauto Minichamps")).toBe(true);
+  });
+
+  it("detects 'für [Make]' pattern (parts listings)", () => {
+    expect(isSparePartListing("Bremsscheibe für Mercedes W123")).toBe(true);
+    expect(isSparePartListing("Ölfilter passend für BMW E30")).toBe(true);
+  });
+
+  it("allows actual vehicle listings", () => {
+    expect(isSparePartListing("Mercedes-Benz 280 SL W113 Pagode")).toBe(false);
+    expect(isSparePartListing("BMW 2002 tii Baujahr 1973")).toBe(false);
+    expect(isSparePartListing("Porsche 911 Carrera Coupé 1985")).toBe(false);
+    expect(isSparePartListing("VW Käfer 1303 Cabriolet")).toBe(false);
+  });
+
+  it("detects workshop manuals and literature", () => {
+    expect(isSparePartListing("Werkstatthandbuch Mercedes W123")).toBe(true);
+    expect(isSparePartListing("Reparaturanleitung BMW E30")).toBe(true);
+  });
+});
+
+describe("isPricePlausible", () => {
+  it("accepts normal vehicle prices", () => {
+    expect(isPricePlausible(25000, "Mercedes W123 280CE")).toBe(true);
+    expect(isPricePlausible(150000, "Porsche 911 Carrera")).toBe(true);
+  });
+
+  it("rejects prices that look like years", () => {
+    expect(isPricePlausible(1973, "Mercedes W123 1973")).toBe(false);
+    expect(isPricePlausible(2002, "BMW 2002 tii")).toBe(false);
+    expect(isPricePlausible(1955, "Mercedes 300 SL Baujahr 1955")).toBe(false);
+  });
+
+  it("rejects prices that match mileage in text", () => {
+    expect(isPricePlausible(85000, "Mercedes W123, 85.000 km")).toBe(false);
+    expect(isPricePlausible(123000, "BMW E30, 123.000 km gelaufen")).toBe(false);
+  });
+
+  it("rejects round numbers without € context (likely mileage)", () => {
+    expect(isPricePlausible(50000, "Mercedes W123 mit 50.000")).toBe(false);
+    expect(isPricePlausible(100000, "BMW E30 100.000")).toBe(false);
+  });
+
+  it("accepts round numbers when € sign is present", () => {
+    expect(isPricePlausible(50000, "Mercedes W123 50.000 €")).toBe(true);
+    expect(isPricePlausible(100000, "BMW E30 EUR 100.000")).toBe(true);
   });
 });
