@@ -1,8 +1,19 @@
 # PROJ-12: Verkaufsinserat erstellen
 
-## Status: Architected
+## Status: In Progress
 **Created:** 2026-04-08
 **Last Updated:** 2026-04-08
+
+### Implementation Notes
+- Navigation: "Verkaufen" tab added to vehicle nav with Tag icon
+- Editor: `/vehicles/[id]/verkaufen` — title, description, price, photo selection
+- Photos: Drag & drop reordering with @dnd-kit, supports both vehicle and milestone images
+- Preview: Live split-screen preview simulating platform appearance
+- Text generation: Template-based (no LLM), generates from vehicle data + service history + milestones
+- API: `/api/vehicles/[id]/listing` (GET/POST/PATCH) + `/api/vehicles/[id]/listing/generate` (POST)
+- DB: `vehicle_listings` table with unique constraint per vehicle, price in cents
+- Kurzprofil link auto-inserted in description when active profile exists
+- Market price recommendation shown when PROJ-11 analysis available
 
 ## Dependencies
 - Requires: PROJ-2 (Fahrzeugprofil) — Fahrzeugstammdaten & Fotos

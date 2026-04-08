@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BookOpen, Clock, FileText, Car, Cog, Share2, TrendingUp } from "lucide-react";
+import { BookOpen, Clock, FileText, Car, Cog, Share2, TrendingUp, Tag } from "lucide-react";
 
 interface VehicleProfileNavProps {
   vehicleId: string;
@@ -44,6 +44,11 @@ const navItems = [
     label: "Kurzprofil",
     href: "/kurzprofil",
     icon: Share2,
+  },
+  {
+    label: "Verkaufen",
+    href: "/verkaufen",
+    icon: Tag,
   },
 ];
 
