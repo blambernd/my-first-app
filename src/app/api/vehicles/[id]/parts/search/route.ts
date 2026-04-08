@@ -31,6 +31,7 @@ const searchQuerySchema = z.object({
   partNumber: z.string().max(50).optional(),
   make: z.string().min(1),
   model: z.string().min(1),
+  factoryCode: z.string().max(50).optional(),
   year: z.coerce.number().int().min(1886),
   condition: z.enum(["all", "new", "used"]).default("all"),
   minPrice: z.coerce.number().min(0).optional(),
@@ -107,7 +108,7 @@ export async function GET(
     );
   }
 
-  const { query, partNumber, make, model, year, condition, minPrice, maxPrice, platforms, page } =
+  const { query, partNumber, make, model, factoryCode, year, condition, minPrice, maxPrice, platforms, page } =
     parsed.data;
 
   // Check SERPAPI_API_KEY
@@ -125,7 +126,7 @@ export async function GET(
 
   // Execute search
   const result = await searchParts(
-    { query, make, model, year, condition, partNumber: partNumber || undefined, minPrice, maxPrice },
+    { query, make, model, year, condition, factoryCode: factoryCode || undefined, partNumber: partNumber || undefined, minPrice, maxPrice },
     platformIds,
     page
   );

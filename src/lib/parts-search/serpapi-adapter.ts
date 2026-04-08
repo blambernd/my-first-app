@@ -8,11 +8,32 @@ import {
 } from "./manufacturer-sites";
 
 /**
+ * Build the vehicle identifier part of a query.
+ * If a factory code is set (e.g. W123, E30), use it alongside the make
+ * for more precise results — parts sellers typically list by factory code.
+ * Falls back to make + model if no factory code is available.
+ */
+function vehicleIdentifier(params: SearchParams): { forGoogle: string; forEbay: string } {
+  if (params.factoryCode) {
+    // "Mercedes-Benz W123" finds parts better than "Mercedes-Benz 230E"
+    return {
+      forGoogle: `"${params.make}" "${params.factoryCode}"`,
+      forEbay: `${params.make} ${params.factoryCode}`,
+    };
+  }
+  return {
+    forGoogle: `"${params.make} ${params.model}"`,
+    forEbay: `${params.make} ${params.model}`,
+  };
+}
+
+/**
  * Build search query for Google-based engines (Shopping, Search).
- * Uses quotes around make+model for precision.
+ * Uses quotes for precision.
  */
 function buildGoogleQuery(params: SearchParams): string {
-  const parts = [`"${params.make} ${params.model}"`, params.query];
+  const { forGoogle } = vehicleIdentifier(params);
+  const parts = [forGoogle, params.query];
   if (params.partNumber) parts.push(`"${params.partNumber}"`);
   return parts.join(" ");
 }
@@ -21,7 +42,8 @@ function buildGoogleQuery(params: SearchParams): string {
  * Build search query for eBay (no quotes — eBay's _nkw doesn't support them well).
  */
 function buildEbayQuery(params: SearchParams): string {
-  const parts = [params.make, params.model, params.query];
+  const { forEbay } = vehicleIdentifier(params);
+  const parts = [forEbay, params.query];
   if (params.partNumber) parts.push(params.partNumber);
   return parts.join(" ");
 }

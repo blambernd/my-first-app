@@ -80,6 +80,7 @@ interface PartsSearchProps {
   vehicleMake: string;
   vehicleModel: string;
   vehicleYear: number;
+  vehicleFactoryCode?: string | null;
 }
 
 function ListingCard({ listing }: { listing: PartListing }) {
@@ -214,6 +215,7 @@ export function PartsSearch({
   vehicleMake,
   vehicleModel,
   vehicleYear,
+  vehicleFactoryCode,
 }: PartsSearchProps) {
   const [results, setResults] = useState<PartsSearchResult | null>(null);
   const [isSearching, setIsSearching] = useState(false);
@@ -247,6 +249,10 @@ export function PartsSearch({
         condition: data.condition,
         page: String(page),
       });
+
+      if (vehicleFactoryCode) {
+        params.set("factoryCode", vehicleFactoryCode);
+      }
 
       if (data.partNumber) {
         params.set("partNumber", data.partNumber);
@@ -318,6 +324,7 @@ export function PartsSearch({
           Ersatzteile für{" "}
           <span className="font-medium text-foreground">
             {vehicleMake} {vehicleModel}
+            {vehicleFactoryCode ? ` (${vehicleFactoryCode})` : ""}
           </span>{" "}
           ({vehicleYear})
         </span>

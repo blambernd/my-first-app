@@ -21,19 +21,19 @@ export default async function ErsatzteilePage({ params }: ErsatzteilePageProps) 
   // Verify vehicle ownership or membership
   const { data: ownedVehicle } = await supabase
     .from("vehicles")
-    .select("id, make, model, year")
+    .select("id, make, model, year, factory_code")
     .eq("id", id)
     .eq("user_id", user.id)
     .single();
 
-  let vehicle: Pick<Vehicle, "id" | "make" | "model" | "year">;
+  let vehicle: Pick<Vehicle, "id" | "make" | "model" | "year" | "factory_code">;
 
   if (ownedVehicle) {
     vehicle = ownedVehicle;
   } else {
     const { data: membership } = await supabase
       .from("vehicle_members")
-      .select("vehicle_id, vehicles(id, make, model, year)")
+      .select("vehicle_id, vehicles(id, make, model, year, factory_code)")
       .eq("vehicle_id", id)
       .eq("user_id", user.id)
       .single();
@@ -42,7 +42,7 @@ export default async function ErsatzteilePage({ params }: ErsatzteilePageProps) 
       notFound();
     }
 
-    vehicle = membership.vehicles as unknown as Pick<Vehicle, "id" | "make" | "model" | "year">;
+    vehicle = membership.vehicles as unknown as Pick<Vehicle, "id" | "make" | "model" | "year" | "factory_code">;
   }
 
   return (
@@ -51,6 +51,7 @@ export default async function ErsatzteilePage({ params }: ErsatzteilePageProps) 
       vehicleMake={vehicle.make}
       vehicleModel={vehicle.model}
       vehicleYear={vehicle.year}
+      vehicleFactoryCode={vehicle.factory_code}
     />
   );
 }

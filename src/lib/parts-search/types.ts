@@ -4,6 +4,7 @@ export interface SearchParams {
   model: string;
   year: number;
   condition: "all" | "new" | "used";
+  factoryCode?: string;
   partNumber?: string;
   minPrice?: number;
   maxPrice?: number;
