@@ -65,6 +65,10 @@ interface ListingEditorProps {
   hasKurzprofil: boolean;
   kurzprofilToken: string | null;
   marketPrice: MarketPriceData | null;
+  /** When true, hides ListingPublish section and auto-creates listing */
+  wizardMode?: boolean;
+  /** Called when listing is loaded or created, used by SalesWizard */
+  onListingReady?: (listing: VehicleListing) => void;
 }
 
 function getImageUrl(storagePath: string): string {
@@ -88,6 +92,8 @@ export function ListingEditor({
   hasKurzprofil,
   kurzprofilToken,
   marketPrice,
+  wizardMode = false,
+  onListingReady,
 }: ListingEditorProps) {
   const [listing, setListing] = useState<VehicleListing | null>(null);
   const [loading, setLoading] = useState(true);
@@ -107,22 +113,7 @@ export function ListingEditor({
   // Price input as string for editing
   const [priceInput, setPriceInput] = useState("");
 
-  const fetchListing = useCallback(async () => {
-    try {
-      const res = await fetch(`/api/vehicles/${vehicleId}/listing`);
-      if (!res.ok && res.status !== 404) throw new Error("Fehler");
-      const data = await res.json();
-      if (data.listing) {
-        applyListing(data.listing);
-      }
-    } catch {
-      toast.error("Fehler beim Laden des Inserats");
-    } finally {
-      setLoading(false);
-    }
-  }, [vehicleId]);
-
-  const applyListing = (l: VehicleListing) => {
+  const applyListing = useCallback((l: VehicleListing) => {
     setListing(l);
     setTitle(l.title);
     setDescription(l.description);
@@ -133,7 +124,42 @@ export function ListingEditor({
     if (l.price_cents) {
       setPriceInput(String(l.price_cents / 100));
     }
-  };
+    onListingReady?.(l);
+  }, [onListingReady]);
+
+  const fetchListing = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/vehicles/${vehicleId}/listing`);
+      if (!res.ok && res.status !== 404) throw new Error("Fehler");
+      const data = await res.json();
+      if (data.listing) {
+        applyListing(data.listing);
+      } else if (wizardMode) {
+        // Auto-create listing in wizard mode
+        const createRes = await fetch(`/api/vehicles/${vehicleId}/listing`, {
+          method: "POST",
+        });
+        if (createRes.ok) {
+          const createData = await createRes.json();
+          applyListing(createData.listing);
+          // Auto-generate text
+          const genRes = await fetch(
+            `/api/vehicles/${vehicleId}/listing/generate`,
+            { method: "POST" }
+          );
+          if (genRes.ok) {
+            const genData = await genRes.json();
+            setTitle(genData.title);
+            setDescription(genData.description);
+          }
+        }
+      }
+    } catch {
+      toast.error("Fehler beim Laden des Inserats");
+    } finally {
+      setLoading(false);
+    }
+  }, [vehicleId, wizardMode, applyListing]);
 
   useEffect(() => {
     fetchListing();
@@ -142,17 +168,13 @@ export function ListingEditor({
   const handleCreate = async () => {
     setCreating(true);
     try {
-      // First create, then generate text
       const res = await fetch(`/api/vehicles/${vehicleId}/listing`, {
         method: "POST",
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       applyListing(data.listing);
-
-      // Auto-generate text
       await handleGenerate(data.listing.id);
-
       toast.success("Inserat erstellt");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Fehler beim Erstellen");
@@ -200,6 +222,7 @@ export function ListingEditor({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       setListing(data.listing);
+      onListingReady?.(data.listing);
       toast.success("Entwurf gespeichert");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Fehler beim Speichern");
@@ -499,12 +522,14 @@ export function ListingEditor({
             </Button>
           </div>
 
-          {/* Publish section (PROJ-13) */}
-          <ListingPublish
-            listing={listing}
-            vehicleId={vehicleId}
-            onPlatformUpdate={handlePlatformUpdate}
-          />
+          {/* Publish section (PROJ-13) — hidden in wizard mode */}
+          {!wizardMode && (
+            <ListingPublish
+              listing={listing}
+              vehicleId={vehicleId}
+              onPlatformUpdate={handlePlatformUpdate}
+            />
+          )}
         </div>
 
         {/* Preview panel */}

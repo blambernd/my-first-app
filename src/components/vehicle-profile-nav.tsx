@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BookOpen, Clock, FileText, Car, Cog, Share2, TrendingUp, Tag } from "lucide-react";
+import { BookOpen, Clock, FileText, Car, Cog, Workflow } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 interface VehicleProfileNavProps {
   vehicleId: string;
@@ -36,19 +37,10 @@ const navItems = [
     icon: Cog,
   },
   {
-    label: "Marktpreis",
-    href: "/marktpreis",
-    icon: TrendingUp,
-  },
-  {
-    label: "Kurzprofil",
-    href: "/kurzprofil",
-    icon: Share2,
-  },
-  {
-    label: "Verkaufen",
-    href: "/verkaufen",
-    icon: Tag,
+    label: "Verkaufsassistent",
+    href: "/verkaufsassistent",
+    icon: Workflow,
+    premium: true,
   },
 ];
 
@@ -80,6 +72,11 @@ export function VehicleProfileNav({ vehicleId }: VehicleProfileNavProps) {
           >
             <Icon className="h-4 w-4" />
             {item.label}
+            {"premium" in item && item.premium && (
+              <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                Premium
+              </Badge>
+            )}
           </Link>
         );
       })}
