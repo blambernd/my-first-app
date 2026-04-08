@@ -343,54 +343,98 @@ export function PublicProfile({ token }: PublicProfileProps) {
           </Card>
         )}
 
-        {/* Meilensteine */}
+        {/* Meilensteine — Visual Timeline */}
         {data.meilensteine && data.meilensteine.length > 0 && (
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
                 <Clock className="h-4 w-4" />
-                Meilensteine & Restaurierungen
+                Fahrzeug-Historie
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {data.meilensteine.map((milestone) => (
-                  <div key={milestone.id} className="text-sm">
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium">{milestone.title}</span>
-                      <span className="text-muted-foreground text-xs">
-                        {formatDate(milestone.milestone_date)}
-                      </span>
-                    </div>
-                    {milestone.category && (
-                      <Badge variant="secondary" className="text-xs mt-1">
-                        {milestone.category}
-                      </Badge>
-                    )}
-                    {milestone.description && (
-                      <p className="text-muted-foreground text-xs mt-1">
-                        {milestone.description}
-                      </p>
-                    )}
-                    {milestone.vehicle_milestone_images.length > 0 && (
-                      <div className="flex gap-2 mt-2 overflow-x-auto">
-                        {milestone.vehicle_milestone_images.map((img) => (
-                          <div
-                            key={img.id}
-                            className="shrink-0 w-24 h-24 rounded overflow-hidden bg-muted/30"
-                          >
-                            <img
-                              src={getImageUrl(img.storage_path)}
-                              alt={img.caption || "Bild"}
-                              className="w-full h-full object-cover"
-                            />
+              <div className="relative">
+                {/* Vertical timeline line */}
+                <div className="absolute left-[19px] top-0 bottom-0 w-[2px] bg-gradient-to-b from-primary/30 via-border to-primary/10" />
+
+                <div className="space-y-0">
+                  {[...data.meilensteine]
+                    .sort((a, b) => b.milestone_date.localeCompare(a.milestone_date))
+                    .map((milestone, idx) => {
+                    const categoryColors: Record<string, string> = {
+                      erstzulassung: "bg-green-100 text-green-600 border-green-200",
+                      kauf: "bg-blue-100 text-blue-600 border-blue-200",
+                      restauration: "bg-orange-100 text-orange-600 border-orange-200",
+                      unfall: "bg-red-100 text-red-600 border-red-200",
+                      trophaee: "bg-yellow-100 text-yellow-600 border-yellow-200",
+                      lackierung: "bg-violet-100 text-violet-600 border-violet-200",
+                      umbau: "bg-cyan-100 text-cyan-600 border-cyan-200",
+                      besitzerwechsel: "bg-indigo-100 text-indigo-600 border-indigo-200",
+                      sonstiges: "bg-gray-100 text-gray-600 border-gray-200",
+                    };
+                    const categoryLabels: Record<string, string> = {
+                      erstzulassung: "Erstzulassung",
+                      kauf: "Kauf",
+                      restauration: "Restauration",
+                      unfall: "Unfall",
+                      trophaee: "Auszeichnung",
+                      lackierung: "Lackierung",
+                      umbau: "Umbau",
+                      besitzerwechsel: "Besitzerwechsel",
+                      sonstiges: "Sonstiges",
+                    };
+                    const colorClass = categoryColors[milestone.category || ""] || categoryColors.sonstiges;
+
+                    return (
+                      <div key={milestone.id} className="relative flex gap-4 pb-6 last:pb-0">
+                        {/* Node */}
+                        <div className="relative z-10 shrink-0">
+                          <div className={`h-10 w-10 rounded-full flex items-center justify-center border-2 ${colorClass}`}>
+                            <span className="text-[10px] font-bold">
+                              {new Date(milestone.milestone_date).getFullYear()}
+                            </span>
                           </div>
-                        ))}
+                        </div>
+
+                        {/* Content */}
+                        <div className="flex-1 min-w-0 pt-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-medium text-sm">{milestone.title}</span>
+                            {milestone.category && (
+                              <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                                {categoryLabels[milestone.category] || milestone.category}
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {formatDate(milestone.milestone_date)}
+                          </p>
+                          {milestone.description && (
+                            <p className="text-sm text-muted-foreground mt-1.5 whitespace-pre-line">
+                              {milestone.description}
+                            </p>
+                          )}
+                          {milestone.vehicle_milestone_images.length > 0 && (
+                            <div className="flex gap-2 mt-2 overflow-x-auto pb-1">
+                              {milestone.vehicle_milestone_images.map((img) => (
+                                <div
+                                  key={img.id}
+                                  className="shrink-0 w-28 h-20 rounded-md overflow-hidden bg-muted/30"
+                                >
+                                  <img
+                                    src={getImageUrl(img.storage_path)}
+                                    alt={img.caption || "Bild"}
+                                    className="w-full h-full object-cover"
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    )}
-                    <Separator className="mt-3" />
-                  </div>
-                ))}
+                    );
+                  })}
+                </div>
               </div>
             </CardContent>
           </Card>

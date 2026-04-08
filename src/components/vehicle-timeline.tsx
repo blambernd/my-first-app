@@ -114,38 +114,47 @@ function MilestoneCard({
   const config = CATEGORY_CONFIG[milestone.category];
   const Icon = CATEGORY_ICONS[milestone.category];
   const imageCount = milestone.vehicle_milestone_images?.length ?? 0;
+  const firstImage = milestone.vehicle_milestone_images?.[0];
 
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`flex flex-col items-center text-center w-24 sm:w-28 shrink-0 cursor-pointer group transition-opacity ${
-        isSelected ? "opacity-100" : "opacity-50 hover:opacity-80"
+      className={`flex flex-col items-center text-center w-28 sm:w-32 shrink-0 cursor-pointer group transition-all duration-200 ${
+        isSelected ? "opacity-100 scale-105" : "opacity-60 hover:opacity-90 hover:scale-[1.02]"
       }`}
     >
-      {/* Connector dot on the line */}
+      {/* Node on the line */}
       <div className="relative mb-3">
         <div
-          className={`h-3 w-3 rounded-full border-2 border-background transition-transform ${
-            isSelected ? "bg-primary scale-125" : "bg-border"
+          className={`h-10 w-10 rounded-full flex items-center justify-center transition-all duration-200 shadow-sm ${
+            isSelected
+              ? `${config.color} ring-2 ring-offset-2 ring-offset-background ring-current shadow-md`
+              : "bg-muted text-muted-foreground"
           }`}
-        />
+        >
+          <Icon className="h-4.5 w-4.5" />
+        </div>
       </div>
 
-      {/* Category icon */}
-      <div
-        className={`flex items-center justify-center h-9 w-9 rounded-full shrink-0 ${config.color}`}
-      >
-        <Icon className="h-4 w-4" />
-      </div>
+      {/* Thumbnail preview */}
+      {firstImage && (
+        <div className="w-full aspect-[4/3] rounded-md overflow-hidden bg-muted/30 mb-1.5">
+          <img
+            src={getImageUrl(firstImage.storage_path, supabaseUrl)}
+            alt=""
+            className="w-full h-full object-cover"
+          />
+        </div>
+      )}
 
       {/* Date */}
-      <p className="text-[11px] text-muted-foreground mt-2 leading-tight">
+      <p className={`text-[11px] leading-tight ${isSelected ? "text-foreground font-medium" : "text-muted-foreground"}`}>
         {format(parse(milestone.milestone_date, "yyyy-MM-dd", new Date()), "MMM yyyy", { locale: de })}
       </p>
 
       {/* Title */}
-      <p className="text-xs font-medium mt-0.5 leading-tight line-clamp-2">
+      <p className={`text-xs mt-0.5 leading-tight line-clamp-2 ${isSelected ? "font-semibold" : "font-medium"}`}>
         {milestone.title}
       </p>
 
@@ -1116,17 +1125,17 @@ export function VehicleTimeline({
               ref={scrollRef}
               className="overflow-x-auto scrollbar-hide px-6"
             >
-              <div className="relative flex items-start gap-4 sm:gap-6 pt-4 pb-2 min-w-min">
-                {/* Horizontal timeline line — aligned to center of dots (dot is 12px, mb-3=12px from top of card, so center at 6px + 16px padding = 22px) */}
-                <div className="absolute left-0 right-0 top-[22px] h-[2px] bg-gradient-to-r from-border via-border to-transparent" />
+              <div className="relative flex items-start gap-3 sm:gap-5 pt-4 pb-2 min-w-min">
+                {/* Horizontal timeline line — centered on node (node is 40px, mb-3=12px, center at 20px + 16px padding = 36px) */}
+                <div className="absolute left-0 right-0 top-[36px] h-[3px] rounded-full bg-gradient-to-r from-primary/20 via-border to-primary/10" />
 
                 {/* Start cap */}
-                <div className="absolute left-0 top-[19px] h-2 w-2 rounded-full bg-primary/40" />
+                <div className="absolute left-0 top-[32px] h-[11px] w-[11px] rounded-full bg-primary/30 border-2 border-primary/50" />
 
                 {/* Arrow end */}
-                <div className="absolute right-0 top-[18px]">
-                  <svg width="10" height="10" viewBox="0 0 10 10" className="text-border">
-                    <path d="M0 0 L10 5 L0 10" fill="currentColor" />
+                <div className="absolute right-0 top-[33px]">
+                  <svg width="12" height="12" viewBox="0 0 12 12" className="text-primary/30">
+                    <path d="M0 0 L12 6 L0 12" fill="currentColor" />
                   </svg>
                 </div>
 

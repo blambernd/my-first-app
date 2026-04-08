@@ -17,9 +17,12 @@ import {
   FileText,
   Download,
   Image,
+  Check,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -93,20 +96,69 @@ function DueDateCard({
   label,
   dateStr,
   icon,
+  canEdit,
+  onSave,
 }: {
   label: string;
   dateStr: string | null;
   icon: React.ReactNode;
+  canEdit?: boolean;
+  onSave?: (date: string) => void;
 }) {
-  if (!dateStr) {
+  const [editing, setEditing] = useState(false);
+  const [editValue, setEditValue] = useState("");
+
+  const handleEdit = () => {
+    setEditValue(dateStr || "");
+    setEditing(true);
+  };
+
+  const handleSave = () => {
+    if (editValue && onSave) {
+      onSave(editValue);
+    }
+    setEditing(false);
+  };
+
+  if (editing) {
     return (
       <Card>
+        <CardContent className="p-4">
+          <p className="text-xs text-muted-foreground mb-2">{label}</p>
+          <div className="flex items-center gap-1.5">
+            <Input
+              type="date"
+              value={editValue}
+              onChange={(e) => setEditValue(e.target.value)}
+              className="h-8 text-sm flex-1"
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleSave();
+                if (e.key === "Escape") setEditing(false);
+              }}
+            />
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-green-600" onClick={handleSave}>
+              <Check className="h-3.5 w-3.5" />
+            </Button>
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditing(false)}>
+              <X className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!dateStr) {
+    return (
+      <Card className={canEdit ? "cursor-pointer hover:bg-muted/50 transition-colors" : ""} onClick={canEdit ? handleEdit : undefined}>
         <CardContent className="p-4 flex items-center gap-3">
           {icon}
-          <div>
+          <div className="flex-1">
             <p className="text-lg font-bold text-muted-foreground">–</p>
             <p className="text-xs text-muted-foreground">{label}</p>
           </div>
+          {canEdit && <Pencil className="h-3.5 w-3.5 text-muted-foreground" />}
         </CardContent>
       </Card>
     );
@@ -116,10 +168,10 @@ function DueDateCard({
   const formatted = new Date(dateStr).toLocaleDateString("de-DE");
 
   return (
-    <Card>
+    <Card className={canEdit ? "cursor-pointer hover:bg-muted/50 transition-colors" : ""} onClick={canEdit ? handleEdit : undefined}>
       <CardContent className="p-4 flex items-center gap-3">
         {icon}
-        <div>
+        <div className="flex-1">
           <p className={`text-lg font-bold ${DUE_STATUS_STYLES[status]}`}>
             {formatted}
           </p>
@@ -137,14 +189,68 @@ function DueDateCard({
             )}
           </div>
         </div>
+        {canEdit && <Pencil className="h-3.5 w-3.5 text-muted-foreground" />}
       </CardContent>
     </Card>
   );
 }
 
-function ServiceSummary({ entries }: { entries: ServiceEntry[] }) {
-  const nextTuv = getNextTuvDate(entries);
-  const nextService = getNextServiceDate(entries);
+interface DueDateOverride {
+  due_type: string;
+  due_date: string;
+}
+
+function ServiceSummary({
+  entries,
+  vehicleId,
+  canEdit,
+}: {
+  entries: ServiceEntry[];
+  vehicleId: string;
+  canEdit: boolean;
+}) {
+  const [overrides, setOverrides] = useState<DueDateOverride[]>([]);
+
+  useEffect(() => {
+    async function loadOverrides() {
+      try {
+        const res = await fetch(`/api/vehicles/${vehicleId}/due-dates`);
+        if (res.ok) {
+          const data = await res.json();
+          setOverrides(data.dueDates || []);
+        }
+      } catch {
+        // Silently fail — calculated dates still show
+      }
+    }
+    loadOverrides();
+  }, [vehicleId]);
+
+  const tuvOverride = overrides.find((o) => o.due_type === "tuv_hu")?.due_date;
+  const serviceOverride = overrides.find((o) => o.due_type === "service")?.due_date;
+
+  const nextTuv = tuvOverride || getNextTuvDate(entries);
+  const nextService = serviceOverride || getNextServiceDate(entries);
+
+  const handleSaveDueDate = async (dueType: "tuv_hu" | "service", date: string) => {
+    try {
+      const res = await fetch(`/api/vehicles/${vehicleId}/due-dates`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ due_type: dueType, due_date: date }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setOverrides((prev) => {
+          const filtered = prev.filter((o) => o.due_type !== dueType);
+          return [...filtered, data.dueDate];
+        });
+        toast.success("Termin gespeichert");
+      }
+    } catch {
+      toast.error("Fehler beim Speichern");
+    }
+  };
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
@@ -161,11 +267,15 @@ function ServiceSummary({ entries }: { entries: ServiceEntry[] }) {
         label="Nächster TÜV/HU"
         dateStr={nextTuv}
         icon={<Calendar className="h-5 w-5 text-muted-foreground" />}
+        canEdit={canEdit}
+        onSave={(date) => handleSaveDueDate("tuv_hu", date)}
       />
       <DueDateCard
         label="Nächster Service"
         dateStr={nextService}
         icon={<Gauge className="h-5 w-5 text-muted-foreground" />}
+        canEdit={canEdit}
+        onSave={(date) => handleSaveDueDate("service", date)}
       />
     </div>
   );
@@ -382,7 +492,7 @@ export function ServiceLog({ vehicleId, supabaseUrl, initialEntries, documentsBy
 
   return (
     <div>
-      <ServiceSummary entries={entries} />
+      <ServiceSummary entries={entries} vehicleId={vehicleId} canEdit={canEdit} />
 
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
