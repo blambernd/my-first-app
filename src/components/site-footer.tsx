@@ -15,6 +15,12 @@ export function SiteFooter() {
           <Link href="/haftung" className="hover:text-foreground transition-colors">
             Haftung
           </Link>
+          <Link href="/faq" className="hover:text-foreground transition-colors">
+            FAQ
+          </Link>
+          <Link href="/kontakt" className="hover:text-foreground transition-colors">
+            Kontakt
+          </Link>
         </nav>
       </div>
     </footer>

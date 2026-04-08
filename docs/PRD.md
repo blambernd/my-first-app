@@ -34,6 +34,9 @@ Eine SaaS-Plattform für Oldtimer-Besitzer, die es ermöglicht, die komplette Hi
 | P1 | PROJ-11: Marktpreis-Analyse | Planned |
 | P1 | PROJ-12: Verkaufsinserat erstellen | Planned |
 | P2 | PROJ-13: Inserat veröffentlichen | Planned |
+| P1 | PROJ-14: FAQ-Seite | Planned |
+| P1 | PROJ-15: Kontakt & Feedback | Planned |
+| P1 | PROJ-16: Verkaufsassistent | Planned |
 
 ## Success Metrics
 - **Registrierungen:** 500 Nutzer in den ersten 3 Monaten
