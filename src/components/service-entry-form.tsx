@@ -49,6 +49,10 @@ import {
   type ServiceEntryFormData,
   type ServiceEntry,
 } from "@/lib/validations/service-entry";
+import {
+  DOCUMENT_CATEGORIES,
+  type DocumentCategory,
+} from "@/lib/validations/vehicle-document";
 
 interface ServiceEntryFormProps {
   vehicleId: string;
@@ -70,6 +74,7 @@ export function ServiceEntryForm({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showOdometerWarning, setShowOdometerWarning] = useState(false);
   const [documentFile, setDocumentFile] = useState<File | null>(null);
+  const [documentCategory, setDocumentCategory] = useState<DocumentCategory>("rechnung");
   const isEditing = !!entry;
 
   const onDocumentDrop = useCallback((acceptedFiles: File[]) => {
@@ -129,6 +134,7 @@ export function ServiceEntryForm({
       });
       setShowOdometerWarning(false);
       setDocumentFile(null);
+      setDocumentCategory("rechnung");
     }
   }, [open, entry, form]);
 
@@ -216,7 +222,7 @@ export function ServiceEntryForm({
             .insert({
               vehicle_id: vehicleId,
               title: `${getEntryTypeLabel(data.entry_type)} — ${data.description.slice(0, 80)}`,
-              category: data.entry_type === "tuv_hu" ? "tuev_bericht" : "rechnung",
+              category: documentCategory,
               document_date: data.service_date,
               description: data.description,
               storage_path: storagePath,
@@ -497,23 +503,40 @@ export function ServiceEntryForm({
                 Wird automatisch im Dokumenten-Archiv gespeichert.
               </p>
               {documentFile ? (
-                <div className="flex items-center gap-3 rounded-lg border p-3">
-                  <FileText className="h-6 w-6 text-muted-foreground shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{documentFile.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {(documentFile.size / 1024 / 1024).toFixed(1)} MB
-                    </p>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-3 rounded-lg border p-3">
+                    <FileText className="h-6 w-6 text-muted-foreground shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{documentFile.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {(documentFile.size / 1024 / 1024).toFixed(1)} MB
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 shrink-0"
+                      onClick={() => setDocumentFile(null)}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
                   </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 shrink-0"
-                    onClick={() => setDocumentFile(null)}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Kategorie</p>
+                    <Select value={documentCategory} onValueChange={(v) => setDocumentCategory(v as DocumentCategory)}>
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {DOCUMENT_CATEGORIES.map((cat) => (
+                          <SelectItem key={cat.value} value={cat.value}>
+                            {cat.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               ) : (
                 <div

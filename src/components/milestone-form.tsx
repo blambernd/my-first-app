@@ -47,6 +47,10 @@ import {
   type MilestoneFormData,
   type VehicleMilestoneWithImages,
 } from "@/lib/validations/milestone";
+import {
+  DOCUMENT_CATEGORIES,
+  type DocumentCategory,
+} from "@/lib/validations/vehicle-document";
 
 const MAX_PHOTO_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
 const MAX_PHOTOS = 10;
@@ -74,6 +78,7 @@ interface DocItem {
   id: string;
   file: File;
   name: string;
+  category: DocumentCategory;
 }
 
 function getImageUrl(storagePath: string, supabaseUrl: string): string {
@@ -186,6 +191,7 @@ export function MilestoneForm({
         id: crypto.randomUUID(),
         file,
         name: file.name,
+        category: "sonstiges" as DocumentCategory,
       }));
       setDocs((prev) => [...prev, ...newDocs]);
     },
@@ -342,7 +348,7 @@ export function MilestoneForm({
           .insert({
             vehicle_id: vehicleId,
             title: doc.file.name.replace(/\.[^.]+$/, ""),
-            category: "sonstiges",
+            category: doc.category,
             document_date: data.milestone_date,
             storage_path: docStoragePath,
             file_name: doc.file.name,
@@ -575,23 +581,48 @@ export function MilestoneForm({
               </p>
 
               {docs.length > 0 && (
-                <div className="space-y-1.5">
+                <div className="space-y-2">
                   {docs.map((doc) => (
                     <div
                       key={doc.id}
-                      className="flex items-center gap-2 rounded-md border p-2"
+                      className="rounded-md border p-2 space-y-2"
                     >
-                      <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
-                      <span className="text-sm truncate flex-1">{doc.name}</span>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6 shrink-0"
-                        onClick={() => removeDoc(doc.id)}
+                      <div className="flex items-center gap-2">
+                        <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                        <span className="text-sm truncate flex-1">{doc.name}</span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 shrink-0"
+                          onClick={() => removeDoc(doc.id)}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                      <Select
+                        value={doc.category}
+                        onValueChange={(value) =>
+                          setDocs((prev) =>
+                            prev.map((d) =>
+                              d.id === doc.id
+                                ? { ...d, category: value as DocumentCategory }
+                                : d
+                            )
+                          )
+                        }
                       >
-                        <X className="h-3 w-3" />
-                      </Button>
+                        <SelectTrigger className="h-8 text-xs">
+                          <SelectValue placeholder="Kategorie" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {DOCUMENT_CATEGORIES.map((cat) => (
+                            <SelectItem key={cat.value} value={cat.value}>
+                              {cat.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                   ))}
                 </div>
