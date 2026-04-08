@@ -36,8 +36,16 @@ import {
 import { ImageUpload, type ImageFile } from "@/components/image-upload";
 import { createClient } from "@/lib/supabase";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   vehicleSchema,
   VEHICLE_MAKES,
+  BODY_TYPES,
   type VehicleFormData,
   type Vehicle,
   type VehicleImage,
@@ -114,6 +122,7 @@ export function VehicleForm({ vehicle, vehicleImages = [], mode }: VehicleFormPr
       year_estimated: vehicle?.year_estimated ?? false,
       vin: vehicle?.vin ?? "",
       license_plate: vehicle?.license_plate ?? "",
+      body_type: vehicle?.body_type ?? "",
       factory_code: vehicle?.factory_code ?? "",
       color: vehicle?.color ?? "",
       engine_type: vehicle?.engine_type ?? "",
@@ -161,6 +170,7 @@ export function VehicleForm({ vehicle, vehicleImages = [], mode }: VehicleFormPr
         year_estimated: data.year_estimated,
         vin: data.vin || null,
         license_plate: data.license_plate || null,
+        body_type: data.body_type || null,
         factory_code: data.factory_code || null,
         color: data.color || null,
         engine_type: data.engine_type || null,
@@ -377,6 +387,33 @@ export function VehicleForm({ vehicle, vehicleImages = [], mode }: VehicleFormPr
             />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="body_type"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Fahrzeugform</FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    value={field.value || ""}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Bitte wählen" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {BODY_TYPES.map((type) => (
+                        <SelectItem key={type} value={type}>
+                          {type}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             <FormField
               control={form.control}
               name="factory_code"

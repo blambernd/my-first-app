@@ -83,6 +83,22 @@ export const VEHICLE_MAKES = [
   "Sonstige",
 ] as const;
 
+export const BODY_TYPES = [
+  "Limousine",
+  "Kombi",
+  "Coupé",
+  "Cabriolet",
+  "Roadster",
+  "SUV/Geländewagen",
+  "Van/Kleinbus",
+  "Pickup",
+  "Kastenwagen",
+  "Speedster",
+  "Targa",
+  "Shooting Brake",
+  "Sonstige",
+] as const;
+
 export const vehicleSchema = z.object({
   make: z
     .string()
@@ -107,6 +123,11 @@ export const vehicleSchema = z.object({
   license_plate: z
     .string()
     .max(15, "Kennzeichen darf maximal 15 Zeichen lang sein")
+    .optional()
+    .or(z.literal("")),
+  body_type: z
+    .string()
+    .max(50, "Fahrzeugform darf maximal 50 Zeichen lang sein")
     .optional()
     .or(z.literal("")),
   factory_code: z
@@ -139,6 +160,7 @@ export interface VehicleFormData {
   year_estimated: boolean;
   vin?: string;
   license_plate?: string;
+  body_type?: string;
   factory_code?: string;
   color?: string;
   engine_type?: string;
@@ -156,6 +178,7 @@ export interface Vehicle {
   year_estimated: boolean;
   vin: string | null;
   license_plate: string | null;
+  body_type: string | null;
   factory_code: string | null;
   color: string | null;
   engine_type: string | null;
