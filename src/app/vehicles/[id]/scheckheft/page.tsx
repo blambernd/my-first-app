@@ -2,6 +2,7 @@ import { redirect, notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase-server";
 import { ServiceLog } from "@/components/service-log";
 import type { ServiceEntry } from "@/lib/validations/service-entry";
+import type { VehicleDocument } from "@/lib/validations/vehicle-document";
 
 interface ScheckheftPageProps {
   params: Promise<{ id: string }>;
@@ -51,26 +52,29 @@ export default async function ScheckheftPage({ params }: ScheckheftPageProps) {
     .order("created_at", { ascending: false })
     .limit(200);
 
-  // Fetch document counts per service entry
-  const { data: docCounts } = await supabase
+  // Fetch documents linked to service entries
+  const { data: linkedDocs } = await supabase
     .from("vehicle_documents")
-    .select("service_entry_id, id")
+    .select("*")
     .eq("vehicle_id", id)
-    .not("service_entry_id", "is", null);
+    .not("service_entry_id", "is", null)
+    .order("created_at", { ascending: false });
 
-  const documentCountMap: Record<string, number> = {};
-  if (docCounts) {
-    for (const doc of docCounts) {
+  const documentsByEntry: Record<string, VehicleDocument[]> = {};
+  if (linkedDocs) {
+    for (const doc of linkedDocs as VehicleDocument[]) {
       const key = doc.service_entry_id!;
-      documentCountMap[key] = (documentCountMap[key] || 0) + 1;
+      if (!documentsByEntry[key]) documentsByEntry[key] = [];
+      documentsByEntry[key].push(doc);
     }
   }
 
   return (
     <ServiceLog
       vehicleId={id}
+      supabaseUrl={process.env.NEXT_PUBLIC_SUPABASE_URL!}
       initialEntries={(serviceEntries ?? []) as ServiceEntry[]}
-      documentCounts={documentCountMap}
+      documentsByEntry={documentsByEntry}
       canEdit={canEdit}
       canEditAll={canEditAll}
       userId={user.id}

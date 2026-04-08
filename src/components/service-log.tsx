@@ -15,6 +15,8 @@ import {
   Gauge,
   Banknote,
   FileText,
+  Download,
+  Image,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -50,6 +52,11 @@ import {
   type ServiceEntry,
   type ServiceEntryType,
 } from "@/lib/validations/service-entry";
+import {
+  formatFileSize,
+  isImageMimeType,
+  type VehicleDocument,
+} from "@/lib/validations/vehicle-document";
 
 const TYPE_COLORS: Record<ServiceEntryType, string> = {
   inspection: "bg-blue-100 text-blue-800",
@@ -62,8 +69,9 @@ const TYPE_COLORS: Record<ServiceEntryType, string> = {
 
 interface ServiceLogProps {
   vehicleId: string;
+  supabaseUrl: string;
   initialEntries: ServiceEntry[];
-  documentCounts?: Record<string, number>;
+  documentsByEntry?: Record<string, VehicleDocument[]>;
   canEdit?: boolean;
   canEditAll?: boolean;
   userId?: string;
@@ -168,23 +176,29 @@ function ServiceEntryCard({
   onEdit,
   onDelete,
   canEdit,
-  documentCount,
+  documents,
+  supabaseUrl,
 }: {
   entry: ServiceEntry;
   onEdit: () => void;
   onDelete: () => void;
   canEdit: boolean;
-  documentCount: number;
+  documents: VehicleDocument[];
+  supabaseUrl: string;
 }) {
-  const [expanded, setExpanded] = useState(false);
-  const isLong = entry.description.length > 150;
-  const displayText = isLong && !expanded
-    ? entry.description.slice(0, 150) + "…"
+  const [detailOpen, setDetailOpen] = useState(false);
+  const hasDetails = entry.notes || entry.next_due_date || documents.length > 0;
+  const summaryText = entry.description.length > 120
+    ? entry.description.slice(0, 120) + "…"
     : entry.description;
 
   return (
     <div className="py-4">
-      <div className="flex items-start justify-between gap-4">
+      {/* Summary row — always visible */}
+      <div
+        className={`flex items-start justify-between gap-4 ${hasDetails ? "cursor-pointer" : ""}`}
+        onClick={() => hasDetails && setDetailOpen(!detailOpen)}
+      >
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <Badge className={`${TYPE_COLORS[entry.entry_type]} border-0 text-xs`}>
@@ -197,19 +211,7 @@ function ServiceEntryCard({
               <Badge variant="outline" className="text-xs">Tacho-Korrektur</Badge>
             )}
           </div>
-          <p className="mt-1.5 text-sm">{displayText}</p>
-          {isLong && (
-            <button
-              onClick={() => setExpanded(!expanded)}
-              className="text-xs text-primary hover:underline mt-1 flex items-center gap-0.5"
-            >
-              {expanded ? (
-                <>Weniger <ChevronUp className="h-3 w-3" /></>
-              ) : (
-                <>Mehr anzeigen <ChevronDown className="h-3 w-3" /></>
-              )}
-            </button>
-          )}
+          <p className="mt-1.5 text-sm">{detailOpen ? entry.description : summaryText}</p>
           <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
             <span className="flex items-center gap-1">
               <Gauge className="h-3 w-3" />
@@ -221,24 +223,24 @@ function ServiceEntryCard({
                 {formatCentsToEur(entry.cost_cents)}
               </span>
             )}
-            {documentCount > 0 && (
-              <span className="flex items-center gap-1" title={`${documentCount} Dokument${documentCount !== 1 ? "e" : ""}`}>
+            {documents.length > 0 && (
+              <span className="flex items-center gap-1">
                 <FileText className="h-3 w-3" />
-                {documentCount}
+                {documents.length}
               </span>
             )}
             {entry.workshop_name && (
               <span className="truncate">{entry.workshop_name}</span>
             )}
+            {hasDetails && (
+              <span className="flex items-center gap-0.5 text-primary ml-auto">
+                {detailOpen ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+              </span>
+            )}
           </div>
-          {entry.notes && (
-            <p className="text-xs text-muted-foreground mt-1 italic">
-              {entry.notes}
-            </p>
-          )}
         </div>
         {canEdit && (
-          <div className="flex gap-1 shrink-0">
+          <div className="flex gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onEdit}>
               <Pencil className="h-3.5 w-3.5" />
             </Button>
@@ -269,11 +271,67 @@ function ServiceEntryCard({
           </div>
         )}
       </div>
+
+      {/* Detail panel — shown on click */}
+      {detailOpen && (
+        <div className="mt-3 ml-0 rounded-lg bg-muted/40 p-4 space-y-3">
+          {entry.notes && (
+            <div>
+              <p className="text-xs font-medium text-muted-foreground mb-1">Notizen</p>
+              <p className="text-sm italic">{entry.notes}</p>
+            </div>
+          )}
+          {entry.next_due_date && (
+            <div>
+              <p className="text-xs font-medium text-muted-foreground mb-1">Nächster Termin</p>
+              <p className="text-sm flex items-center gap-1.5">
+                <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                {new Date(entry.next_due_date).toLocaleDateString("de-DE")}
+              </p>
+            </div>
+          )}
+          {documents.length > 0 && (
+            <div>
+              <p className="text-xs font-medium text-muted-foreground mb-2">
+                Dokumente ({documents.length})
+              </p>
+              <div className="space-y-1.5">
+                {documents.map((doc) => {
+                  const fileUrl = `${supabaseUrl}/storage/v1/object/public/vehicle-documents/${doc.storage_path}`;
+                  const isImg = isImageMimeType(doc.mime_type);
+                  return (
+                    <a
+                      key={doc.id}
+                      href={fileUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 rounded-md border bg-background p-2 hover:bg-muted/50 transition-colors"
+                    >
+                      {isImg ? (
+                        <Image className="h-4 w-4 text-muted-foreground shrink-0" />
+                      ) : (
+                        <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm truncate">{doc.title || doc.file_name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {formatFileSize(doc.file_size)}
+                        </p>
+                      </div>
+                      <Download className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                    </a>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
 
-export function ServiceLog({ vehicleId, initialEntries, documentCounts = {}, canEdit = true, canEditAll = true, userId }: ServiceLogProps) {
+export function ServiceLog({ vehicleId, supabaseUrl, initialEntries, documentsByEntry = {}, canEdit = true, canEditAll = true, userId }: ServiceLogProps) {
   const router = useRouter();
   const [entries, setEntries] = useState<ServiceEntry[]>(initialEntries);
   const [filterType, setFilterType] = useState<string>("all");
@@ -369,7 +427,8 @@ export function ServiceLog({ vehicleId, initialEntries, documentCounts = {}, can
                 key={entry.id}
                 entry={entry}
                 canEdit={canEditThis}
-                documentCount={documentCounts[entry.id] || 0}
+                documents={documentsByEntry[entry.id] || []}
+                supabaseUrl={supabaseUrl}
                 onEdit={() => handleEdit(entry)}
                 onDelete={() => handleDelete(entry.id)}
               />
