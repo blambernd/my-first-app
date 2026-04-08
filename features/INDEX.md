@@ -23,7 +23,11 @@
 | PROJ-7 | Fahrzeug-Transfer | Deployed | [PROJ-7-fahrzeug-transfer.md](PROJ-7-fahrzeug-transfer.md) | 2026-04-04 |
 | PROJ-8 | Freemium-Modell | Planned | [PROJ-8-freemium-modell.md](PROJ-8-freemium-modell.md) | 2026-04-04 |
 | PROJ-9 | Ersatzteil-Suche & Preis-Alerts | Deployed | [PROJ-9-ersatzteil-suche.md](PROJ-9-ersatzteil-suche.md) | 2026-04-07 |
+| PROJ-10 | Fahrzeug-Kurzprofil (öffentlich) | Architected | [PROJ-10-fahrzeug-kurzprofil.md](PROJ-10-fahrzeug-kurzprofil.md) | 2026-04-08 |
+| PROJ-11 | Marktpreis-Analyse | Planned | [PROJ-11-marktpreis-analyse.md](PROJ-11-marktpreis-analyse.md) | 2026-04-08 |
+| PROJ-12 | Verkaufsinserat erstellen | Planned | [PROJ-12-verkaufsinserat.md](PROJ-12-verkaufsinserat.md) | 2026-04-08 |
+| PROJ-13 | Inserat veröffentlichen | Planned | [PROJ-13-inserat-veroeffentlichen.md](PROJ-13-inserat-veroeffentlichen.md) | 2026-04-08 |
 
 <!-- Add features above this line -->
 
-## Next Available ID: PROJ-10
+## Next Available ID: PROJ-14
