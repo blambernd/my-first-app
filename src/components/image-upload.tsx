@@ -131,7 +131,7 @@ export function ImageUpload({
               <img
                 src={url}
                 alt="Fahrzeugbild"
-                className="w-full h-full object-cover"
+                className="w-full h-full object-contain"
               />
               {onExistingImageRemove && (
                 <Button
@@ -151,7 +151,7 @@ export function ImageUpload({
               <img
                 src={image.preview}
                 alt={`Neues Bild ${index + 1}`}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-contain"
               />
               <Button
                 type="button"

@@ -235,7 +235,7 @@ function MilestoneDetail({
               <img
                 src={getImageUrl(img.storage_path, supabaseUrl)}
                 alt=""
-                className="w-full h-full object-cover"
+                className="w-full h-full object-contain"
               />
             </div>
           ))}

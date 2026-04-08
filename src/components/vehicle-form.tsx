@@ -496,7 +496,7 @@ export function VehicleForm({ vehicle, vehicleImages = [], mode }: VehicleFormPr
                   <img
                     src={datenkartePreview}
                     alt="Datenkarte Vorschau"
-                    className="h-16 w-16 rounded object-cover bg-muted"
+                    className="h-16 w-16 rounded object-contain bg-muted"
                   />
                 ) : (
                   <div className="flex h-16 w-16 items-center justify-center rounded bg-muted">

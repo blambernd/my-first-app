@@ -32,7 +32,7 @@ export function VehicleCard({ vehicle }: VehicleCardProps) {
             <img
               src={imageUrl}
               alt={`${vehicle.make} ${vehicle.model}`}
-              className="w-full h-full object-cover"
+              className="w-full h-full object-contain"
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center">

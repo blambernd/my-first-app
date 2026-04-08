@@ -99,7 +99,7 @@ export default async function VehicleDetailPage({
             <img
               src={getImageUrl(primaryImage.storage_path, supabaseUrl)}
               alt={`${typedVehicle.make} ${typedVehicle.model}`}
-              className="w-full h-full object-cover"
+              className="w-full h-full object-contain"
             />
           </div>
           {sortedImages.length > 1 && (
@@ -112,7 +112,7 @@ export default async function VehicleDetailPage({
                   <img
                     src={getImageUrl(img.storage_path, supabaseUrl)}
                     alt="Fahrzeugbild"
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-contain"
                   />
                 </div>
               ))}
