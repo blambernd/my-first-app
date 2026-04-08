@@ -1,6 +1,6 @@
 # PROJ-11: Marktpreis-Analyse
 
-## Status: Approved
+## Status: Deployed
 **Created:** 2026-04-08
 **Last Updated:** 2026-04-08
 
@@ -207,4 +207,7 @@ No new packages — existing stack covers everything:
 **READY** — No Critical or High bugs. 2 Low bugs found (UX improvements, not blockers). Pre-existing test failure is unrelated to this feature.
 
 ## Deployment
-_To be added by /deploy_
+**Deployed:** 2026-04-08
+**Commit:** 4d500c2
+**Tag:** v1.11.0-PROJ-11
+**Migration:** 20260408_proj11_market_analyses.sql (applied)

@@ -24,7 +24,7 @@
 | PROJ-8 | Freemium-Modell | Planned | [PROJ-8-freemium-modell.md](PROJ-8-freemium-modell.md) | 2026-04-04 |
 | PROJ-9 | Ersatzteil-Suche & Preis-Alerts | Deployed | [PROJ-9-ersatzteil-suche.md](PROJ-9-ersatzteil-suche.md) | 2026-04-07 |
 | PROJ-10 | Fahrzeug-Kurzprofil (öffentlich) | In Review | [PROJ-10-fahrzeug-kurzprofil.md](PROJ-10-fahrzeug-kurzprofil.md) | 2026-04-08 |
-| PROJ-11 | Marktpreis-Analyse | Approved | [PROJ-11-marktpreis-analyse.md](PROJ-11-marktpreis-analyse.md) | 2026-04-08 |
+| PROJ-11 | Marktpreis-Analyse | Deployed | [PROJ-11-marktpreis-analyse.md](PROJ-11-marktpreis-analyse.md) | 2026-04-08 |
 | PROJ-12 | Verkaufsinserat erstellen | Planned | [PROJ-12-verkaufsinserat.md](PROJ-12-verkaufsinserat.md) | 2026-04-08 |
 | PROJ-13 | Inserat veröffentlichen | Planned | [PROJ-13-inserat-veroeffentlichen.md](PROJ-13-inserat-veroeffentlichen.md) | 2026-04-08 |
 
