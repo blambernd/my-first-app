@@ -14,6 +14,8 @@ import {
   Pencil,
   Check,
   X,
+  Calendar,
+  Gauge,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -47,7 +49,12 @@ import {
   type VehicleDocument,
   type DocumentCategory,
 } from "@/lib/validations/vehicle-document";
-import type { ServiceEntry } from "@/lib/validations/service-entry";
+import {
+  getNextTuvDate,
+  getNextServiceDate,
+  getDueStatus,
+  type ServiceEntry,
+} from "@/lib/validations/service-entry";
 
 const CATEGORY_COLORS: Record<DocumentCategory, string> = {
   rechnung: "bg-blue-100 text-blue-800",
@@ -378,6 +385,126 @@ function ImageGallery({
   );
 }
 
+const DUE_STATUS_STYLES = {
+  overdue: "text-destructive",
+  soon: "text-yellow-600",
+  ok: "text-foreground",
+} as const;
+
+const DUE_STATUS_BADGE_STYLES = {
+  overdue: "bg-red-100 text-red-800",
+  soon: "bg-yellow-100 text-yellow-800",
+  ok: "",
+} as const;
+
+interface DueDateOverride {
+  due_type: string;
+  due_date: string;
+}
+
+function DocDueDateCard({
+  label,
+  dateStr,
+  icon,
+  canEdit,
+  onSave,
+}: {
+  label: string;
+  dateStr: string | null;
+  icon: React.ReactNode;
+  canEdit?: boolean;
+  onSave?: (date: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [editValue, setEditValue] = useState("");
+
+  const handleEdit = () => {
+    setEditValue(dateStr || "");
+    setEditing(true);
+  };
+
+  const handleSave = () => {
+    if (editValue && onSave) {
+      onSave(editValue);
+    }
+    setEditing(false);
+  };
+
+  if (editing) {
+    return (
+      <Card>
+        <CardContent className="p-4">
+          <p className="text-xs text-muted-foreground mb-2">{label}</p>
+          <div className="flex items-center gap-1.5">
+            <Input
+              type="date"
+              value={editValue}
+              onChange={(e) => setEditValue(e.target.value)}
+              className="h-8 text-sm flex-1"
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleSave();
+                if (e.key === "Escape") setEditing(false);
+              }}
+            />
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-green-600" onClick={handleSave}>
+              <Check className="h-3.5 w-3.5" />
+            </Button>
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditing(false)}>
+              <X className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!dateStr) {
+    return (
+      <Card className={canEdit ? "cursor-pointer hover:bg-muted/50 transition-colors" : ""} onClick={canEdit ? handleEdit : undefined}>
+        <CardContent className="p-4 flex items-center gap-3">
+          {icon}
+          <div className="flex-1">
+            <p className="text-lg font-bold text-muted-foreground">–</p>
+            <p className="text-xs text-muted-foreground">{label}</p>
+          </div>
+          {canEdit && <Pencil className="h-3.5 w-3.5 text-muted-foreground" />}
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const status = getDueStatus(dateStr);
+  const formatted = new Date(dateStr).toLocaleDateString("de-DE");
+
+  return (
+    <Card className={canEdit ? "cursor-pointer hover:bg-muted/50 transition-colors" : ""} onClick={canEdit ? handleEdit : undefined}>
+      <CardContent className="p-4 flex items-center gap-3">
+        {icon}
+        <div className="flex-1">
+          <p className={`text-lg font-bold ${DUE_STATUS_STYLES[status]}`}>
+            {formatted}
+          </p>
+          <div className="flex items-center gap-1.5">
+            <p className="text-xs text-muted-foreground">{label}</p>
+            {status === "overdue" && (
+              <Badge className={`${DUE_STATUS_BADGE_STYLES.overdue} border-0 text-[10px] px-1.5 py-0`}>
+                Überfällig
+              </Badge>
+            )}
+            {status === "soon" && (
+              <Badge className={`${DUE_STATUS_BADGE_STYLES.soon} border-0 text-[10px] px-1.5 py-0`}>
+                Bald fällig
+              </Badge>
+            )}
+          </div>
+        </div>
+        {canEdit && <Pencil className="h-3.5 w-3.5 text-muted-foreground" />}
+      </CardContent>
+    </Card>
+  );
+}
+
 export function DocumentArchive({
   vehicleId,
   initialDocuments,
@@ -391,6 +518,47 @@ export function DocumentArchive({
   const [documents, setDocuments] = useState<VehicleDocument[]>(initialDocuments);
   const [filterCategory, setFilterCategory] = useState<string>("all");
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [dueDateOverrides, setDueDateOverrides] = useState<DueDateOverride[]>([]);
+
+  useEffect(() => {
+    async function loadOverrides() {
+      try {
+        const res = await fetch(`/api/vehicles/${vehicleId}/due-dates`);
+        if (res.ok) {
+          const data = await res.json();
+          setDueDateOverrides(data.dueDates || []);
+        }
+      } catch {
+        // Silently fail
+      }
+    }
+    loadOverrides();
+  }, [vehicleId]);
+
+  const tuvOverride = dueDateOverrides.find((o) => o.due_type === "tuv_hu")?.due_date;
+  const serviceOverride = dueDateOverrides.find((o) => o.due_type === "service")?.due_date;
+  const nextTuv = tuvOverride || getNextTuvDate(serviceEntries);
+  const nextService = serviceOverride || getNextServiceDate(serviceEntries);
+
+  const handleSaveDueDate = async (dueType: "tuv_hu" | "service", date: string) => {
+    try {
+      const res = await fetch(`/api/vehicles/${vehicleId}/due-dates`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ due_type: dueType, due_date: date }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setDueDateOverrides((prev) => {
+          const filtered = prev.filter((o) => o.due_type !== dueType);
+          return [...filtered, data.dueDate];
+        });
+        toast.success("Termin gespeichert");
+      }
+    } catch {
+      toast.error("Fehler beim Speichern");
+    }
+  };
 
   const imageDocuments = documents.filter((d) => isImageMimeType(d.mime_type));
   const nonImageDocuments = documents.filter((d) => !isImageMimeType(d.mime_type));
@@ -462,7 +630,7 @@ export function DocumentArchive({
   return (
     <div>
       {/* Summary */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
         <Card>
           <CardContent className="p-4 flex items-center gap-3">
             <FolderOpen className="h-5 w-5 text-muted-foreground" />
@@ -494,6 +662,20 @@ export function DocumentArchive({
             </div>
           </CardContent>
         </Card>
+        <DocDueDateCard
+          label="Nächster TÜV/HU"
+          dateStr={nextTuv}
+          icon={<Calendar className="h-5 w-5 text-muted-foreground" />}
+          canEdit={canEdit}
+          onSave={(date) => handleSaveDueDate("tuv_hu", date)}
+        />
+        <DocDueDateCard
+          label="Nächster Service"
+          dateStr={nextService}
+          icon={<Gauge className="h-5 w-5 text-muted-foreground" />}
+          canEdit={canEdit}
+          onSave={(date) => handleSaveDueDate("service", date)}
+        />
       </div>
 
       {/* Upload button */}
