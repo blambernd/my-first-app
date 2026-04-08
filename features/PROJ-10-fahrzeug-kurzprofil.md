@@ -1,8 +1,16 @@
 # PROJ-10: Fahrzeug-Kurzprofil (öffentlich)
 
-## Status: Architected
+## Status: In Progress
 **Created:** 2026-04-08
 **Last Updated:** 2026-04-08
+
+### Implementation Notes
+- Navigation: "Kurzprofil" tab added to vehicle nav with Share2 icon
+- Configurator: `/vehicles/[id]/kurzprofil` — toggle sections and select individual items
+- Public page: `/profil/[token]` — responsive, no-auth, noindex/nofollow
+- API: `/api/vehicles/[id]/profile` (GET/POST/PATCH) + `/api/profil/[token]` (public GET)
+- DB: `vehicle_profiles` table with JSON config, nanoid token (12 chars)
+- PDF download button present (links to `/api/profil/[token]/pdf` — route TBD)
 
 ## Dependencies
 - Requires: PROJ-2 (Fahrzeugprofil) — Fahrzeugstammdaten
