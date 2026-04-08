@@ -1099,13 +1099,13 @@ export function VehicleTimeline({
       ) : (
         <>
           {/* Timeline rail */}
-          <div className="relative mb-6">
+          <div className="relative mb-6 rounded-xl border bg-gradient-to-b from-muted/40 to-muted/10 p-4 sm:p-6 shadow-sm">
             {/* Scroll arrows */}
             {canScrollLeft && (
               <button
                 type="button"
                 onClick={() => scroll("left")}
-                className="absolute left-0 top-1/2 -translate-y-1/2 z-10 h-8 w-8 flex items-center justify-center rounded-full bg-background border border-border shadow-sm hover:bg-muted transition-colors"
+                className="absolute left-2 top-1/2 -translate-y-1/2 z-10 h-8 w-8 flex items-center justify-center rounded-full bg-background border border-border shadow-md hover:bg-muted transition-colors"
               >
                 <ChevronLeft className="h-4 w-4" />
               </button>
@@ -1114,7 +1114,7 @@ export function VehicleTimeline({
               <button
                 type="button"
                 onClick={() => scroll("right")}
-                className="absolute right-0 top-1/2 -translate-y-1/2 z-10 h-8 w-8 flex items-center justify-center rounded-full bg-background border border-border shadow-sm hover:bg-muted transition-colors"
+                className="absolute right-2 top-1/2 -translate-y-1/2 z-10 h-8 w-8 flex items-center justify-center rounded-full bg-background border border-border shadow-md hover:bg-muted transition-colors"
               >
                 <ChevronRight className="h-4 w-4" />
               </button>
@@ -1123,14 +1123,14 @@ export function VehicleTimeline({
             {/* Scrollable container */}
             <div
               ref={scrollRef}
-              className="overflow-x-auto scrollbar-hide px-6"
+              className="overflow-x-auto scrollbar-hide px-4"
             >
               <div className="relative flex items-start gap-3 sm:gap-5 pt-4 pb-2 min-w-min">
-                {/* Horizontal timeline line — centered on node (node is 40px, mb-3=12px, center at 20px + 16px padding = 36px) */}
-                <div className="absolute left-0 right-0 top-[36px] h-[3px] rounded-full bg-gradient-to-r from-primary/20 via-border to-primary/10" />
+                {/* Horizontal timeline line */}
+                <div className="absolute left-0 right-0 top-[36px] h-[3px] rounded-full bg-gradient-to-r from-primary/30 via-primary/15 to-primary/5" />
 
                 {/* Start cap */}
-                <div className="absolute left-0 top-[32px] h-[11px] w-[11px] rounded-full bg-primary/30 border-2 border-primary/50" />
+                <div className="absolute left-0 top-[32px] h-[11px] w-[11px] rounded-full bg-primary/40 border-2 border-primary/60 shadow-sm" />
 
                 {/* Arrow end */}
                 <div className="absolute right-0 top-[33px]">
