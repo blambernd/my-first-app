@@ -53,40 +53,40 @@ export const ebayKleinanzeigenAdapter: PlatformAdapter = {
     const apiKey = process.env.SERPAPI_API_KEY;
     if (!apiKey) return [];
 
-    try {
-      const result = await getJson({
-        engine: "ebay",
-        _nonce: "ebay_de",
-        ebay_domain: "ebay.de",
-        q: buildSearchQuery(params),
-        api_key: apiKey,
-      });
+    const result = await getJson({
+      engine: "ebay",
+      _nonce: "ebay_de",
+      ebay_domain: "ebay.de",
+      q: buildSearchQuery(params),
+      api_key: apiKey,
+    });
 
-      const organicResults = result.organic_results || [];
-
-      let items: SearchResultItem[] = organicResults.map(
-        (item: Record<string, unknown>) => ({
-          title: String(item.title || ""),
-          price: (item.price as Record<string, unknown> | undefined)?.extracted
-            ? Number((item.price as Record<string, unknown>).extracted)
-            : null,
-          currency: "EUR",
-          condition: mapCondition(String(item.condition || "")),
-          url: String(item.link || ""),
-          imageUrl: item.thumbnail ? String(item.thumbnail) : null,
-          seller: (item.seller_info as Record<string, unknown> | undefined)?.name
-            ? String((item.seller_info as Record<string, unknown>).name)
-            : null,
-        })
-      );
-
-      items = filterByCondition(items, params.condition);
-      items = filterByPrice(items, params.minPrice, params.maxPrice);
-
-      return items.slice(0, 20);
-    } catch {
-      return [];
+    if (result.error) {
+      throw new Error(`SerpAPI eBay: ${result.error}`);
     }
+
+    const organicResults = result.organic_results || [];
+
+    let items: SearchResultItem[] = organicResults.map(
+      (item: Record<string, unknown>) => ({
+        title: String(item.title || ""),
+        price: (item.price as Record<string, unknown> | undefined)?.extracted
+          ? Number((item.price as Record<string, unknown>).extracted)
+          : null,
+        currency: "EUR",
+        condition: mapCondition(String(item.condition || "")),
+        url: String(item.link || ""),
+        imageUrl: item.thumbnail ? String(item.thumbnail) : null,
+        seller: (item.seller_info as Record<string, unknown> | undefined)?.name
+          ? String((item.seller_info as Record<string, unknown>).name)
+          : null,
+      })
+    );
+
+    items = filterByCondition(items, params.condition);
+    items = filterByPrice(items, params.minPrice, params.maxPrice);
+
+    return items.slice(0, 20);
   },
 };
 
@@ -106,39 +106,39 @@ function createGoogleShoppingAdapter(
       const apiKey = process.env.SERPAPI_API_KEY;
       if (!apiKey) return [];
 
-      try {
-        const siteFilter = siteDomain ? ` site:${siteDomain}` : "";
-        const result = await getJson({
-          engine: "google_shopping",
-          q: buildSearchQuery(params) + siteFilter,
-          gl: "de",
-          hl: "de",
-          api_key: apiKey,
-        });
+      const siteFilter = siteDomain ? ` site:${siteDomain}` : "";
+      const result = await getJson({
+        engine: "google_shopping",
+        q: buildSearchQuery(params) + siteFilter,
+        gl: "de",
+        hl: "de",
+        api_key: apiKey,
+      });
 
-        const shoppingResults = result.shopping_results || [];
-
-        let items: SearchResultItem[] = shoppingResults.map(
-          (item: Record<string, unknown>) => ({
-            title: String(item.title || ""),
-            price: item.extracted_price
-              ? Number(item.extracted_price)
-              : null,
-            currency: "EUR",
-            condition: mapCondition(String(item.second_hand_condition || "")),
-            url: String(item.link || ""),
-            imageUrl: item.thumbnail ? String(item.thumbnail) : null,
-            seller: item.source ? String(item.source) : null,
-          })
-        );
-
-        items = filterByCondition(items, params.condition);
-        items = filterByPrice(items, params.minPrice, params.maxPrice);
-
-        return items.slice(0, 20);
-      } catch {
-        return [];
+      if (result.error) {
+        throw new Error(`SerpAPI Google Shopping: ${result.error}`);
       }
+
+      const shoppingResults = result.shopping_results || [];
+
+      let items: SearchResultItem[] = shoppingResults.map(
+        (item: Record<string, unknown>) => ({
+          title: String(item.title || ""),
+          price: item.extracted_price
+            ? Number(item.extracted_price)
+            : null,
+          currency: "EUR",
+          condition: mapCondition(String(item.second_hand_condition || "")),
+          url: String(item.link || ""),
+          imageUrl: item.thumbnail ? String(item.thumbnail) : null,
+          seller: item.source ? String(item.source) : null,
+        })
+      );
+
+      items = filterByCondition(items, params.condition);
+      items = filterByPrice(items, params.minPrice, params.maxPrice);
+
+      return items.slice(0, 20);
     },
   };
 }
