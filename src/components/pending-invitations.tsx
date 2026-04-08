@@ -12,6 +12,8 @@ import {
   XCircle,
   Ban,
   Loader2,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -40,6 +42,8 @@ export function PendingInvitations({
   const [revokingId, setRevokingId] = useState<string | null>(null);
   const [resendingId, setResendingId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [historyPage, setHistoryPage] = useState(0);
+  const HISTORY_PAGE_SIZE = 3;
 
   const openInvitations = invitations.filter((inv) => inv.status === "offen");
   const pastInvitations = invitations.filter((inv) => inv.status !== "offen");
@@ -206,48 +210,80 @@ export function PendingInvitations({
       )}
 
       {/* Past invitations */}
-      {pastInvitations.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Einladungs-Verlauf</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="divide-y">
-              {pastInvitations.map((inv) => {
-                const config =
-                  PAST_STATUS_CONFIG[
-                    inv.status as keyof typeof PAST_STATUS_CONFIG
-                  ];
-                const Icon = config?.icon ?? Ban;
-                return (
-                  <div
-                    key={inv.id}
-                    className="py-3 flex items-center justify-between gap-4"
+      {pastInvitations.length > 0 && (() => {
+        const totalPages = Math.ceil(pastInvitations.length / HISTORY_PAGE_SIZE);
+        const pagedInvitations = pastInvitations.slice(
+          historyPage * HISTORY_PAGE_SIZE,
+          (historyPage + 1) * HISTORY_PAGE_SIZE
+        );
+        return (
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0">
+              <CardTitle className="text-base">Einladungs-Verlauf</CardTitle>
+              {totalPages > 1 && (
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    disabled={historyPage === 0}
+                    onClick={() => setHistoryPage((p) => p - 1)}
                   >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <Icon
-                        className={`h-4 w-4 shrink-0 ${config?.color ?? "text-muted-foreground"}`}
-                      />
-                      <div className="min-w-0">
-                        <p className="text-sm truncate">{inv.email}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {new Date(inv.created_at).toLocaleDateString("de-DE")}{" "}
-                          · {ROLE_LABELS[inv.role]}
-                        </p>
-                      </div>
-                    </div>
-                    <Badge
-                      className={`${config?.badge ?? "bg-gray-100 text-gray-800"} border-0 text-xs shrink-0`}
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="text-xs text-muted-foreground min-w-[3ch] text-center">
+                    {historyPage + 1}/{totalPages}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    disabled={historyPage >= totalPages - 1}
+                    onClick={() => setHistoryPage((p) => p + 1)}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+            </CardHeader>
+            <CardContent>
+              <div className="divide-y">
+                {pagedInvitations.map((inv) => {
+                  const config =
+                    PAST_STATUS_CONFIG[
+                      inv.status as keyof typeof PAST_STATUS_CONFIG
+                    ];
+                  const Icon = config?.icon ?? Ban;
+                  return (
+                    <div
+                      key={inv.id}
+                      className="py-3 flex items-center justify-between gap-4"
                     >
-                      {config?.label ?? inv.status}
-                    </Badge>
-                  </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+                      <div className="flex items-center gap-3 min-w-0">
+                        <Icon
+                          className={`h-4 w-4 shrink-0 ${config?.color ?? "text-muted-foreground"}`}
+                        />
+                        <div className="min-w-0">
+                          <p className="text-sm truncate">{inv.email}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {new Date(inv.created_at).toLocaleDateString("de-DE")}{" "}
+                            · {ROLE_LABELS[inv.role]}
+                          </p>
+                        </div>
+                      </div>
+                      <Badge
+                        className={`${config?.badge ?? "bg-gray-100 text-gray-800"} border-0 text-xs shrink-0`}
+                      >
+                        {config?.label ?? inv.status}
+                      </Badge>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })()}
     </div>
   );
 }
