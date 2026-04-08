@@ -6,6 +6,7 @@ import { AccountHeader } from "@/components/account-header";
 import { DeleteVehicleButton } from "@/components/delete-vehicle-button";
 import { LeaveVehicleButton } from "@/components/leave-vehicle-button";
 import { VehicleProfileNav } from "@/components/vehicle-profile-nav";
+import { ProfileStatusToggle } from "@/components/profile-status-toggle";
 import { Pencil, Shield, ArrowRightLeft } from "lucide-react";
 import { Toaster } from "@/components/ui/sonner";
 import type { VehicleWithImages } from "@/lib/validations/vehicle";
@@ -79,6 +80,7 @@ export default async function VehicleLayout({
             </h1>
             {isOwner ? (
               <div className="flex items-center gap-1 flex-wrap">
+                <ProfileStatusToggle vehicleId={id} />
                 <Button
                   variant="ghost"
                   size="sm"

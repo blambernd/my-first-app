@@ -3,9 +3,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 import {
-  Copy,
-  Check,
-  ExternalLink,
   Loader2,
   Share2,
   Eye,
@@ -14,7 +11,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
-import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -43,7 +39,6 @@ export function ProfileConfigurator({
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [creating, setCreating] = useState(false);
-  const [copied, setCopied] = useState(false);
 
   const [sections, setSections] = useState<ProfileSections>({
     stammdaten: true,
@@ -126,37 +121,6 @@ export function ProfileConfigurator({
     }
   };
 
-  const handleToggleActive = async () => {
-    if (!profile) return;
-    setSaving(true);
-    try {
-      const res = await fetch(`/api/vehicles/${vehicleId}/profile`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ is_active: !profile.is_active }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      setProfile(data.profile);
-      toast.success(
-        data.profile.is_active ? "Profil aktiviert" : "Profil deaktiviert"
-      );
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Fehler");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleCopyLink = () => {
-    if (!profile) return;
-    const url = `${window.location.origin}/profil/${profile.token}`;
-    navigator.clipboard.writeText(url);
-    setCopied(true);
-    toast.success("Link kopiert");
-    setTimeout(() => setCopied(false), 2000);
-  };
-
   const toggleItem = (
     list: string[],
     setList: (v: string[]) => void,
@@ -209,58 +173,8 @@ export function ProfileConfigurator({
     );
   }
 
-  const profileUrl = `${typeof window !== "undefined" ? window.location.origin : ""}/profil/${profile.token}`;
-
   return (
     <div className="space-y-6">
-      {/* Status & Link */}
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base">Profil-Status</CardTitle>
-            <div className="flex items-center gap-3">
-              <Badge variant={profile.is_active ? "default" : "secondary"}>
-                {profile.is_active ? "Aktiv" : "Inaktiv"}
-              </Badge>
-              <Switch
-                checked={profile.is_active}
-                onCheckedChange={handleToggleActive}
-                disabled={saving}
-              />
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center gap-2">
-            <code className="flex-1 text-sm bg-muted px-3 py-2 rounded-md truncate">
-              {profileUrl}
-            </code>
-            <Button variant="outline" size="sm" onClick={handleCopyLink}>
-              {copied ? (
-                <Check className="h-4 w-4" />
-              ) : (
-                <Copy className="h-4 w-4" />
-              )}
-            </Button>
-            <Button variant="outline" size="sm" asChild>
-              <a
-                href={`/profil/${profile.token}`}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <ExternalLink className="h-4 w-4" />
-              </a>
-            </Button>
-          </div>
-          {!profile.is_active && (
-            <p className="text-xs text-muted-foreground mt-2">
-              Das Profil ist deaktiviert. Der Link zeigt eine
-              &quot;Nicht verfügbar&quot;-Meldung.
-            </p>
-          )}
-        </CardContent>
-      </Card>
-
       {/* Section toggles */}
       <Card>
         <CardHeader>
