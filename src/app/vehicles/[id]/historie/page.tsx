@@ -21,6 +21,7 @@ export default async function HistoriePage({ params }: HistoriePageProps) {
 
   // Verify vehicle ownership or membership and determine role
   let canEdit = true;
+  let canEditAll = true;
   const { data: ownedVehicle } = await supabase
     .from("vehicles")
     .select("id")
@@ -31,7 +32,7 @@ export default async function HistoriePage({ params }: HistoriePageProps) {
   if (!ownedVehicle) {
     const { data: membership } = await supabase
       .from("vehicle_members")
-      .select("vehicle_id, role")
+      .select("vehicle_id, role, can_edit_all")
       .eq("vehicle_id", id)
       .eq("user_id", user.id)
       .single();
@@ -40,6 +41,7 @@ export default async function HistoriePage({ params }: HistoriePageProps) {
       notFound();
     }
     canEdit = membership.role !== "betrachter";
+    canEditAll = membership.role === "besitzer" || (membership.role === "werkstatt" && membership.can_edit_all);
   }
 
   const { data: vehicleMilestones } = await supabase
@@ -58,6 +60,8 @@ export default async function HistoriePage({ params }: HistoriePageProps) {
         (vehicleMilestones ?? []) as VehicleMilestoneWithImages[]
       }
       canEdit={canEdit}
+      canEditAll={canEditAll}
+      userId={user.id}
     />
   );
 }

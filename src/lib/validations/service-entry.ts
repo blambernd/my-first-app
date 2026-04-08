@@ -70,6 +70,7 @@ export interface ServiceEntry {
   workshop_name: string | null;
   notes: string | null;
   next_due_date: string | null;
+  created_by: string | null;
   created_at: string;
   updated_at: string;
 }

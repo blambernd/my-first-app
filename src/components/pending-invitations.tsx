@@ -133,6 +133,11 @@ export function PendingInvitations({
                               className="text-xs font-normal"
                             >
                               {ROLE_LABELS[invitation.role]}
+                              {invitation.role === "werkstatt" && (
+                                <span className="ml-1 text-muted-foreground">
+                                  ({invitation.can_edit_all ? "alle bearbeiten" : "nur eigene"})
+                                </span>
+                              )}
                             </Badge>
                             <span className="flex items-center gap-1">
                               <Clock className="h-3 w-3" />

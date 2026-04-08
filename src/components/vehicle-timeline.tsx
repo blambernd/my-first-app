@@ -71,6 +71,8 @@ interface VehicleTimelineProps {
   supabaseUrl: string;
   initialMilestones: VehicleMilestoneWithImages[];
   canEdit?: boolean;
+  canEditAll?: boolean;
+  userId?: string;
 }
 
 function getImageUrl(storagePath: string, supabaseUrl: string): string {
@@ -248,6 +250,8 @@ export function VehicleTimeline({
   supabaseUrl,
   initialMilestones,
   canEdit = true,
+  canEditAll = true,
+  userId,
 }: VehicleTimelineProps) {
   const router = useRouter();
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -588,7 +592,7 @@ export function VehicleTimeline({
             <MilestoneDetail
               milestone={selectedMilestone}
               supabaseUrl={supabaseUrl}
-              canEdit={canEdit}
+              canEdit={canEdit && (canEditAll || selectedMilestone.created_by === userId)}
               onEdit={() => handleEditMilestone(selectedMilestone)}
               onDelete={() => handleDeleteMilestone(selectedMilestone.id)}
             />

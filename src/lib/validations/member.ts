@@ -21,6 +21,7 @@ export const inviteMemberSchema = z.object({
     .min(1, "E-Mail ist erforderlich")
     .email("Ungültige E-Mail-Adresse"),
   role: z.enum(INVITE_ROLES, { message: "Rolle ist erforderlich" }),
+  can_edit_all: z.boolean().optional(),
 });
 
 export type InviteMemberFormData = z.infer<typeof inviteMemberSchema>;
@@ -30,6 +31,7 @@ export interface VehicleMember {
   vehicle_id: string;
   user_id: string;
   role: MemberRole;
+  can_edit_all: boolean;
   joined_at: string;
   user_email?: string;
 }
@@ -40,6 +42,7 @@ export interface VehicleInvitation {
   email: string;
   token: string;
   role: InviteRole;
+  can_edit_all: boolean;
   invited_by: string;
   expires_at: string;
   status: InvitationStatus;

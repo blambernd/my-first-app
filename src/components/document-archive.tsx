@@ -61,6 +61,8 @@ interface DocumentArchiveProps {
   serviceEntries: ServiceEntry[];
   supabaseUrl: string;
   canEdit?: boolean;
+  canEditAll?: boolean;
+  userId?: string;
 }
 
 function DocumentCard({
@@ -206,6 +208,8 @@ export function DocumentArchive({
   serviceEntries,
   supabaseUrl,
   canEdit = true,
+  canEditAll = true,
+  userId,
 }: DocumentArchiveProps) {
   const router = useRouter();
   const [documents, setDocuments] = useState<VehicleDocument[]>(initialDocuments);
@@ -336,16 +340,19 @@ export function DocumentArchive({
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-          {filteredDocuments.map((doc) => (
-            <DocumentCard
-              key={doc.id}
-              document={doc}
-              supabaseUrl={supabaseUrl}
-              canEdit={canEdit}
-              onDelete={() => handleDelete(doc)}
-              onDownload={() => handleDownload(doc)}
-            />
-          ))}
+          {filteredDocuments.map((doc) => {
+            const canEditThis = canEdit && (canEditAll || doc.created_by === userId);
+            return (
+              <DocumentCard
+                key={doc.id}
+                document={doc}
+                supabaseUrl={supabaseUrl}
+                canEdit={canEditThis}
+                onDelete={() => handleDelete(doc)}
+                onDownload={() => handleDownload(doc)}
+              />
+            );
+          })}
         </div>
       )}
 

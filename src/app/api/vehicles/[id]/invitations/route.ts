@@ -52,7 +52,7 @@ export async function POST(
       );
     }
 
-    const { email, role } = parsed.data;
+    const { email, role, can_edit_all } = parsed.data;
     const normalizedEmail = email.toLowerCase().trim();
 
     // Generate token and expiry
@@ -68,6 +68,7 @@ export async function POST(
         email: normalizedEmail,
         token,
         role,
+        can_edit_all: role === "werkstatt" ? can_edit_all : false,
         invited_by: user.id,
         expires_at: expiresAt.toISOString(),
         status: "offen",

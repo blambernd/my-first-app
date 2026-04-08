@@ -63,6 +63,8 @@ interface ServiceLogProps {
   vehicleId: string;
   initialEntries: ServiceEntry[];
   canEdit?: boolean;
+  canEditAll?: boolean;
+  userId?: string;
 }
 
 const DUE_STATUS_STYLES = {
@@ -261,7 +263,7 @@ function ServiceEntryCard({
   );
 }
 
-export function ServiceLog({ vehicleId, initialEntries, canEdit = true }: ServiceLogProps) {
+export function ServiceLog({ vehicleId, initialEntries, canEdit = true, canEditAll = true, userId }: ServiceLogProps) {
   const router = useRouter();
   const [entries, setEntries] = useState<ServiceEntry[]>(initialEntries);
   const [filterType, setFilterType] = useState<string>("all");
@@ -350,15 +352,18 @@ export function ServiceLog({ vehicleId, initialEntries, canEdit = true }: Servic
         </div>
       ) : (
         <div className="divide-y">
-          {filteredEntries.map((entry) => (
-            <ServiceEntryCard
-              key={entry.id}
-              entry={entry}
-              canEdit={canEdit}
-              onEdit={() => handleEdit(entry)}
-              onDelete={() => handleDelete(entry.id)}
-            />
-          ))}
+          {filteredEntries.map((entry) => {
+            const canEditThis = canEdit && (canEditAll || entry.created_by === userId);
+            return (
+              <ServiceEntryCard
+                key={entry.id}
+                entry={entry}
+                canEdit={canEditThis}
+                onEdit={() => handleEdit(entry)}
+                onDelete={() => handleDelete(entry.id)}
+              />
+            );
+          })}
         </div>
       )}
 
