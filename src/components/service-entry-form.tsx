@@ -150,6 +150,7 @@ export function ServiceEntryForm({
   }, [watchMileage, lastMileage, watchOdometerCorrection]);
 
   async function onSubmit(data: ServiceEntryFormData) {
+    if (isSubmitting) return;
     if (showOdometerWarning && !data.is_odometer_correction) {
       toast.error("Bitte bestätige die Tacho-Korrektur oder korrigiere den Kilometerstand.");
       return;
@@ -243,7 +244,7 @@ export function ServiceEntryForm({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(v) => { if (!isSubmitting) onOpenChange(v); }}>
       <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>

@@ -220,6 +220,7 @@ export function MilestoneForm({
   };
 
   async function onSubmit(data: MilestoneFormData) {
+    if (isSubmitting) return;
     setIsSubmitting(true);
     try {
       const supabase = createClient();
@@ -354,7 +355,7 @@ export function MilestoneForm({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(v) => { if (!isSubmitting) onOpenChange(v); }}>
       <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
