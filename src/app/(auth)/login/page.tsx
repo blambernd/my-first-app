@@ -67,7 +67,8 @@ function LoginForm() {
         setMessage({ type: "error", text: "Ungültige Anmeldedaten" });
         return;
       }
-      window.location.href = "/dashboard";
+      const redirectTo = searchParams.get("redirect") || "/dashboard";
+      window.location.href = redirectTo;
     } catch {
       setMessage({ type: "error", text: "Ein Fehler ist aufgetreten" });
     } finally {
@@ -83,7 +84,7 @@ function LoginForm() {
       const { error } = await supabase.auth.signInWithOtp({
         email: data.email,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/confirm`,
+          emailRedirectTo: `${window.location.origin}/auth/confirm${searchParams.get("redirect") ? `?redirect=${encodeURIComponent(searchParams.get("redirect")!)}` : ""}`,
         },
       });
       if (error) {

@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { createClient } from "@/lib/supabase";
@@ -18,7 +19,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
-export default function RegisterPage() {
+function RegisterForm() {
+  const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{
     type: "success" | "error";
@@ -39,7 +41,7 @@ export default function RegisterPage() {
         email: data.email,
         password: data.password,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/confirm`,
+          emailRedirectTo: `${window.location.origin}/auth/confirm${searchParams.get("redirect") ? `?redirect=${encodeURIComponent(searchParams.get("redirect")!)}` : ""}`,
         },
       });
       if (error) {
@@ -143,5 +145,13 @@ export default function RegisterPage() {
         </p>
       </CardFooter>
     </Card>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense>
+      <RegisterForm />
+    </Suspense>
   );
 }
