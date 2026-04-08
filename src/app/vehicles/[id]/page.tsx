@@ -69,6 +69,7 @@ export default async function VehicleDetailPage({
       value: `${typedVehicle.year}${typedVehicle.year_estimated ? " (geschätzt)" : ""}`,
     },
     { label: "FIN", value: typedVehicle.vin },
+    { label: "Werksbezeichnung", value: typedVehicle.factory_code },
     { label: "Kennzeichen", value: typedVehicle.license_plate },
     { label: "Farbe", value: typedVehicle.color },
     { label: "Motortyp", value: typedVehicle.engine_type },

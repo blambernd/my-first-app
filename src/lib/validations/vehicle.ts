@@ -2,6 +2,87 @@ import { z } from "zod";
 
 const currentYear = new Date().getFullYear();
 
+export const VEHICLE_MAKES = [
+  "Alfa Romeo",
+  "Aston Martin",
+  "Audi",
+  "Austin",
+  "Austin-Healey",
+  "Bentley",
+  "BMW",
+  "Borgward",
+  "Bugatti",
+  "Buick",
+  "Cadillac",
+  "Chevrolet",
+  "Chrysler",
+  "Citroën",
+  "Daimler",
+  "Datsun",
+  "De Tomaso",
+  "DKW",
+  "Dodge",
+  "Facel Vega",
+  "Ferrari",
+  "Fiat",
+  "Ford",
+  "Goggomobil",
+  "Hanomag",
+  "Heinkel",
+  "Horch",
+  "Hudson",
+  "Iso",
+  "Jaguar",
+  "Jensen",
+  "Lada",
+  "Lamborghini",
+  "Lancia",
+  "Land Rover",
+  "Lincoln",
+  "Lloyd",
+  "Lotus",
+  "Maserati",
+  "Maybach",
+  "Mazda",
+  "McLaren",
+  "Mercedes-Benz",
+  "Messerschmitt",
+  "MG",
+  "Mini",
+  "Morgan",
+  "Morris",
+  "NSU",
+  "Oldsmobile",
+  "Opel",
+  "Packard",
+  "Panhard",
+  "Peugeot",
+  "Plymouth",
+  "Pontiac",
+  "Porsche",
+  "Renault",
+  "Riley",
+  "Rolls-Royce",
+  "Rover",
+  "Saab",
+  "Simca",
+  "Singer",
+  "Škoda",
+  "Studebaker",
+  "Sunbeam",
+  "Tatra",
+  "Toyota",
+  "Trabant",
+  "Triumph",
+  "TVR",
+  "Volkswagen",
+  "Volvo",
+  "Wanderer",
+  "Wartburg",
+  "Wolseley",
+  "Sonstige",
+] as const;
+
 export const vehicleSchema = z.object({
   make: z
     .string()
@@ -26,6 +107,11 @@ export const vehicleSchema = z.object({
   license_plate: z
     .string()
     .max(15, "Kennzeichen darf maximal 15 Zeichen lang sein")
+    .optional()
+    .or(z.literal("")),
+  factory_code: z
+    .string()
+    .max(50, "Werksbezeichnung darf maximal 50 Zeichen lang sein")
     .optional()
     .or(z.literal("")),
   color: z
@@ -53,6 +139,7 @@ export interface VehicleFormData {
   year_estimated: boolean;
   vin?: string;
   license_plate?: string;
+  factory_code?: string;
   color?: string;
   engine_type?: string;
   displacement_ccm?: number;
@@ -69,6 +156,7 @@ export interface Vehicle {
   year_estimated: boolean;
   vin: string | null;
   license_plate: string | null;
+  factory_code: string | null;
   color: string | null;
   engine_type: string | null;
   displacement_ccm: number | null;

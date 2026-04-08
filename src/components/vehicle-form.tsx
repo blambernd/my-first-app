@@ -6,10 +6,24 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useDropzone } from "react-dropzone";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Loader2, Upload, FileText, X } from "lucide-react";
+import { Loader2, Upload, FileText, X, ChevronsUpDown, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { cn } from "@/lib/utils";
 import {
   Form,
   FormControl,
@@ -23,6 +37,7 @@ import { ImageUpload, type ImageFile } from "@/components/image-upload";
 import { createClient } from "@/lib/supabase";
 import {
   vehicleSchema,
+  VEHICLE_MAKES,
   type VehicleFormData,
   type Vehicle,
   type VehicleImage,
@@ -37,6 +52,7 @@ interface VehicleFormProps {
 export function VehicleForm({ vehicle, vehicleImages = [], mode }: VehicleFormProps) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [makeOpen, setMakeOpen] = useState(false);
   const [newImages, setNewImages] = useState<ImageFile[]>([]);
   const [datenkarte, setDatekarte] = useState<File | null>(null);
   const [datenkartePreview, setDatenkartePreview] = useState<string | null>(null);
@@ -98,6 +114,7 @@ export function VehicleForm({ vehicle, vehicleImages = [], mode }: VehicleFormPr
       year_estimated: vehicle?.year_estimated ?? false,
       vin: vehicle?.vin ?? "",
       license_plate: vehicle?.license_plate ?? "",
+      factory_code: vehicle?.factory_code ?? "",
       color: vehicle?.color ?? "",
       engine_type: vehicle?.engine_type ?? "",
       displacement_ccm: vehicle?.displacement_ccm ?? undefined,
@@ -144,6 +161,7 @@ export function VehicleForm({ vehicle, vehicleImages = [], mode }: VehicleFormPr
         year_estimated: data.year_estimated,
         vin: data.vin || null,
         license_plate: data.license_plate || null,
+        factory_code: data.factory_code || null,
         color: data.color || null,
         engine_type: data.engine_type || null,
         displacement_ccm: data.displacement_ccm || null,
@@ -292,11 +310,54 @@ export function VehicleForm({ vehicle, vehicleImages = [], mode }: VehicleFormPr
               control={form.control}
               name="make"
               render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Marke *</FormLabel>
-                  <FormControl>
-                    <Input placeholder="z.B. Mercedes-Benz" {...field} />
-                  </FormControl>
+                <FormItem className="flex flex-col">
+                  <FormLabel>Hersteller *</FormLabel>
+                  <Popover open={makeOpen} onOpenChange={setMakeOpen}>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          aria-expanded={makeOpen}
+                          className={cn(
+                            "w-full justify-between font-normal",
+                            !field.value && "text-muted-foreground"
+                          )}
+                        >
+                          {field.value || "Hersteller wählen"}
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                      <Command>
+                        <CommandInput placeholder="Hersteller suchen..." />
+                        <CommandList>
+                          <CommandEmpty>Kein Hersteller gefunden.</CommandEmpty>
+                          <CommandGroup>
+                            {VEHICLE_MAKES.map((make) => (
+                              <CommandItem
+                                key={make}
+                                value={make}
+                                onSelect={() => {
+                                  field.onChange(make);
+                                  setMakeOpen(false);
+                                }}
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    field.value === make ? "opacity-100" : "opacity-0"
+                                  )}
+                                />
+                                {make}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
                   <FormMessage />
                 </FormItem>
               )}
@@ -309,6 +370,21 @@ export function VehicleForm({ vehicle, vehicleImages = [], mode }: VehicleFormPr
                   <FormLabel>Modell *</FormLabel>
                   <FormControl>
                     <Input placeholder="z.B. 300 SL" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="factory_code"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Werksbezeichnung</FormLabel>
+                  <FormControl>
+                    <Input placeholder="z.B. W123, E30, 911 G-Modell" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
