@@ -38,13 +38,10 @@ export default async function MitgliederPage({ params }: MitgliederPageProps) {
     .order("joined_at", { ascending: true })
     .limit(50);
 
-  // Fetch all invitations (open + past)
-  const { data: invitations } = await supabase
-    .from("vehicle_invitations")
-    .select("*")
-    .eq("vehicle_id", id)
-    .order("created_at", { ascending: false })
-    .limit(50);
+  // Fetch all invitations via RPC (bypasses RLS)
+  const { data: invitations } = await supabase.rpc("get_vehicle_invitations", {
+    p_vehicle_id: id,
+  });
 
   const vehicleName = `${vehicle.make} ${vehicle.model} (${vehicle.year})`;
 
