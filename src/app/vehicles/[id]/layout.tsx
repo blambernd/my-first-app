@@ -2,11 +2,10 @@ import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase-server";
 import { Button } from "@/components/ui/button";
-import { BrandLogoWithText } from "@/components/brand-logo";
+import { AccountHeader } from "@/components/account-header";
 import { DeleteVehicleButton } from "@/components/delete-vehicle-button";
 import { LeaveVehicleButton } from "@/components/leave-vehicle-button";
 import { VehicleProfileNav } from "@/components/vehicle-profile-nav";
-import { NotificationBell } from "@/components/notification-bell";
 import { Pencil, Shield, ArrowRightLeft } from "lucide-react";
 import { Toaster } from "@/components/ui/sonner";
 import type { VehicleWithImages } from "@/lib/validations/vehicle";
@@ -66,79 +65,64 @@ export default async function VehicleLayout({
 
   return (
     <div className="bg-background">
-      {/* Header */}
-      <header className="border-b border-border/40">
-        <div className="container mx-auto flex h-14 items-center justify-between px-6 lg:px-8">
-          <Link
-            href="/dashboard"
-            className="hover:opacity-80 transition-opacity"
-          >
-            <BrandLogoWithText />
-          </Link>
-          <div className="flex items-center gap-2">
-            <NotificationBell />
-          {isOwner ? (
-            <div className="flex gap-3">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-muted-foreground hover:text-foreground"
-                asChild
-              >
-                <Link href={`/vehicles/${id}/transfer`}>
-                  <ArrowRightLeft className="h-3.5 w-3.5 mr-1.5" />
-                  Transfer
-                </Link>
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-muted-foreground hover:text-foreground"
-                asChild
-              >
-                <Link href={`/vehicles/${id}/mitglieder`}>
-                  <Shield className="h-3.5 w-3.5 mr-1.5" />
-                  Freigabe
-                </Link>
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-muted-foreground hover:text-foreground"
-                asChild
-              >
-                <Link href={`/vehicles/${id}/edit`}>
-                  <Pencil className="h-3.5 w-3.5 mr-1.5" />
-                  Bearbeiten
-                </Link>
-              </Button>
-              <DeleteVehicleButton
-                vehicleId={id}
-                vehicleName={`${typedVehicle.make} ${typedVehicle.model}`}
-              />
-            </div>
-          ) : (
-            <LeaveVehicleButton
-              vehicleId={id}
-              vehicleName={`${typedVehicle.make} ${typedVehicle.model}`}
-            />
-          )}
-          </div>
-        </div>
-      </header>
+      <AccountHeader email={user.email || ""} />
 
-      {/* Compact vehicle identity + nav */}
+      {/* Vehicle identity + actions + nav */}
       <div className="border-b border-border/30">
         <div className="container mx-auto px-6 lg:px-8 max-w-5xl">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pt-5 pb-1">
-            <div>
-              <h1 className="text-xl font-medium tracking-tight">
-                {typedVehicle.make} {typedVehicle.model}
-                <span className="text-muted-foreground font-light ml-2">
-                  {typedVehicle.year}
-                </span>
-              </h1>
-            </div>
+            <h1 className="text-xl font-medium tracking-tight">
+              {typedVehicle.make} {typedVehicle.model}
+              <span className="text-muted-foreground font-light ml-2">
+                {typedVehicle.year}
+              </span>
+            </h1>
+            {isOwner ? (
+              <div className="flex items-center gap-1 flex-wrap">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-muted-foreground hover:text-foreground h-8 text-xs"
+                  asChild
+                >
+                  <Link href={`/vehicles/${id}/transfer`}>
+                    <ArrowRightLeft className="h-3.5 w-3.5 mr-1" />
+                    Transfer
+                  </Link>
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-muted-foreground hover:text-foreground h-8 text-xs"
+                  asChild
+                >
+                  <Link href={`/vehicles/${id}/mitglieder`}>
+                    <Shield className="h-3.5 w-3.5 mr-1" />
+                    Freigabe
+                  </Link>
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-muted-foreground hover:text-foreground h-8 text-xs"
+                  asChild
+                >
+                  <Link href={`/vehicles/${id}/edit`}>
+                    <Pencil className="h-3.5 w-3.5 mr-1" />
+                    Bearbeiten
+                  </Link>
+                </Button>
+                <DeleteVehicleButton
+                  vehicleId={id}
+                  vehicleName={`${typedVehicle.make} ${typedVehicle.model}`}
+                />
+              </div>
+            ) : (
+              <LeaveVehicleButton
+                vehicleId={id}
+                vehicleName={`${typedVehicle.make} ${typedVehicle.model}`}
+              />
+            )}
           </div>
           <VehicleProfileNav vehicleId={id} isOwner={isOwner} />
         </div>

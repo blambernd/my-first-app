@@ -3,16 +3,8 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase-server";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { LogoutButton } from "@/components/logout-button";
-import { DeleteAccountButton } from "@/components/delete-account-button";
+import { AccountHeader } from "@/components/account-header";
 import { VehicleCard, AddVehicleCard } from "@/components/vehicle-card";
-import { BrandLogoWithText } from "@/components/brand-logo";
 import { Car } from "lucide-react";
 import type { VehicleWithImages } from "@/lib/validations/vehicle";
 import { ROLE_LABELS, type MemberRole } from "@/lib/validations/member";
@@ -53,24 +45,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="bg-muted/40">
-      <header className="border-b bg-background">
-        <div className="container mx-auto flex h-16 items-center justify-between px-4">
-          <BrandLogoWithText />
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="text-sm">
-                {user.email}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem asChild>
-                <LogoutButton />
-              </DropdownMenuItem>
-              <DeleteAccountButton />
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </header>
+      <AccountHeader email={user.email || ""} />
 
       <main className="container mx-auto px-4 py-8">
         <div className="flex items-center justify-between mb-6">
