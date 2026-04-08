@@ -7,7 +7,7 @@ import { useDropzone } from "react-dropzone";
 import { toast } from "sonner";
 import { format, parse } from "date-fns";
 import { de } from "date-fns/locale";
-import { Loader2, CalendarIcon, Upload, X, ImageIcon } from "lucide-react";
+import { Loader2, CalendarIcon, Upload, X, ImageIcon, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -50,6 +50,8 @@ import {
 
 const MAX_PHOTO_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
 const MAX_PHOTOS = 10;
+const MAX_DOC_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
+const MAX_DOCS = 5;
 
 interface MilestoneFormProps {
   vehicleId: string;
@@ -67,6 +69,12 @@ interface PhotoItem {
   storagePath?: string; // existing photo
 }
 
+interface DocItem {
+  id: string;
+  file: File;
+  name: string;
+}
+
 function getImageUrl(storagePath: string, supabaseUrl: string): string {
   return `${supabaseUrl}/storage/v1/object/public/vehicle-images/${storagePath}`;
 }
@@ -81,6 +89,7 @@ export function MilestoneForm({
 }: MilestoneFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [photos, setPhotos] = useState<PhotoItem[]>([]);
+  const [docs, setDocs] = useState<DocItem[]>([]);
   const isEditing = !!milestone;
 
   const form = useForm<MilestoneFormData>({
@@ -117,6 +126,7 @@ export function MilestoneForm({
       } else {
         setPhotos([]);
       }
+      setDocs([]);
     }
   }, [open, milestone, form, supabaseUrl]);
 
@@ -164,6 +174,49 @@ export function MilestoneForm({
       }
       return prev.filter((p) => p.id !== photoId);
     });
+  };
+
+  const onDropDocs = useCallback(
+    (acceptedFiles: File[]) => {
+      const remaining = MAX_DOCS - docs.length;
+      const toAdd = acceptedFiles.slice(0, remaining);
+      const newDocs: DocItem[] = toAdd.map((file) => ({
+        id: crypto.randomUUID(),
+        file,
+        name: file.name,
+      }));
+      setDocs((prev) => [...prev, ...newDocs]);
+    },
+    [docs.length]
+  );
+
+  const {
+    getRootProps: getDocRootProps,
+    getInputProps: getDocInputProps,
+    isDragActive: isDocDragActive,
+  } = useDropzone({
+    onDrop: onDropDocs,
+    accept: {
+      "application/pdf": [".pdf"],
+      "image/jpeg": [".jpg", ".jpeg"],
+      "image/png": [".png"],
+      "image/webp": [".webp"],
+    },
+    maxSize: MAX_DOC_SIZE_BYTES,
+    multiple: true,
+    disabled: docs.length >= MAX_DOCS,
+    onDropRejected: (rejections) => {
+      const err = rejections[0]?.errors[0];
+      if (err?.code === "file-too-large") {
+        toast.error("Datei ist zu groß. Maximal 10 MB pro Dokument.");
+      } else if (err?.code === "file-invalid-type") {
+        toast.error("Nur PDF, JPG, PNG und WebP sind erlaubt.");
+      }
+    },
+  });
+
+  const removeDoc = (docId: string) => {
+    setDocs((prev) => prev.filter((d) => d.id !== docId));
   };
 
   async function onSubmit(data: MilestoneFormData) {
@@ -255,6 +308,36 @@ export function MilestoneForm({
             position: startPosition + i,
           });
         if (dbError) throw dbError;
+      }
+
+      // Upload documents (linked to milestone AND visible in document archive)
+      for (const doc of docs) {
+        const ext = doc.file.name.split(".").pop()?.toLowerCase() ?? "pdf";
+        const docId = crypto.randomUUID();
+        const docStoragePath = `${user.id}/${vehicleId}/documents/${docId}.${ext}`;
+
+        const { error: docUploadError } = await supabase.storage
+          .from("vehicle-documents")
+          .upload(docStoragePath, doc.file, {
+            contentType: doc.file.type,
+            upsert: false,
+          });
+        if (docUploadError) throw docUploadError;
+
+        const { error: docDbError } = await supabase
+          .from("vehicle_documents")
+          .insert({
+            vehicle_id: vehicleId,
+            title: doc.file.name.replace(/\.[^.]+$/, ""),
+            category: "sonstiges",
+            document_date: data.milestone_date,
+            storage_path: docStoragePath,
+            file_name: doc.file.name,
+            file_size: doc.file.size,
+            mime_type: doc.file.type,
+            milestone_id: milestoneId,
+          });
+        if (docDbError) throw docDbError;
       }
 
       toast.success(
@@ -450,6 +533,62 @@ export function MilestoneForm({
                     <p className="text-xs text-muted-foreground">
                       JPG, PNG oder WebP · Max. 5 MB pro Bild ·{" "}
                       {photos.length}/{MAX_PHOTOS}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Document upload */}
+            <div className="space-y-2">
+              <p className="text-sm font-medium">
+                Dokumente (optional, max. {MAX_DOCS})
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Dokumente erscheinen auch im Dokumenten-Archiv.
+              </p>
+
+              {docs.length > 0 && (
+                <div className="space-y-1.5">
+                  {docs.map((doc) => (
+                    <div
+                      key={doc.id}
+                      className="flex items-center gap-2 rounded-md border p-2"
+                    >
+                      <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <span className="text-sm truncate flex-1">{doc.name}</span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 shrink-0"
+                        onClick={() => removeDoc(doc.id)}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {docs.length < MAX_DOCS && (
+                <div
+                  {...getDocRootProps()}
+                  className={`border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors ${
+                    isDocDragActive
+                      ? "border-primary bg-primary/5"
+                      : "border-muted-foreground/25 hover:border-primary/50"
+                  }`}
+                >
+                  <input {...getDocInputProps()} />
+                  <div className="flex flex-col items-center gap-1">
+                    {isDocDragActive ? (
+                      <Upload className="h-6 w-6 text-primary" />
+                    ) : (
+                      <FileText className="h-6 w-6 text-muted-foreground" />
+                    )}
+                    <p className="text-xs text-muted-foreground">
+                      PDF, JPG, PNG oder WebP · Max. 10 MB · {docs.length}/{MAX_DOCS}
                     </p>
                   </div>
                 </div>

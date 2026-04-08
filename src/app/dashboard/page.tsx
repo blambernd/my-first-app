@@ -10,6 +10,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { LogoutButton } from "@/components/logout-button";
+import { DeleteAccountButton } from "@/components/delete-account-button";
 import { VehicleCard, AddVehicleCard } from "@/components/vehicle-card";
 import { BrandLogoWithText } from "@/components/brand-logo";
 import { Car } from "lucide-react";
@@ -64,6 +65,9 @@ export default async function DashboardPage() {
             <DropdownMenuContent align="end">
               <DropdownMenuItem asChild>
                 <LogoutButton />
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild onSelect={(e) => e.preventDefault()}>
+                <DeleteAccountButton />
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
