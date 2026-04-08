@@ -56,9 +56,19 @@ import {
   type VehicleMilestoneWithImages,
 } from "@/lib/validations/milestone";
 import {
+  DOCUMENT_CATEGORIES,
+  getCategoryLabel,
   formatFileSize,
   type VehicleDocument,
+  type DocumentCategory,
 } from "@/lib/validations/vehicle-document";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const CATEGORY_ICONS: Record<MilestoneCategory, typeof FileCheck> = {
   erstzulassung: FileCheck,
@@ -212,6 +222,157 @@ function MilestoneActions({
   );
 }
 
+function DocumentList({
+  documents,
+  supabaseUrl,
+  canEdit,
+  onDeleteDocument,
+  onUpdateDocument,
+}: {
+  documents: VehicleDocument[];
+  supabaseUrl: string;
+  canEdit: boolean;
+  onDeleteDocument: (docId: string, storagePath: string) => void;
+  onUpdateDocument: (docId: string, updates: { title?: string; category?: DocumentCategory }) => void;
+}) {
+  const [editingDocId, setEditingDocId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editCategory, setEditCategory] = useState<DocumentCategory>("sonstiges");
+
+  if (documents.length === 0) return null;
+
+  return (
+    <div className="mt-4">
+      <p className="text-xs font-medium text-muted-foreground mb-2">
+        Dokumente ({documents.length})
+      </p>
+      <div className="space-y-1.5">
+        {documents.map((doc) => {
+          const fileUrl = `${supabaseUrl}/storage/v1/object/public/vehicle-documents/${doc.storage_path}`;
+          const isEditing = editingDocId === doc.id;
+
+          if (isEditing) {
+            return (
+              <div key={doc.id} className="rounded-md border p-3 space-y-2 bg-muted/30">
+                <Input
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  placeholder="Titel"
+                  className="h-8 text-sm"
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === "Escape") setEditingDocId(null);
+                  }}
+                />
+                <Select value={editCategory} onValueChange={(v) => setEditCategory(v as DocumentCategory)}>
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DOCUMENT_CATEGORIES.map((cat) => (
+                      <SelectItem key={cat.value} value={cat.value}>
+                        {cat.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <div className="flex gap-1.5 justify-end">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs"
+                    onClick={() => setEditingDocId(null)}
+                  >
+                    Abbrechen
+                  </Button>
+                  <Button
+                    size="sm"
+                    className="h-7 text-xs"
+                    onClick={() => {
+                      onUpdateDocument(doc.id, { title: editTitle, category: editCategory });
+                      setEditingDocId(null);
+                    }}
+                  >
+                    Speichern
+                  </Button>
+                </div>
+              </div>
+            );
+          }
+
+          return (
+            <div
+              key={doc.id}
+              className="flex items-center gap-2 rounded-md border p-2 hover:bg-muted/50 transition-colors"
+            >
+              <a
+                href={fileUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 flex-1 min-w-0"
+              >
+                <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                <span className="text-sm truncate flex-1">{doc.title || doc.file_name}</span>
+                <span className="text-[11px] text-muted-foreground shrink-0 hidden sm:inline">
+                  {getCategoryLabel(doc.category)}
+                </span>
+                <span className="text-xs text-muted-foreground shrink-0">
+                  {formatFileSize(doc.file_size)}
+                </span>
+                <Download className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              </a>
+              {canEdit && (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 shrink-0 text-muted-foreground"
+                    onClick={() => {
+                      setEditingDocId(doc.id);
+                      setEditTitle(doc.title || doc.file_name);
+                      setEditCategory(doc.category);
+                    }}
+                  >
+                    <Pencil className="h-3 w-3" />
+                  </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 shrink-0 text-destructive"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Dokument löschen?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          &ldquo;{doc.title || doc.file_name}&rdquo; wird unwiderruflich gelöscht.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => onDeleteDocument(doc.id, doc.storage_path)}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                          Löschen
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function MilestoneDetail({
   milestone,
   supabaseUrl,
@@ -220,6 +381,7 @@ function MilestoneDetail({
   onDelete,
   onDeleteImage,
   onDeleteDocument,
+  onUpdateDocument,
   canEdit,
 }: {
   milestone: VehicleMilestoneWithImages;
@@ -229,6 +391,7 @@ function MilestoneDetail({
   onDelete: () => void;
   onDeleteImage: (imageId: string, storagePath: string) => void;
   onDeleteDocument: (docId: string, storagePath: string) => void;
+  onUpdateDocument: (docId: string, updates: { title?: string; category?: DocumentCategory }) => void;
   canEdit: boolean;
 }) {
   const config = CATEGORY_CONFIG[milestone.category];
@@ -323,69 +486,13 @@ function MilestoneDetail({
         </div>
       )}
 
-      {/* Linked documents */}
-      {documents.length > 0 && (
-        <div className="mt-4">
-          <p className="text-xs font-medium text-muted-foreground mb-2">
-            Dokumente ({documents.length})
-          </p>
-          <div className="space-y-1.5">
-            {documents.map((doc) => {
-              const fileUrl = `${supabaseUrl}/storage/v1/object/public/vehicle-documents/${doc.storage_path}`;
-              return (
-                <div
-                  key={doc.id}
-                  className="flex items-center gap-2 rounded-md border p-2 hover:bg-muted/50 transition-colors"
-                >
-                  <a
-                    href={fileUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 flex-1 min-w-0"
-                  >
-                    <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
-                    <span className="text-sm truncate flex-1">{doc.title || doc.file_name}</span>
-                    <span className="text-xs text-muted-foreground shrink-0">
-                      {formatFileSize(doc.file_size)}
-                    </span>
-                    <Download className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                  </a>
-                  {canEdit && (
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 shrink-0 text-destructive"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Dokument löschen?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            &ldquo;{doc.title || doc.file_name}&rdquo; wird unwiderruflich gelöscht.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Abbrechen</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => onDeleteDocument(doc.id, doc.storage_path)}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                          >
-                            Löschen
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
+      <DocumentList
+        documents={documents}
+        supabaseUrl={supabaseUrl}
+        canEdit={canEdit}
+        onDeleteDocument={onDeleteDocument}
+        onUpdateDocument={onUpdateDocument}
+      />
     </div>
   );
 }
@@ -400,6 +507,7 @@ function RestorationDetail({
   onDeleteImage,
   onDeleteDocument,
   onUpdateCaption,
+  onUpdateDocument,
   onSelectMilestone,
   canEdit,
 }: {
@@ -412,6 +520,7 @@ function RestorationDetail({
   onDeleteImage: (imageId: string, storagePath: string) => void;
   onDeleteDocument: (docId: string, storagePath: string) => void;
   onUpdateCaption: (imageId: string, caption: string) => void;
+  onUpdateDocument: (docId: string, updates: { title?: string; category?: DocumentCategory }) => void;
   onSelectMilestone: (id: string) => void;
   canEdit: boolean;
 }) {
@@ -567,69 +676,13 @@ function RestorationDetail({
           </div>
         )}
 
-        {/* Linked documents */}
-        {documents.length > 0 && (
-          <div className="mt-4">
-            <p className="text-xs font-medium text-muted-foreground mb-2">
-              Dokumente ({documents.length})
-            </p>
-            <div className="space-y-1.5">
-              {documents.map((doc) => {
-                const fileUrl = `${supabaseUrl}/storage/v1/object/public/vehicle-documents/${doc.storage_path}`;
-                return (
-                  <div
-                    key={doc.id}
-                    className="flex items-center gap-2 rounded-md border p-2 hover:bg-muted/50 transition-colors"
-                  >
-                    <a
-                      href={fileUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 flex-1 min-w-0"
-                    >
-                      <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
-                      <span className="text-sm truncate flex-1">{doc.title || doc.file_name}</span>
-                      <span className="text-xs text-muted-foreground shrink-0">
-                        {formatFileSize(doc.file_size)}
-                      </span>
-                      <Download className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                    </a>
-                    {canEdit && (
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 shrink-0 text-destructive"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Dokument löschen?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              &ldquo;{doc.title || doc.file_name}&rdquo; wird unwiderruflich gelöscht.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => onDeleteDocument(doc.id, doc.storage_path)}
-                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                            >
-                              Löschen
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
+        <DocumentList
+          documents={documents}
+          supabaseUrl={supabaseUrl}
+          canEdit={canEdit}
+          onDeleteDocument={onDeleteDocument}
+          onUpdateDocument={onUpdateDocument}
+        />
       </div>
 
       {/* Restoration timeline overview */}
@@ -862,6 +915,21 @@ export function VehicleTimeline({
         .eq("id", imageId);
       if (error) throw error;
       toast.success("Bildbeschreibung gespeichert");
+      refreshMilestones();
+    } catch {
+      toast.error("Fehler beim Speichern");
+    }
+  };
+
+  const handleUpdateDocument = async (docId: string, updates: { title?: string; category?: DocumentCategory }) => {
+    try {
+      const supabase = createClient();
+      const { error } = await supabase
+        .from("vehicle_documents")
+        .update(updates)
+        .eq("id", docId);
+      if (error) throw error;
+      toast.success("Dokument aktualisiert");
       refreshMilestones();
     } catch {
       toast.error("Fehler beim Speichern");
@@ -1104,6 +1172,7 @@ export function VehicleTimeline({
                 onDeleteImage={handleDeleteImage}
                 onDeleteDocument={handleDeleteDocument}
                 onUpdateCaption={handleUpdateCaption}
+                onUpdateDocument={handleUpdateDocument}
                 onSelectMilestone={setSelectedMilestoneId}
               />
             ) : (
@@ -1116,6 +1185,7 @@ export function VehicleTimeline({
                 onDelete={() => handleDeleteMilestone(selectedMilestone.id)}
                 onDeleteImage={handleDeleteImage}
                 onDeleteDocument={handleDeleteDocument}
+                onUpdateDocument={handleUpdateDocument}
               />
             )
           )}
