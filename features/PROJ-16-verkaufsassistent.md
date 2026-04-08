@@ -1,6 +1,6 @@
 # PROJ-16: Verkaufsassistent
 
-## Status: Approved
+## Status: Deployed
 **Created:** 2026-04-08
 **Last Updated:** 2026-04-08
 
@@ -264,4 +264,6 @@ None.
 **READY** — No Critical or High bugs. All acceptance criteria pass. All E2E tests pass.
 
 ## Deployment
-_To be added by /deploy_
+- **Deployed:** 2026-04-08
+- **Commit:** 5ca4b2a
+- **Tag:** v1.16.0-PROJ-16
