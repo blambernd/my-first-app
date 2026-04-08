@@ -8,7 +8,6 @@ import {
   FileText,
   Loader2,
   AlertTriangle,
-  Download,
   Eye,
   X,
 } from "lucide-react";
@@ -490,20 +489,6 @@ export function PublicProfile({ token }: PublicProfileProps) {
             </div>
           </div>
         )}
-
-        {/* PDF Download */}
-        <div className="flex justify-center pt-4 pb-8">
-          <Button variant="outline" asChild>
-            <a
-              href={`/api/profil/${token}/pdf`}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <Download className="h-4 w-4 mr-2" />
-              Als PDF herunterladen
-            </a>
-          </Button>
-        </div>
 
         {/* Footer */}
         <div className="text-center text-xs text-muted-foreground pb-8">
