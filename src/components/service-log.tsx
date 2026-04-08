@@ -43,6 +43,9 @@ import {
   SERVICE_ENTRY_TYPES,
   getEntryTypeLabel,
   formatCentsToEur,
+  getNextTuvDate,
+  getNextServiceDate,
+  getDueStatus,
   type ServiceEntry,
   type ServiceEntryType,
 } from "@/lib/validations/service-entry";
@@ -61,9 +64,74 @@ interface ServiceLogProps {
   initialEntries: ServiceEntry[];
 }
 
+const DUE_STATUS_STYLES = {
+  overdue: "text-destructive",
+  soon: "text-yellow-600",
+  ok: "text-foreground",
+} as const;
+
+const DUE_STATUS_BADGE = {
+  overdue: "bg-red-100 text-red-800",
+  soon: "bg-yellow-100 text-yellow-800",
+  ok: "",
+} as const;
+
+function DueDateCard({
+  label,
+  dateStr,
+  icon,
+}: {
+  label: string;
+  dateStr: string | null;
+  icon: React.ReactNode;
+}) {
+  if (!dateStr) {
+    return (
+      <Card>
+        <CardContent className="p-4 flex items-center gap-3">
+          {icon}
+          <div>
+            <p className="text-lg font-bold text-muted-foreground">–</p>
+            <p className="text-xs text-muted-foreground">{label}</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const status = getDueStatus(dateStr);
+  const formatted = new Date(dateStr).toLocaleDateString("de-DE");
+
+  return (
+    <Card>
+      <CardContent className="p-4 flex items-center gap-3">
+        {icon}
+        <div>
+          <p className={`text-lg font-bold ${DUE_STATUS_STYLES[status]}`}>
+            {formatted}
+          </p>
+          <div className="flex items-center gap-1.5">
+            <p className="text-xs text-muted-foreground">{label}</p>
+            {status === "overdue" && (
+              <Badge className={`${DUE_STATUS_BADGE.overdue} border-0 text-[10px] px-1.5 py-0`}>
+                Überfällig
+              </Badge>
+            )}
+            {status === "soon" && (
+              <Badge className={`${DUE_STATUS_BADGE.soon} border-0 text-[10px] px-1.5 py-0`}>
+                Bald fällig
+              </Badge>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 function ServiceSummary({ entries }: { entries: ServiceEntry[] }) {
-  const totalCost = entries.reduce((sum, e) => sum + (e.cost_cents ?? 0), 0);
-  const lastEntry = entries[0];
+  const nextTuv = getNextTuvDate(entries);
+  const nextService = getNextServiceDate(entries);
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
@@ -76,30 +144,16 @@ function ServiceSummary({ entries }: { entries: ServiceEntry[] }) {
           </div>
         </CardContent>
       </Card>
-      <Card>
-        <CardContent className="p-4 flex items-center gap-3">
-          <Banknote className="h-5 w-5 text-muted-foreground" />
-          <div>
-            <p className="text-2xl font-bold">
-              {totalCost > 0 ? formatCentsToEur(totalCost) : "–"}
-            </p>
-            <p className="text-xs text-muted-foreground">Gesamtkosten</p>
-          </div>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardContent className="p-4 flex items-center gap-3">
-          <Calendar className="h-5 w-5 text-muted-foreground" />
-          <div>
-            <p className="text-2xl font-bold">
-              {lastEntry
-                ? new Date(lastEntry.service_date).toLocaleDateString("de-DE")
-                : "–"}
-            </p>
-            <p className="text-xs text-muted-foreground">Letzter Service</p>
-          </div>
-        </CardContent>
-      </Card>
+      <DueDateCard
+        label="Nächster TÜV/HU"
+        dateStr={nextTuv}
+        icon={<Calendar className="h-5 w-5 text-muted-foreground" />}
+      />
+      <DueDateCard
+        label="Nächster Service"
+        dateStr={nextService}
+        icon={<Gauge className="h-5 w-5 text-muted-foreground" />}
+      />
     </div>
   );
 }

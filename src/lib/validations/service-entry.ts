@@ -43,6 +43,7 @@ export const serviceEntrySchema = z.object({
     .max(2000, "Notizen dürfen maximal 2000 Zeichen lang sein")
     .optional()
     .or(z.literal("")),
+  next_due_date: z.string().optional().or(z.literal("")),
 });
 
 export interface ServiceEntryFormData {
@@ -54,6 +55,7 @@ export interface ServiceEntryFormData {
   cost_cents?: number;
   workshop_name?: string;
   notes?: string;
+  next_due_date?: string;
 }
 
 export interface ServiceEntry {
@@ -67,6 +69,7 @@ export interface ServiceEntry {
   cost_cents: number | null;
   workshop_name: string | null;
   notes: string | null;
+  next_due_date: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -84,4 +87,49 @@ export function eurToCents(eur: number): number {
 
 export function getEntryTypeLabel(type: ServiceEntryType): string {
   return SERVICE_ENTRY_TYPES.find((t) => t.value === type)?.label ?? type;
+}
+
+/** Get the next TÜV/HU due date from entries (last TÜV + 2 years, or manual next_due_date) */
+export function getNextTuvDate(entries: ServiceEntry[]): string | null {
+  const tuvEntries = entries
+    .filter((e) => e.entry_type === "tuv_hu")
+    .sort((a, b) => b.service_date.localeCompare(a.service_date));
+
+  const latest = tuvEntries[0];
+  if (!latest) return null;
+
+  // Prefer manually set next_due_date
+  if (latest.next_due_date) return latest.next_due_date;
+
+  // Default: +2 years
+  const date = new Date(latest.service_date);
+  date.setFullYear(date.getFullYear() + 2);
+  return date.toISOString().split("T")[0];
+}
+
+/** Get the next service due date from entries (last service/oil change, or manual next_due_date) */
+export function getNextServiceDate(entries: ServiceEntry[]): string | null {
+  const serviceEntries = entries
+    .filter((e) => e.entry_type === "inspection" || e.entry_type === "oil_change")
+    .sort((a, b) => b.service_date.localeCompare(a.service_date));
+
+  const latest = serviceEntries[0];
+  if (!latest) return null;
+
+  if (latest.next_due_date) return latest.next_due_date;
+
+  // Default: +1 year
+  const date = new Date(latest.service_date);
+  date.setFullYear(date.getFullYear() + 1);
+  return date.toISOString().split("T")[0];
+}
+
+/** Check if a date is overdue or due within 30 days */
+export function getDueStatus(dateStr: string): "overdue" | "soon" | "ok" {
+  const due = new Date(dateStr);
+  const now = new Date();
+  const diffDays = (due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
+  if (diffDays < 0) return "overdue";
+  if (diffDays <= 30) return "soon";
+  return "ok";
 }

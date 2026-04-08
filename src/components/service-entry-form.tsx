@@ -109,6 +109,7 @@ export function ServiceEntryForm({
       cost_cents: entry?.cost_cents ? entry.cost_cents / 100 : undefined,
       workshop_name: entry?.workshop_name ?? "",
       notes: entry?.notes ?? "",
+      next_due_date: entry?.next_due_date ?? "",
     },
   });
 
@@ -124,6 +125,7 @@ export function ServiceEntryForm({
         cost_cents: entry?.cost_cents ? entry.cost_cents / 100 : undefined,
         workshop_name: entry?.workshop_name ?? "",
         notes: entry?.notes ?? "",
+        next_due_date: entry?.next_due_date ?? "",
       });
       setShowOdometerWarning(false);
       setDocumentFile(null);
@@ -169,6 +171,7 @@ export function ServiceEntryForm({
         cost_cents: data.cost_cents ? eurToCents(data.cost_cents) : null,
         workshop_name: data.workshop_name || null,
         notes: data.notes || null,
+        next_due_date: data.next_due_date || null,
       };
 
       let entryId: string;
@@ -437,6 +440,53 @@ export function ServiceEntryForm({
                   <FormMessage />
                 </FormItem>
               )}
+            />
+
+            <FormField
+              control={form.control}
+              name="next_due_date"
+              render={({ field }) => {
+                const dateValue = field.value
+                  ? parse(field.value, "yyyy-MM-dd", new Date())
+                  : undefined;
+                return (
+                  <FormItem>
+                    <FormLabel>Nächster Termin</FormLabel>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant="outline"
+                            className="w-full justify-start text-left font-normal"
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {dateValue && !isNaN(dateValue.getTime())
+                              ? format(dateValue, "dd.MM.yyyy")
+                              : "Termin wählen (optional)"}
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={dateValue && !isNaN(dateValue.getTime()) ? dateValue : undefined}
+                          onSelect={(date) => {
+                            if (date) {
+                              field.onChange(format(date, "yyyy-MM-dd"));
+                            }
+                          }}
+                          locale={de}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                    <FormDescription>
+                      Wann steht der nächste Service oder TÜV an?
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
             />
 
             {/* Dokument anhängen */}
