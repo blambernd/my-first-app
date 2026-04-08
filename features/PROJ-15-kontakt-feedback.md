@@ -1,6 +1,6 @@
 # PROJ-15: Kontakt & Feedback
 
-## Status: Approved
+## Status: Deployed
 **Created:** 2026-04-08
 **Last Updated:** 2026-04-08
 
@@ -169,4 +169,7 @@ Keine kritischen oder hohen Bugs gefunden.
 - **E2E Tests:** 15 tests in `tests/PROJ-15-kontakt-feedback.spec.ts` (alle bestanden)
 
 ## Deployment
-_To be added by /deploy_
+- **Deployed:** 2026-04-08
+- **Commit:** 9381e1a
+- **Trigger:** git push to main → Vercel auto-deploy
+- **Env-Var:** `CONTACT_EMAIL_TO` muss in Vercel gesetzt sein

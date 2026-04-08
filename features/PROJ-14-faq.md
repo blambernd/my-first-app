@@ -1,6 +1,6 @@
 # PROJ-14: FAQ-Seite
 
-## Status: Approved
+## Status: Deployed
 **Created:** 2026-04-08
 **Last Updated:** 2026-04-08
 
@@ -117,4 +117,6 @@ Keine Bugs gefunden.
 - **E2E Tests:** 10 tests in `tests/PROJ-14-faq.spec.ts` (alle bestanden)
 
 ## Deployment
-_To be added by /deploy_
+- **Deployed:** 2026-04-08
+- **Commit:** 9381e1a
+- **Trigger:** git push to main → Vercel auto-deploy

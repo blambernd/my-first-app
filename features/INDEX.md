@@ -27,8 +27,8 @@
 | PROJ-11 | Marktpreis-Analyse | Deployed | [PROJ-11-marktpreis-analyse.md](PROJ-11-marktpreis-analyse.md) | 2026-04-08 |
 | PROJ-12 | Verkaufsinserat erstellen | Deployed | [PROJ-12-verkaufsinserat.md](PROJ-12-verkaufsinserat.md) | 2026-04-08 |
 | PROJ-13 | Inserat veröffentlichen | Deployed | [PROJ-13-inserat-veroeffentlichen.md](PROJ-13-inserat-veroeffentlichen.md) | 2026-04-08 |
-| PROJ-14 | FAQ-Seite | Approved | [PROJ-14-faq.md](PROJ-14-faq.md) | 2026-04-08 |
-| PROJ-15 | Kontakt & Feedback | Approved | [PROJ-15-kontakt-feedback.md](PROJ-15-kontakt-feedback.md) | 2026-04-08 |
+| PROJ-14 | FAQ-Seite | Deployed | [PROJ-14-faq.md](PROJ-14-faq.md) | 2026-04-08 |
+| PROJ-15 | Kontakt & Feedback | Deployed | [PROJ-15-kontakt-feedback.md](PROJ-15-kontakt-feedback.md) | 2026-04-08 |
 | PROJ-16 | Verkaufsassistent | Architected | [PROJ-16-verkaufsassistent.md](PROJ-16-verkaufsassistent.md) | 2026-04-08 |
 
 <!-- Add features above this line -->
