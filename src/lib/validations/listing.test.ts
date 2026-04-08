@@ -1,11 +1,15 @@
 import { describe, it, expect } from "vitest";
 import {
   listingSchema,
+  publishedPlatformSchema,
   TITLE_MAX_LENGTH,
   DESCRIPTION_MAX_LENGTH,
   PRICE_TYPES,
   PRICE_TYPE_LABELS,
   LISTING_STATUSES,
+  PLATFORM_IDS,
+  PLATFORM_STATUSES,
+  PLATFORM_INFO,
 } from "./listing";
 
 describe("listingSchema", () => {
@@ -158,5 +162,91 @@ describe("constants", () => {
 
   it("has 2 listing statuses", () => {
     expect(LISTING_STATUSES).toHaveLength(2);
+  });
+
+  it("has 4 platform IDs", () => {
+    expect(PLATFORM_IDS).toHaveLength(4);
+    expect(PLATFORM_IDS).toContain("mobile_de");
+    expect(PLATFORM_IDS).toContain("kleinanzeigen");
+    expect(PLATFORM_IDS).toContain("ebay");
+    expect(PLATFORM_IDS).toContain("classic_trader");
+  });
+
+  it("has 3 platform statuses", () => {
+    expect(PLATFORM_STATUSES).toHaveLength(3);
+    expect(PLATFORM_STATUSES).toContain("nicht_veroeffentlicht");
+    expect(PLATFORM_STATUSES).toContain("aktiv");
+    expect(PLATFORM_STATUSES).toContain("verkauft");
+  });
+
+  it("has PLATFORM_INFO for every platform ID", () => {
+    for (const id of PLATFORM_IDS) {
+      const info = PLATFORM_INFO[id];
+      expect(info.name).toBeTruthy();
+      expect(info.createUrl).toMatch(/^https:\/\//);
+      expect(info.maxPhotos).toBeGreaterThan(0);
+      expect(info.maxDescLength).toBeGreaterThan(0);
+    }
+  });
+});
+
+describe("publishedPlatformSchema", () => {
+  it("validates a valid platform entry", () => {
+    const result = publishedPlatformSchema.safeParse({
+      platform: "mobile_de",
+      status: "aktiv",
+      external_url: "https://www.mobile.de/inserat/123",
+      published_at: "2026-04-08T12:00:00Z",
+      updated_at: "2026-04-08T12:00:00Z",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("validates entry with null dates", () => {
+    const result = publishedPlatformSchema.safeParse({
+      platform: "ebay",
+      status: "nicht_veroeffentlicht",
+      external_url: "",
+      published_at: null,
+      updated_at: null,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects invalid platform ID", () => {
+    const result = publishedPlatformSchema.safeParse({
+      platform: "autoscout24",
+      status: "aktiv",
+      external_url: "",
+      published_at: null,
+      updated_at: null,
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects invalid status", () => {
+    const result = publishedPlatformSchema.safeParse({
+      platform: "mobile_de",
+      status: "abgelaufen",
+      external_url: "",
+      published_at: null,
+      updated_at: null,
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("validates all platform and status combinations", () => {
+    for (const platform of PLATFORM_IDS) {
+      for (const status of PLATFORM_STATUSES) {
+        const result = publishedPlatformSchema.safeParse({
+          platform,
+          status,
+          external_url: "",
+          published_at: null,
+          updated_at: null,
+        });
+        expect(result.success).toBe(true);
+      }
+    }
   });
 });

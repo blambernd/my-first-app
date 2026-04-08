@@ -9,8 +9,6 @@ import {
   EyeOff,
   Sparkles,
   Tag,
-  ArrowRight,
-  AlertTriangle,
   Info,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -24,6 +22,7 @@ import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ListingPhotoSelector } from "@/components/listing-photo-selector";
 import { ListingPreview } from "@/components/listing-preview";
+import { ListingPublish } from "@/components/listing-publish";
 import {
   TITLE_MAX_LENGTH,
   DESCRIPTION_MAX_LENGTH,
@@ -31,6 +30,7 @@ import {
   PRICE_TYPES,
   type VehicleListing,
   type PriceType,
+  type PlatformEntry,
 } from "@/lib/validations/listing";
 
 interface Photo {
@@ -223,6 +223,12 @@ export function ListingEditor({
     const cents = Math.round(marketPrice.median_price * 100);
     setPriceCents(cents);
     setPriceInput(String(Math.round(marketPrice.median_price)));
+  };
+
+  const handlePlatformUpdate = (platforms: PlatformEntry[]) => {
+    if (listing) {
+      setListing({ ...listing, published_platforms: platforms });
+    }
   };
 
   // Build photo URLs for preview
@@ -491,12 +497,14 @@ export function ListingEditor({
               )}
               Entwurf speichern
             </Button>
-            {/* Future: PROJ-13 link */}
-            <Button variant="outline" disabled>
-              Veröffentlichen
-              <ArrowRight className="h-4 w-4 ml-2" />
-            </Button>
           </div>
+
+          {/* Publish section (PROJ-13) */}
+          <ListingPublish
+            listing={listing}
+            vehicleId={vehicleId}
+            onPlatformUpdate={handlePlatformUpdate}
+          />
         </div>
 
         {/* Preview panel */}

@@ -1,6 +1,13 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase-server";
-import { listingSchema } from "@/lib/validations/listing";
+import { listingSchema, publishedPlatformSchema } from "@/lib/validations/listing";
+import { z } from "zod";
+
+const patchSchema = listingSchema
+  .partial()
+  .extend({
+    published_platforms: z.array(publishedPlatformSchema).optional(),
+  });
 
 export async function GET(
   _request: Request,
@@ -120,7 +127,7 @@ export async function PATCH(
   }
 
   const body = await request.json();
-  const parsed = listingSchema.safeParse(body);
+  const parsed = patchSchema.safeParse(body);
 
   if (!parsed.success) {
     return NextResponse.json(
@@ -129,16 +136,22 @@ export async function PATCH(
     );
   }
 
+  const updateData: Record<string, unknown> = {};
+  if (parsed.data.title !== undefined) updateData.title = parsed.data.title;
+  if (parsed.data.description !== undefined) updateData.description = parsed.data.description;
+  if (parsed.data.price_cents !== undefined) updateData.price_cents = parsed.data.price_cents;
+  if (parsed.data.price_type !== undefined) updateData.price_type = parsed.data.price_type;
+  if (parsed.data.selected_photo_ids !== undefined) updateData.selected_photo_ids = parsed.data.selected_photo_ids;
+  if (parsed.data.photo_order !== undefined) updateData.photo_order = parsed.data.photo_order;
+  if (parsed.data.published_platforms !== undefined) updateData.published_platforms = parsed.data.published_platforms;
+
+  if (Object.keys(updateData).length === 0) {
+    return NextResponse.json({ error: "Keine Daten zum Aktualisieren" }, { status: 400 });
+  }
+
   const { data: listing, error } = await supabase
     .from("vehicle_listings")
-    .update({
-      title: parsed.data.title,
-      description: parsed.data.description,
-      price_cents: parsed.data.price_cents,
-      price_type: parsed.data.price_type,
-      selected_photo_ids: parsed.data.selected_photo_ids,
-      photo_order: parsed.data.photo_order,
-    })
+    .update(updateData)
     .eq("vehicle_id", vehicleId)
     .eq("user_id", user.id)
     .select()

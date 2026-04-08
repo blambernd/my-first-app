@@ -25,6 +25,68 @@ export const listingSchema = z.object({
 
 export type ListingFormData = z.infer<typeof listingSchema>;
 
+// Platform publishing
+export const PLATFORM_IDS = [
+  "mobile_de",
+  "kleinanzeigen",
+  "ebay",
+  "classic_trader",
+] as const;
+export type PlatformId = (typeof PLATFORM_IDS)[number];
+
+export const PLATFORM_STATUSES = [
+  "nicht_veroeffentlicht",
+  "aktiv",
+  "verkauft",
+] as const;
+export type PlatformStatus = (typeof PLATFORM_STATUSES)[number];
+
+export interface PlatformEntry {
+  platform: PlatformId;
+  status: PlatformStatus;
+  external_url: string;
+  published_at: string | null;
+  updated_at: string | null;
+}
+
+export const PLATFORM_INFO: Record<
+  PlatformId,
+  { name: string; createUrl: string; maxPhotos: number; maxDescLength: number }
+> = {
+  mobile_de: {
+    name: "mobile.de",
+    createUrl: "https://www.mobile.de/verkaufen/",
+    maxPhotos: 30,
+    maxDescLength: 5000,
+  },
+  kleinanzeigen: {
+    name: "Kleinanzeigen",
+    createUrl: "https://www.kleinanzeigen.de/p-anzeige-aufgeben.html",
+    maxPhotos: 20,
+    maxDescLength: 4000,
+  },
+  ebay: {
+    name: "eBay",
+    createUrl: "https://www.ebay.de/sl/sell",
+    maxPhotos: 24,
+    maxDescLength: 4000,
+  },
+  classic_trader: {
+    name: "Classic Trader",
+    createUrl: "https://www.classic-trader.com/de/inserieren",
+    maxPhotos: 50,
+    maxDescLength: 10000,
+  },
+};
+
+export const publishedPlatformSchema = z.object({
+  platform: z.enum(PLATFORM_IDS),
+  status: z.enum(PLATFORM_STATUSES),
+  external_url: z.string(),
+  published_at: z.string().nullable(),
+  updated_at: z.string().nullable(),
+});
+
 export interface VehicleListing {
   id: string;
   vehicle_id: string;
@@ -35,6 +97,7 @@ export interface VehicleListing {
   price_type: PriceType;
   selected_photo_ids: string[];
   photo_order: string[];
+  published_platforms: PlatformEntry[];
   status: ListingStatus;
   created_at: string;
   updated_at: string;

@@ -1,6 +1,6 @@
 # PROJ-13: Inserat veröffentlichen
 
-## Status: Architected
+## Status: In Review
 **Created:** 2026-04-08
 **Last Updated:** 2026-04-08
 
@@ -142,7 +142,123 @@ Kein neuer Datensatz nötig — wir erweitern die bestehende vehicle_listings Ta
 ```
 
 ## QA Test Results
-_To be added by /qa_
+
+**Tested:** 2026-04-08
+**App URL:** http://localhost:3000
+**Tester:** QA Engineer (AI)
+
+### Acceptance Criteria Status
+
+#### AC-1: Plattform-Karten sichtbar
+- [x] Nutzer sieht Plattform-Karten (mobile.de, eBay, Kleinanzeigen, Classic Trader) im Veröffentlichungs-Bereich (code review: 4 platform cards rendered from `PLATFORM_IDS`)
+
+#### AC-2: Text kopieren
+- [x] "Text kopieren" kopiert Titel + Beschreibung + Preis in die Zwischenablage
+
+#### AC-3: Fotos herunterladen
+- [x] "Fotos herunterladen" endpoint exists at `/api/vehicles/[id]/listing/photos-zip`
+- [x] ZIP download respects photo order
+- [x] Auth + ownership check on ZIP endpoint
+- [x] Empty ZIP guard (returns 500 if no photos could be loaded)
+
+#### AC-4: "Zu [Plattform]" Link
+- [x] Each platform card has "Auf [Platform] inserieren" link with correct external URL
+- [x] Links open in new tab (`target="_blank"`, `rel="noopener noreferrer"`)
+
+#### AC-5: Live-Inserat-Link eingeben und speichern
+- [x] URL input field per platform with save button
+- [x] PATCH API accepts `published_platforms` array
+- [x] Zod validation via `publishedPlatformSchema`
+- [ ] BUG-1: Save can fail if listing title is empty (see below)
+
+#### AC-6: Status auf "Aktiv" nach Link-Eingabe
+- [x] Non-empty URL sets status to "aktiv", empty URL sets back to "nicht_veroeffentlicht"
+- [x] `published_at` timestamp set on first activation
+
+#### AC-7: "Verkauft" markieren
+- [x] "Als verkauft markieren" button visible when any platform is "aktiv"
+- [x] Sets all active platforms to "verkauft" with updated timestamp
+
+#### AC-8: Status-Badges
+- [x] Three status badges: Nicht veröffentlicht (secondary), Aktiv (default), Verkauft (outline)
+
+#### AC-9: Plattform-spezifische Tipps
+- [x] Max photos and max description length shown per platform card
+
+#### AC-10: Veröffentlichungs-Bereich nur bei gespeichertem Inserat
+- [x] `ListingPublish` component only renders when `listing` is not null
+
+### Edge Cases Status
+
+#### EC-1: Kein Account bei Zielplattform
+- [x] "Auf [Platform] inserieren" links to platform sign-up/create pages (N/A for V1 manual approach)
+
+#### EC-2: Fotos zu groß
+- [x] N/A for V1 — photos downloaded as-is, user handles platform limits manually
+
+#### EC-3: Empty photo selection
+- [x] "Fotos herunterladen" button disabled when 0 photos selected
+- [x] ZIP API returns 404 when no photos selected
+
+#### EC-4: All photo downloads fail
+- [x] ZIP API returns 500 "Keine Fotos konnten geladen werden" when all downloads fail
+
+### Security Audit Results
+- [x] Authentication: Photos ZIP API returns 401 without auth
+- [x] Authentication: Listing PATCH returns 401 without auth
+- [x] Authorization: Vehicle ownership check on all endpoints (user_id match)
+- [x] Authorization: RLS policies on vehicle_listings (owner-only CRUD from PROJ-12)
+- [x] Input validation: `published_platforms` validated via Zod schema, rejects invalid platform IDs and statuses
+- [x] Data exposure: Error responses do not leak Supabase URLs, service role keys, or storage paths
+- [x] External links: `rel="noopener noreferrer"` on all platform links
+- [ ] BUG-2: No URL format validation on `external_url` (accepts any non-empty string)
+
+### Bugs Found
+
+#### BUG-1: Platform URL save fails if listing has unsaved generated title
+- **Severity:** Medium
+- **Steps to Reproduce:**
+  1. Go to `/vehicles/[id]/verkaufen`
+  2. Click "Inserat erstellen" (creates listing + auto-generates title)
+  3. Without clicking "Speichern", scroll to publish section
+  4. Enter a URL in a platform card and click save
+  5. Expected: URL saves, platform set to "aktiv"
+  6. Actual: PATCH fails with 400 "Ungültige Daten" because `listing.title` is empty (auto-generated title is in form state, not yet saved to `listing` state)
+- **Root cause:** `handleSaveUrl` in listing-publish.tsx sends `listing.title` (last-saved value, empty on creation) rather than the current form value. The `patchSchema` requires `title.min(1)`.
+- **Priority:** Fix before deployment
+
+#### BUG-2: No URL format validation on platform external_url
+- **Severity:** Low
+- **Steps to Reproduce:**
+  1. Enter "hello" (non-URL string) in a platform URL field
+  2. Click save
+  3. Expected: Validation error or URL format hint
+  4. Actual: Saves successfully, platform status set to "aktiv", "Inserat ansehen" link points to invalid URL
+- **Priority:** Nice to have
+
+#### BUG-3: Shared saving state causes all platform save buttons to show spinner
+- **Severity:** Low
+- **Steps to Reproduce:**
+  1. Have multiple platform cards visible
+  2. Click save on one platform URL
+  3. Expected: Only that platform's save button shows spinner
+  4. Actual: All platform save buttons show spinner simultaneously
+- **Priority:** Nice to have
+
+### Automated Tests
+- **Unit tests:** 5 new tests for `publishedPlatformSchema` and platform constants — all pass
+- **E2E tests:** 26 tests (13 Chromium + 13 Mobile Safari) — all pass
+  - API auth tests (401 for unauthenticated)
+  - Security data exposure tests
+  - Responsive viewport tests (375px, 768px, 1440px)
+  - Regression tests (landing page, login, dashboard)
+
+### Summary
+- **Acceptance Criteria:** 9/10 passed (1 has medium bug)
+- **Bugs Found:** 3 total (0 critical, 0 high, 1 medium, 2 low)
+- **Security:** Pass (auth, authz, input validation, data exposure all clean)
+- **Production Ready:** NO — BUG-1 (medium) should be fixed before deployment
+- **Recommendation:** Fix BUG-1 (platform URL save fails on unsaved listing), then deploy. BUG-2 and BUG-3 can be fixed in a later sprint.
 
 ## Deployment
 _To be added by /deploy_
