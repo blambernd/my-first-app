@@ -55,9 +55,8 @@ export const ebayKleinanzeigenAdapter: PlatformAdapter = {
 
     const result = await getJson({
       engine: "ebay",
-      _nonce: "ebay_de",
       ebay_domain: "ebay.de",
-      q: buildSearchQuery(params),
+      _nkw: buildSearchQuery(params),
       api_key: apiKey,
     });
 
@@ -91,72 +90,46 @@ export const ebayKleinanzeigenAdapter: PlatformAdapter = {
 };
 
 /**
- * Google Shopping adapter for Mobile.de, Oldtimer-Markt, Classic-Trader
- * Uses SerpAPI's Google Shopping engine with site-specific queries
+ * Google Shopping adapter — searches across all sellers
  */
-function createGoogleShoppingAdapter(
-  id: string,
-  label: string,
-  siteDomain?: string
-): PlatformAdapter {
-  return {
-    id,
-    label,
-    async search(params: SearchParams): Promise<SearchResultItem[]> {
-      const apiKey = process.env.SERPAPI_API_KEY;
-      if (!apiKey) return [];
+export const googleShoppingAdapter: PlatformAdapter = {
+  id: "google_shopping",
+  label: "Google Shopping",
+  async search(params: SearchParams): Promise<SearchResultItem[]> {
+    const apiKey = process.env.SERPAPI_API_KEY;
+    if (!apiKey) return [];
 
-      const siteFilter = siteDomain ? ` site:${siteDomain}` : "";
-      const result = await getJson({
-        engine: "google_shopping",
-        q: buildSearchQuery(params) + siteFilter,
-        gl: "de",
-        hl: "de",
-        api_key: apiKey,
-      });
+    const result = await getJson({
+      engine: "google_shopping",
+      q: buildSearchQuery(params),
+      gl: "de",
+      hl: "de",
+      api_key: apiKey,
+    });
 
-      if (result.error) {
-        throw new Error(`SerpAPI Google Shopping: ${result.error}`);
-      }
+    if (result.error) {
+      throw new Error(`SerpAPI Google Shopping: ${result.error}`);
+    }
 
-      const shoppingResults = result.shopping_results || [];
+    const shoppingResults = result.shopping_results || [];
 
-      let items: SearchResultItem[] = shoppingResults.map(
-        (item: Record<string, unknown>) => ({
-          title: String(item.title || ""),
-          price: item.extracted_price
-            ? Number(item.extracted_price)
-            : null,
-          currency: "EUR",
-          condition: mapCondition(String(item.second_hand_condition || "")),
-          url: String(item.link || ""),
-          imageUrl: item.thumbnail ? String(item.thumbnail) : null,
-          seller: item.source ? String(item.source) : null,
-        })
-      );
+    let items: SearchResultItem[] = shoppingResults.map(
+      (item: Record<string, unknown>) => ({
+        title: String(item.title || ""),
+        price: item.extracted_price
+          ? Number(item.extracted_price)
+          : null,
+        currency: "EUR",
+        condition: mapCondition(String(item.second_hand_condition || "")),
+        url: String(item.link || ""),
+        imageUrl: item.thumbnail ? String(item.thumbnail) : null,
+        seller: item.source ? String(item.source) : null,
+      })
+    );
 
-      items = filterByCondition(items, params.condition);
-      items = filterByPrice(items, params.minPrice, params.maxPrice);
+    items = filterByCondition(items, params.condition);
+    items = filterByPrice(items, params.minPrice, params.maxPrice);
 
-      return items.slice(0, 20);
-    },
-  };
-}
-
-export const mobileDeAdapter = createGoogleShoppingAdapter(
-  "mobile_de",
-  "Mobile.de Teile",
-  "mobile.de"
-);
-
-export const oldtimerMarktAdapter = createGoogleShoppingAdapter(
-  "oldtimer_markt",
-  "Oldtimer-Markt.de",
-  "oldtimer-markt.de"
-);
-
-export const classicTraderAdapter = createGoogleShoppingAdapter(
-  "classic_trader",
-  "Classic-Trader",
-  "classic-trader.com"
-);
+    return items.slice(0, 40);
+  },
+};

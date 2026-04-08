@@ -1,17 +1,13 @@
 import {
   ebayKleinanzeigenAdapter,
-  mobileDeAdapter,
-  oldtimerMarktAdapter,
-  classicTraderAdapter,
+  googleShoppingAdapter,
 } from "./serpapi-adapter";
 import type { PlatformAdapter, SearchParams, SearchResultItem } from "./types";
 import type { PartGroup, PartsSearchResult } from "@/lib/validations/parts";
 
 const ALL_ADAPTERS: PlatformAdapter[] = [
   ebayKleinanzeigenAdapter,
-  mobileDeAdapter,
-  oldtimerMarktAdapter,
-  classicTraderAdapter,
+  googleShoppingAdapter,
 ];
 
 interface PlatformResult {

@@ -88,11 +88,11 @@ describe("partsSearchSchema", () => {
   it("accepts optional platforms array", () => {
     const result = partsSearchSchema.safeParse({
       query: "Motor",
-      platforms: ["ebay_kleinanzeigen", "mobile_de"],
+      platforms: ["ebay_kleinanzeigen", "google_shopping"],
     });
     expect(result.success).toBe(true);
     if (result.success) {
-      expect(result.data.platforms).toEqual(["ebay_kleinanzeigen", "mobile_de"]);
+      expect(result.data.platforms).toEqual(["ebay_kleinanzeigen", "google_shopping"]);
     }
   });
 });

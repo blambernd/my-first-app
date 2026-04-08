@@ -11,10 +11,8 @@ export const PART_CONDITIONS = [
 export type PartConditionFilter = (typeof PART_CONDITIONS)[number]["value"];
 
 export const PLATFORMS = [
-  { value: "ebay_kleinanzeigen", label: "eBay Kleinanzeigen" },
-  { value: "mobile_de", label: "Mobile.de Teile" },
-  { value: "oldtimer_markt", label: "Oldtimer-Markt.de" },
-  { value: "classic_trader", label: "Classic-Trader" },
+  { value: "ebay_kleinanzeigen", label: "eBay" },
+  { value: "google_shopping", label: "Google Shopping" },
 ] as const;
 
 export type PlatformId = (typeof PLATFORMS)[number]["value"];
