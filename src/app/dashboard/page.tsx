@@ -66,9 +66,7 @@ export default async function DashboardPage() {
               <DropdownMenuItem asChild>
                 <LogoutButton />
               </DropdownMenuItem>
-              <DropdownMenuItem asChild onSelect={(e) => e.preventDefault()}>
-                <DeleteAccountButton />
-              </DropdownMenuItem>
+              <DeleteAccountButton />
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
