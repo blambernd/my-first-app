@@ -130,6 +130,58 @@ function MilestoneCard({
   );
 }
 
+function MilestoneActions({
+  canEdit,
+  onEdit,
+  onDelete,
+}: {
+  canEdit: boolean;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  if (!canEdit) return null;
+  return (
+    <div className="flex gap-1 shrink-0">
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-8 w-8 text-muted-foreground"
+        onClick={onEdit}
+      >
+        <Pencil className="h-3.5 w-3.5" />
+      </Button>
+      <AlertDialog>
+        <AlertDialogTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-destructive"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        </AlertDialogTrigger>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Meilenstein löschen?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Dieser Meilenstein wird unwiderruflich gelöscht.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={onDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Löschen
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}
+
 function MilestoneDetail({
   milestone,
   supabaseUrl,
@@ -174,48 +226,7 @@ function MilestoneDetail({
             <h3 className="text-base font-medium mt-1.5">{milestone.title}</h3>
           </div>
         </div>
-
-        {/* Actions */}
-        {canEdit && (
-          <div className="flex gap-1 shrink-0">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-muted-foreground"
-              onClick={onEdit}
-            >
-              <Pencil className="h-3.5 w-3.5" />
-            </Button>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 text-destructive"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Meilenstein löschen?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Dieser Meilenstein wird unwiderruflich gelöscht.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Abbrechen</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={onDelete}
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  >
-                    Löschen
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </div>
-        )}
+        <MilestoneActions canEdit={canEdit} onEdit={onEdit} onDelete={onDelete} />
       </div>
 
       {milestone.description && (
@@ -239,6 +250,162 @@ function MilestoneDetail({
               />
             </div>
           ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function RestorationDetail({
+  milestone,
+  allRestorations,
+  supabaseUrl,
+  onEdit,
+  onDelete,
+  onSelectMilestone,
+  canEdit,
+}: {
+  milestone: VehicleMilestoneWithImages;
+  allRestorations: VehicleMilestoneWithImages[];
+  supabaseUrl: string;
+  onEdit: (ms: VehicleMilestoneWithImages) => void;
+  onDelete: (id: string) => void;
+  onSelectMilestone: (id: string) => void;
+  canEdit: boolean;
+}) {
+  const [lightboxImg, setLightboxImg] = useState<string | null>(null);
+  const images = [...(milestone.vehicle_milestone_images ?? [])].sort(
+    (a, b) => a.position - b.position
+  );
+
+  return (
+    <div className="space-y-4">
+      {/* Current restoration entry */}
+      <div className="bg-muted/30 rounded-lg p-5 sm:p-6">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-start gap-3 min-w-0">
+            <div className="flex items-center justify-center h-9 w-9 rounded-full shrink-0 text-orange-600 bg-orange-100">
+              <Hammer className="h-4 w-4" />
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <Badge variant="outline" className="text-xs">Restauration</Badge>
+                <span className="text-xs text-muted-foreground">
+                  {format(
+                    parse(milestone.milestone_date, "yyyy-MM-dd", new Date()),
+                    "dd. MMMM yyyy",
+                    { locale: de }
+                  )}
+                </span>
+              </div>
+              <h3 className="text-base font-medium mt-1.5">{milestone.title}</h3>
+            </div>
+          </div>
+          <MilestoneActions canEdit={canEdit} onEdit={() => onEdit(milestone)} onDelete={() => onDelete(milestone.id)} />
+        </div>
+
+        {milestone.description && (
+          <p className="text-sm text-muted-foreground mt-3 whitespace-pre-line">
+            {milestone.description}
+          </p>
+        )}
+
+        {/* Large photo gallery */}
+        {images.length > 0 && (
+          <div className="mt-4">
+            {images.length === 1 ? (
+              <div
+                className="rounded-lg overflow-hidden bg-muted cursor-pointer max-h-[400px]"
+                onClick={() => setLightboxImg(getImageUrl(images[0].storage_path, supabaseUrl))}
+              >
+                <img
+                  src={getImageUrl(images[0].storage_path, supabaseUrl)}
+                  alt=""
+                  className="w-full h-full object-contain max-h-[400px]"
+                />
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {images.map((img) => (
+                  <div
+                    key={img.id}
+                    className="rounded-lg overflow-hidden bg-muted cursor-pointer aspect-[4/3]"
+                    onClick={() => setLightboxImg(getImageUrl(img.storage_path, supabaseUrl))}
+                  >
+                    <img
+                      src={getImageUrl(img.storage_path, supabaseUrl)}
+                      alt=""
+                      className="w-full h-full object-contain"
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Restoration timeline overview */}
+      {allRestorations.length > 1 && (
+        <div className="rounded-lg border p-4">
+          <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
+            <Hammer className="h-4 w-4 text-orange-600" />
+            Restaurationsverlauf ({allRestorations.length} Einträge)
+          </h4>
+          <div className="space-y-0">
+            {allRestorations.map((r, idx) => {
+              const isActive = r.id === milestone.id;
+              const rImages = r.vehicle_milestone_images ?? [];
+              return (
+                <button
+                  key={r.id}
+                  type="button"
+                  onClick={() => onSelectMilestone(r.id)}
+                  className={`w-full text-left flex items-start gap-3 p-3 rounded-md transition-colors ${
+                    isActive ? "bg-orange-50 border border-orange-200" : "hover:bg-muted/50"
+                  }`}
+                >
+                  {/* Timeline connector */}
+                  <div className="flex flex-col items-center pt-1">
+                    <div className={`h-2.5 w-2.5 rounded-full shrink-0 ${isActive ? "bg-orange-500" : "bg-border"}`} />
+                    {idx < allRestorations.length - 1 && (
+                      <div className="w-px flex-1 bg-border mt-1 min-h-[20px]" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">
+                        {format(parse(r.milestone_date, "yyyy-MM-dd", new Date()), "dd.MM.yyyy")}
+                      </span>
+                      {rImages.length > 0 && (
+                        <span className="text-xs text-muted-foreground flex items-center gap-0.5">
+                          <Clock className="h-3 w-3" />
+                          {rImages.length} Foto{rImages.length !== 1 ? "s" : ""}
+                        </span>
+                      )}
+                    </div>
+                    <p className={`text-sm mt-0.5 truncate ${isActive ? "font-medium" : ""}`}>
+                      {r.title}
+                    </p>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Lightbox */}
+      {lightboxImg && (
+        <div
+          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 cursor-pointer"
+          onClick={() => setLightboxImg(null)}
+        >
+          <img
+            src={lightboxImg}
+            alt=""
+            className="max-w-full max-h-full object-contain rounded-lg"
+          />
         </div>
       )}
     </div>
@@ -589,13 +756,25 @@ export function VehicleTimeline({
 
           {/* Selected milestone detail */}
           {selectedMilestone && (
-            <MilestoneDetail
-              milestone={selectedMilestone}
-              supabaseUrl={supabaseUrl}
-              canEdit={canEdit && (canEditAll || selectedMilestone.created_by === userId)}
-              onEdit={() => handleEditMilestone(selectedMilestone)}
-              onDelete={() => handleDeleteMilestone(selectedMilestone.id)}
-            />
+            selectedMilestone.category === "restauration" ? (
+              <RestorationDetail
+                milestone={selectedMilestone}
+                allRestorations={filteredMilestones.filter((m) => m.category === "restauration")}
+                supabaseUrl={supabaseUrl}
+                canEdit={canEdit && (canEditAll || selectedMilestone.created_by === userId)}
+                onEdit={handleEditMilestone}
+                onDelete={handleDeleteMilestone}
+                onSelectMilestone={setSelectedMilestoneId}
+              />
+            ) : (
+              <MilestoneDetail
+                milestone={selectedMilestone}
+                supabaseUrl={supabaseUrl}
+                canEdit={canEdit && (canEditAll || selectedMilestone.created_by === userId)}
+                onEdit={() => handleEditMilestone(selectedMilestone)}
+                onDelete={() => handleDeleteMilestone(selectedMilestone.id)}
+              />
+            )
           )}
         </>
       )}
