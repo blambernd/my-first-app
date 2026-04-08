@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase-server";
 
 export async function POST(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id: vehicleId } = await params;
@@ -113,11 +113,12 @@ export async function POST(
 
   // Kurzprofil link
   if (profile?.is_active && profile.token) {
+    const origin = process.env.NEXT_PUBLIC_APP_URL || new URL(request.url).origin;
     lines.push("FAHRZEUGHISTORIE");
     lines.push(
       `Die vollständige, verifizierte Fahrzeughistorie finden Sie hier:`
     );
-    lines.push(`${process.env.NEXT_PUBLIC_APP_URL || "https://example.com"}/profil/${profile.token}`);
+    lines.push(`${origin}/profil/${profile.token}`);
     lines.push("");
   }
 

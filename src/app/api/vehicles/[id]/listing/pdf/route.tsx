@@ -28,9 +28,9 @@ const styles = StyleSheet.create({
     paddingBottom: 3,
   },
   description: { fontSize: 10, lineHeight: 1.5, whiteSpace: "pre-wrap" as const },
-  photoGrid: { flexDirection: "row" as const, flexWrap: "wrap" as const, gap: 6 },
-  photo: { width: "48%", height: 140, objectFit: "cover" as const, borderRadius: 4 },
-  photoSingle: { width: "100%", height: 220, objectFit: "cover" as const, borderRadius: 4, marginBottom: 6 },
+  photoGrid: { flexDirection: "row" as const, flexWrap: "wrap" as const, gap: 6, marginTop: 10 },
+  photo: { width: "48%", height: 140, objectFit: "contain" as const, borderRadius: 4, backgroundColor: "#f5f5f5" },
+  photoSingle: { width: "100%", height: 240, objectFit: "contain" as const, borderRadius: 4, marginBottom: 8, backgroundColor: "#f5f5f5" },
   factRow: { flexDirection: "row" as const, marginBottom: 3 },
   factLabel: { fontSize: 9, color: "#888", width: 90 },
   factValue: { fontSize: 10, fontWeight: "bold" },
@@ -95,6 +95,15 @@ function ListingPdfDocument({ data }: { data: ListingPdfData }) {
         {/* Hero photo */}
         {data.photos.length > 0 && (
           <Image src={data.photos[0]} style={styles.photoSingle} />
+        )}
+
+        {/* Additional photos below hero */}
+        {data.photos.length > 1 && (
+          <View style={styles.photoGrid}>
+            {data.photos.slice(1, 5).map((url, i) => (
+              <Image key={i} src={url} style={styles.photo} />
+            ))}
+          </View>
         )}
 
         {/* Title & Price */}
@@ -173,12 +182,12 @@ function ListingPdfDocument({ data }: { data: ListingPdfData }) {
         <Text style={styles.footer}>Erstellt mit Oldtimer Docs</Text>
       </Page>
 
-      {/* Additional photos page */}
-      {data.photos.length > 1 && (
+      {/* Additional photos page for remaining photos beyond the first 5 */}
+      {data.photos.length > 5 && (
         <Page size="A4" style={styles.page}>
           <Text style={styles.sectionTitle}>Weitere Fotos</Text>
           <View style={styles.photoGrid}>
-            {data.photos.slice(1).map((url, i) => (
+            {data.photos.slice(5).map((url, i) => (
               <Image key={i} src={url} style={styles.photo} />
             ))}
           </View>
@@ -190,7 +199,7 @@ function ListingPdfDocument({ data }: { data: ListingPdfData }) {
 }
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id: vehicleId } = await params;
@@ -240,7 +249,7 @@ export async function GET(
 
   // Get photo URLs
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://example.com";
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || new URL(request.url).origin;
 
   const selectedIds: string[] = listing.selected_photo_ids || [];
   const photoOrder: string[] = listing.photo_order || [];
