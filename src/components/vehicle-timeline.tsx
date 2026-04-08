@@ -23,6 +23,7 @@ import {
   Paintbrush,
   Wrench,
   Flag,
+  ArrowRightLeft,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -59,6 +60,7 @@ const CATEGORY_ICONS: Record<MilestoneCategory, typeof FileCheck> = {
   trophaee: Trophy,
   lackierung: Paintbrush,
   umbau: Wrench,
+  besitzerwechsel: ArrowRightLeft,
   sonstiges: Flag,
 };
 
