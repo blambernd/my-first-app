@@ -1,6 +1,6 @@
 # PROJ-12: Verkaufsinserat erstellen
 
-## Status: Approved
+## Status: Deployed
 **Created:** 2026-04-08
 **Last Updated:** 2026-04-08
 
@@ -300,4 +300,21 @@ Die generierten Texte dienen als Startpunkt — der Nutzer kann alles frei bearb
 - **Recommendation:** Deploy. All 3 bugs are low-priority and can be addressed in follow-up.
 
 ## Deployment
-_To be added by /deploy_
+
+**Deployed:** 2026-04-08
+**Tag:** v1.12.0-PROJ-12
+
+### Pre-deployment Checks
+- [x] `npm run build` succeeds
+- [x] `npm run lint` passes (0 errors)
+- [x] QA approved (10/10 AC, 0 critical/high bugs)
+- [x] Environment variables documented (added `NEXT_PUBLIC_APP_URL` to `.env.example`)
+- [x] No secrets committed
+
+### Migration Required
+Run in Supabase SQL Editor:
+- `supabase/migrations/20260408_vehicle_listings.sql`
+
+### Environment Variable Required
+Add to Vercel Dashboard + `.env.local`:
+- `NEXT_PUBLIC_APP_URL` — your production URL (for Kurzprofil links in listing descriptions)
