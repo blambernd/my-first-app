@@ -148,6 +148,16 @@ export const vehicleSchema = z.object({
   displacement_ccm: z.coerce.number().int().positive("Hubraum muss positiv sein").optional().or(z.literal("")),
   horsepower: z.coerce.number().int().positive("Leistung muss positiv sein").optional().or(z.literal("")),
   mileage_km: z.coerce.number().int().min(0, "Laufleistung kann nicht negativ sein").optional().or(z.literal("")),
+  insurance_company: z
+    .string()
+    .max(100, "Versicherung darf maximal 100 Zeichen lang sein")
+    .optional()
+    .or(z.literal("")),
+  insurance_policy_number: z
+    .string()
+    .max(50, "Versicherungsnummer darf maximal 50 Zeichen lang sein")
+    .optional()
+    .or(z.literal("")),
 }).refine(
   (data) => !data.vin || data.vin.length === 0 || data.vin.length === 17,
   { message: "FIN muss genau 17 Zeichen lang sein", path: ["vin"] }
@@ -167,6 +177,8 @@ export interface VehicleFormData {
   displacement_ccm?: number;
   horsepower?: number;
   mileage_km?: number;
+  insurance_company?: string;
+  insurance_policy_number?: string;
 }
 
 export interface Vehicle {
@@ -185,6 +197,8 @@ export interface Vehicle {
   displacement_ccm: number | null;
   horsepower: number | null;
   mileage_km: number | null;
+  insurance_company: string | null;
+  insurance_policy_number: string | null;
   created_at: string;
   updated_at: string;
 }

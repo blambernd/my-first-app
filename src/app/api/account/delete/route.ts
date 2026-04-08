@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase-server";
+import { getStripe } from "@/lib/stripe";
 
 export async function DELETE() {
   const supabase = await createClient();
@@ -25,6 +26,24 @@ export async function DELETE() {
   const adminClient = createServiceClient(url, serviceKey);
 
   try {
+    // 0. Cancel Stripe subscription if exists
+    const { data: subscription } = await adminClient
+      .from("subscriptions")
+      .select("stripe_subscription_id")
+      .eq("user_id", user.id)
+      .single();
+
+    if (subscription?.stripe_subscription_id) {
+      try {
+        await getStripe().subscriptions.cancel(
+          subscription.stripe_subscription_id
+        );
+      } catch (stripeErr) {
+        console.error("Failed to cancel Stripe subscription:", stripeErr);
+        // Continue with deletion even if Stripe cancel fails
+      }
+    }
+
     // 1. Delete storage files (vehicle images + documents)
     const { data: vehicles } = await adminClient
       .from("vehicles")

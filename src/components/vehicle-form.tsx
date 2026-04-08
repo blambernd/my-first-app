@@ -129,6 +129,8 @@ export function VehicleForm({ vehicle, vehicleImages = [], mode }: VehicleFormPr
       displacement_ccm: vehicle?.displacement_ccm ?? undefined,
       horsepower: vehicle?.horsepower ?? undefined,
       mileage_km: vehicle?.mileage_km ?? undefined,
+      insurance_company: vehicle?.insurance_company ?? "",
+      insurance_policy_number: vehicle?.insurance_policy_number ?? "",
     },
   });
 
@@ -177,6 +179,8 @@ export function VehicleForm({ vehicle, vehicleImages = [], mode }: VehicleFormPr
         displacement_ccm: data.displacement_ccm || null,
         horsepower: data.horsepower || null,
         mileage_km: data.mileage_km ?? null,
+        insurance_company: data.insurance_company || null,
+        insurance_policy_number: data.insurance_policy_number || null,
       };
 
       let vehicleId: string;
@@ -599,6 +603,32 @@ export function VehicleForm({ vehicle, vehicleImages = [], mode }: VehicleFormPr
                       {...field}
                       value={field.value ?? ""}
                     />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="insurance_company"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Versicherung</FormLabel>
+                  <FormControl>
+                    <Input placeholder="z.B. Allianz, HUK-COBURG" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="insurance_policy_number"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Versicherungsnummer</FormLabel>
+                  <FormControl>
+                    <Input placeholder="z.B. KFZ-12345678" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
