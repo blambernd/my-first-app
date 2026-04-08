@@ -223,7 +223,7 @@ export function VehicleForm({ vehicle, vehicleImages = [], mode }: VehicleFormPr
       }
 
       // Upload Datenkarte and create Erstzulassung milestone
-      if (mode === "create" && datenkarte) {
+      if (datenkarte) {
         try {
           const datenkarteExt =
             datenkarte.name.split(".").pop()?.toLowerCase() ?? "jpg";
@@ -483,7 +483,6 @@ export function VehicleForm({ vehicle, vehicleImages = [], mode }: VehicleFormPr
         </div>
 
         {/* Datenkarte */}
-        {mode === "create" && (
           <div className="space-y-4">
             <h3 className="text-lg font-semibold">Datenkarte</h3>
             <p className="text-sm text-muted-foreground">
@@ -544,7 +543,6 @@ export function VehicleForm({ vehicle, vehicleImages = [], mode }: VehicleFormPr
               </div>
             )}
           </div>
-        )}
 
         {/* Aktionen */}
         <div className="flex gap-3">

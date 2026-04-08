@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useDropzone } from "react-dropzone";
 import { toast } from "sonner";
 import { format, parse } from "date-fns";
 import { de } from "date-fns/locale";
-import { Loader2, CalendarIcon } from "lucide-react";
+import { Loader2, CalendarIcon, Upload, FileText, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Calendar } from "@/components/ui/calendar";
@@ -44,6 +45,7 @@ import {
   serviceEntrySchema,
   SERVICE_ENTRY_TYPES,
   eurToCents,
+  getEntryTypeLabel,
   type ServiceEntryFormData,
   type ServiceEntry,
 } from "@/lib/validations/service-entry";
@@ -67,7 +69,34 @@ export function ServiceEntryForm({
 }: ServiceEntryFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showOdometerWarning, setShowOdometerWarning] = useState(false);
+  const [documentFile, setDocumentFile] = useState<File | null>(null);
   const isEditing = !!entry;
+
+  const onDocumentDrop = useCallback((acceptedFiles: File[]) => {
+    const file = acceptedFiles[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("Dokument darf maximal 10 MB groß sein.");
+      return;
+    }
+    setDocumentFile(file);
+  }, []);
+
+  const {
+    getRootProps: getDocRootProps,
+    getInputProps: getDocInputProps,
+    isDragActive: isDocDragActive,
+  } = useDropzone({
+    onDrop: onDocumentDrop,
+    accept: {
+      "application/pdf": [".pdf"],
+      "image/jpeg": [".jpg", ".jpeg"],
+      "image/png": [".png"],
+      "image/webp": [".webp"],
+    },
+    maxFiles: 1,
+    multiple: false,
+  });
 
   const form = useForm<ServiceEntryFormData>({
     resolver: zodResolver(serviceEntrySchema) as Resolver<ServiceEntryFormData>,
@@ -97,6 +126,7 @@ export function ServiceEntryForm({
         notes: entry?.notes ?? "",
       });
       setShowOdometerWarning(false);
+      setDocumentFile(null);
     }
   }, [open, entry, form]);
 
@@ -141,19 +171,62 @@ export function ServiceEntryForm({
         notes: data.notes || null,
       };
 
+      let entryId: string;
+
       if (isEditing) {
         const { error } = await supabase
           .from("service_entries")
           .update({ ...cleanData, updated_at: new Date().toISOString() })
           .eq("id", entry.id);
         if (error) throw error;
+        entryId = entry.id;
         toast.success("Eintrag aktualisiert");
       } else {
-        const { error } = await supabase
+        const { data: inserted, error } = await supabase
           .from("service_entries")
-          .insert({ ...cleanData, created_by: user.id });
-        if (error) throw error;
+          .insert({ ...cleanData, created_by: user.id })
+          .select("id")
+          .single();
+        if (error || !inserted) throw error ?? new Error("Eintrag konnte nicht erstellt werden");
+        entryId = inserted.id;
         toast.success("Eintrag erstellt");
+      }
+
+      // Upload document and link to Dokumenten-Archiv
+      if (documentFile) {
+        try {
+          const ext = documentFile.name.split(".").pop()?.toLowerCase() ?? "bin";
+          const docId = crypto.randomUUID();
+          const storagePath = `${user.id}/${vehicleId}/${docId}.${ext}`;
+
+          const { error: uploadError } = await supabase.storage
+            .from("vehicle-documents")
+            .upload(storagePath, documentFile, {
+              contentType: documentFile.type,
+              upsert: false,
+            });
+          if (uploadError) throw uploadError;
+
+          const { error: insertError } = await supabase
+            .from("vehicle_documents")
+            .insert({
+              vehicle_id: vehicleId,
+              title: `${getEntryTypeLabel(data.entry_type)} — ${data.description.slice(0, 80)}`,
+              category: data.entry_type === "tuv_hu" ? "tuev_bericht" : "rechnung",
+              document_date: data.service_date,
+              description: data.description,
+              storage_path: storagePath,
+              file_name: documentFile.name,
+              file_size: documentFile.size,
+              mime_type: documentFile.type,
+              service_entry_id: entryId,
+              created_by: user.id,
+            });
+          if (insertError) throw insertError;
+        } catch (docError) {
+          console.error("Document upload error:", docError);
+          toast.error("Eintrag erstellt, aber Dokument konnte nicht gespeichert werden.");
+        }
       }
 
       onOpenChange(false);
@@ -365,6 +438,51 @@ export function ServiceEntryForm({
                 </FormItem>
               )}
             />
+
+            {/* Dokument anhängen */}
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Dokument anhängen</p>
+              <p className="text-xs text-muted-foreground">
+                Wird automatisch im Dokumenten-Archiv gespeichert.
+              </p>
+              {documentFile ? (
+                <div className="flex items-center gap-3 rounded-lg border p-3">
+                  <FileText className="h-6 w-6 text-muted-foreground shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{documentFile.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {(documentFile.size / 1024 / 1024).toFixed(1)} MB
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 shrink-0"
+                    onClick={() => setDocumentFile(null)}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : (
+                <div
+                  {...getDocRootProps()}
+                  className={`border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors ${
+                    isDocDragActive
+                      ? "border-primary bg-primary/5"
+                      : "border-muted-foreground/25 hover:border-primary/50"
+                  }`}
+                >
+                  <input {...getDocInputProps()} />
+                  <div className="flex flex-col items-center gap-1">
+                    <Upload className="h-6 w-6 text-muted-foreground" />
+                    <p className="text-xs text-muted-foreground">
+                      PDF, JPG, PNG oder WebP · Max. 10 MB
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
 
             <div className="flex gap-3 pt-2">
               <Button type="submit" disabled={isSubmitting} className="flex-1">

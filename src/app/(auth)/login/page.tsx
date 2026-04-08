@@ -106,7 +106,7 @@ function LoginForm() {
       <CardHeader className="text-center">
         <CardTitle className="text-2xl">Anmelden</CardTitle>
         <CardDescription>
-          Willkommen zurück bei Oldtimer Garage
+          Willkommen zurück bei Oldtimer Docs
         </CardDescription>
       </CardHeader>
       <CardContent>

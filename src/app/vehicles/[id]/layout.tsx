@@ -64,7 +64,7 @@ export default async function VehicleLayout({
   const isOwner = userRole === "besitzer";
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="bg-background">
       {/* Header */}
       <header className="border-b border-border/40">
         <div className="container mx-auto flex h-14 items-center justify-between px-6 lg:px-8">

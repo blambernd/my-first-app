@@ -80,7 +80,7 @@ export function BrandLogoWithText({
         <span
           className={`text-[10px] font-medium tracking-[0.2em] uppercase ${textColor} opacity-60`}
         >
-          Garage
+          Docs
         </span>
       </div>
     </div>

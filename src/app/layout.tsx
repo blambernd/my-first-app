@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
+import { SiteFooter } from "@/components/site-footer";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Oldtimer Garage — Digitale Fahrzeugakte",
+  title: "Oldtimer Docs — Digitale Fahrzeugakte",
   description:
     "Dokumentiere die komplette Historie deiner Oldtimer. Wartungen, Restaurierungen, Dokumente — alles an einem Ort.",
 };
@@ -14,8 +15,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="de">
-      <body className="antialiased">
-        {children}
+      <body className="antialiased flex flex-col min-h-screen">
+        <div className="flex-1">{children}</div>
+        <SiteFooter />
       </body>
     </html>
   );

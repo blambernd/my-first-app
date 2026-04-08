@@ -69,7 +69,7 @@ export default function RegisterPage() {
       <CardHeader className="text-center">
         <CardTitle className="text-2xl">Konto erstellen</CardTitle>
         <CardDescription>
-          Registriere dich bei Oldtimer Garage
+          Registriere dich bei Oldtimer Docs
         </CardDescription>
       </CardHeader>
       <CardContent>

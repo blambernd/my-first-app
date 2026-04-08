@@ -1,11 +1,10 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { BrandLogoWithText } from "@/components/brand-logo";
-import { SiteFooter } from "@/components/site-footer";
 
 export default function Home() {
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="flex flex-col">
       <header className="border-b bg-background">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
           <BrandLogoWithText />
@@ -20,7 +19,7 @@ export default function Home() {
         </div>
       </header>
 
-      <main className="flex-1 flex items-center justify-center px-4">
+      <main className="flex-1 flex items-center justify-center px-4 py-24">
         <div className="max-w-2xl text-center space-y-6">
           <h2 className="text-4xl font-bold tracking-tight sm:text-5xl">
             Die digitale Akte für deinen Oldtimer
@@ -39,8 +38,6 @@ export default function Home() {
           </div>
         </div>
       </main>
-
-      <SiteFooter />
     </div>
   );
 }
