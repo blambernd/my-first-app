@@ -14,6 +14,15 @@ export type ListingStatus = (typeof LISTING_STATUSES)[number];
 export const TITLE_MAX_LENGTH = 70;
 export const DESCRIPTION_MAX_LENGTH = 5000;
 
+export const contactInfoSchema = z.object({
+  name: z.string().max(100).default(""),
+  email: z.string().max(200).default(""),
+  phone: z.string().max(50).default(""),
+  location: z.string().max(200).default(""),
+});
+
+export type ContactInfo = z.infer<typeof contactInfoSchema>;
+
 export const listingSchema = z.object({
   title: z.string().min(1, "Titel ist erforderlich").max(TITLE_MAX_LENGTH),
   description: z.string().max(DESCRIPTION_MAX_LENGTH),
@@ -21,6 +30,7 @@ export const listingSchema = z.object({
   price_type: z.enum(PRICE_TYPES),
   selected_photo_ids: z.array(z.string()).default([]),
   photo_order: z.array(z.string()).default([]),
+  contact_info: contactInfoSchema.default({ name: "", email: "", phone: "", location: "" }),
 });
 
 export type ListingFormData = z.infer<typeof listingSchema>;
@@ -97,6 +107,7 @@ export interface VehicleListing {
   price_type: PriceType;
   selected_photo_ids: string[];
   photo_order: string[];
+  contact_info: ContactInfo;
   published_platforms: PlatformEntry[];
   status: ListingStatus;
   created_at: string;

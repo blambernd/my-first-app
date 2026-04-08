@@ -83,6 +83,7 @@ interface ListingPdfData {
     horsepower: number | null;
     mileage_km: number | null;
   };
+  contactInfo: { name: string; email: string; phone: string; location: string } | null;
   profileUrl: string | null;
   qrCodeDataUrl: string | null;
 }
@@ -135,6 +136,26 @@ function ListingPdfDocument({ data }: { data: ListingPdfData }) {
           <Text style={styles.sectionTitle}>Beschreibung</Text>
           <Text style={styles.description}>{data.description}</Text>
         </View>
+
+        {/* Contact info */}
+        {data.contactInfo && (data.contactInfo.name || data.contactInfo.email || data.contactInfo.phone || data.contactInfo.location) && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Kontakt</Text>
+            {[
+              data.contactInfo.name ? { label: "Name", value: data.contactInfo.name } : null,
+              data.contactInfo.phone ? { label: "Telefon", value: data.contactInfo.phone } : null,
+              data.contactInfo.email ? { label: "E-Mail", value: data.contactInfo.email } : null,
+              data.contactInfo.location ? { label: "Standort", value: data.contactInfo.location } : null,
+            ]
+              .filter(Boolean)
+              .map((item, i) => (
+                <View key={i} style={styles.factRow}>
+                  <Text style={styles.factLabel}>{item!.label}</Text>
+                  <Text style={styles.factValue}>{item!.value}</Text>
+                </View>
+              ))}
+          </View>
+        )}
 
         {/* Kurzprofil with QR Code */}
         {data.profileUrl && data.qrCodeDataUrl && (
@@ -285,6 +306,7 @@ export async function GET(
       horsepower: vehicle.horsepower,
       mileage_km: vehicle.mileage_km,
     },
+    contactInfo: listing.contact_info || null,
     profileUrl,
     qrCodeDataUrl,
   };

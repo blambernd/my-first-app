@@ -10,6 +10,7 @@ import {
   Sparkles,
   Tag,
   Info,
+  User,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -109,6 +110,10 @@ export function ListingEditor({
   const [priceType, setPriceType] = useState<PriceType>("verhandlungsbasis");
   const [selectedPhotoIds, setSelectedPhotoIds] = useState<string[]>([]);
   const [photoOrder, setPhotoOrder] = useState<string[]>([]);
+  const [contactName, setContactName] = useState("");
+  const [contactEmail, setContactEmail] = useState("");
+  const [contactPhone, setContactPhone] = useState("");
+  const [contactLocation, setContactLocation] = useState("");
 
   // Price input as string for editing
   const [priceInput, setPriceInput] = useState("");
@@ -123,6 +128,12 @@ export function ListingEditor({
     setPhotoOrder(l.photo_order);
     if (l.price_cents) {
       setPriceInput(String(l.price_cents / 100));
+    }
+    if (l.contact_info) {
+      setContactName(l.contact_info.name || "");
+      setContactEmail(l.contact_info.email || "");
+      setContactPhone(l.contact_info.phone || "");
+      setContactLocation(l.contact_info.location || "");
     }
     onListingReady?.(l);
   }, [onListingReady]);
@@ -217,6 +228,12 @@ export function ListingEditor({
           price_type: priceType,
           selected_photo_ids: selectedPhotoIds,
           photo_order: photoOrder,
+          contact_info: {
+            name: contactName,
+            email: contactEmail,
+            phone: contactPhone,
+            location: contactLocation,
+          },
         }),
       });
       const data = await res.json();
@@ -510,6 +527,66 @@ export function ListingEditor({
             </CardContent>
           </Card>
 
+          {/* Contact info */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <User className="h-4 w-4" />
+                Kontaktdaten
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <Label htmlFor="contact-name" className="text-xs text-muted-foreground">
+                    Name
+                  </Label>
+                  <Input
+                    id="contact-name"
+                    value={contactName}
+                    onChange={(e) => setContactName(e.target.value)}
+                    placeholder="Max Mustermann"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="contact-email" className="text-xs text-muted-foreground">
+                    E-Mail
+                  </Label>
+                  <Input
+                    id="contact-email"
+                    type="email"
+                    value={contactEmail}
+                    onChange={(e) => setContactEmail(e.target.value)}
+                    placeholder="max@beispiel.de"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="contact-phone" className="text-xs text-muted-foreground">
+                    Telefon
+                  </Label>
+                  <Input
+                    id="contact-phone"
+                    type="tel"
+                    value={contactPhone}
+                    onChange={(e) => setContactPhone(e.target.value)}
+                    placeholder="+49 123 456789"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="contact-location" className="text-xs text-muted-foreground">
+                    Standort
+                  </Label>
+                  <Input
+                    id="contact-location"
+                    value={contactLocation}
+                    onChange={(e) => setContactLocation(e.target.value)}
+                    placeholder="München, Bayern"
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Actions */}
           <div className="flex items-center justify-between pt-2 pb-4">
             <Button onClick={handleSave} disabled={saving}>
@@ -552,6 +629,12 @@ export function ListingEditor({
                   ? `${typeof window !== "undefined" ? window.location.origin : ""}/profil/${kurzprofilToken}`
                   : null
               }
+              contactInfo={{
+                name: contactName,
+                email: contactEmail,
+                phone: contactPhone,
+                location: contactLocation,
+              }}
             />
           </div>
         )}

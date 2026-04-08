@@ -1,6 +1,6 @@
 "use client";
 
-import { Car, MapPin, Calendar, Gauge } from "lucide-react";
+import { Car, MapPin, Calendar, Gauge, User, Mail, Phone } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -23,6 +23,12 @@ interface ListingPreviewProps {
     engine_type: string | null;
   };
   kurzprofilUrl?: string | null;
+  contactInfo?: {
+    name: string;
+    email: string;
+    phone: string;
+    location: string;
+  } | null;
 }
 
 function formatPrice(cents: number): string {
@@ -42,6 +48,7 @@ export function ListingPreview({
   photoUrls,
   vehicleData,
   kurzprofilUrl,
+  contactInfo,
 }: ListingPreviewProps) {
   const primaryPhoto = photoUrls[0];
 
@@ -161,6 +168,40 @@ export function ListingPreview({
             </span>
           )}
         </div>
+
+        {/* Contact info */}
+        {contactInfo && (contactInfo.name || contactInfo.email || contactInfo.phone || contactInfo.location) && (
+          <>
+            <Separator />
+            <div className="space-y-1.5">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Kontakt</p>
+              {contactInfo.name && (
+                <p className="text-sm flex items-center gap-2">
+                  <User className="h-3.5 w-3.5 text-muted-foreground" />
+                  {contactInfo.name}
+                </p>
+              )}
+              {contactInfo.email && (
+                <p className="text-sm flex items-center gap-2">
+                  <Mail className="h-3.5 w-3.5 text-muted-foreground" />
+                  {contactInfo.email}
+                </p>
+              )}
+              {contactInfo.phone && (
+                <p className="text-sm flex items-center gap-2">
+                  <Phone className="h-3.5 w-3.5 text-muted-foreground" />
+                  {contactInfo.phone}
+                </p>
+              )}
+              {contactInfo.location && (
+                <p className="text-sm flex items-center gap-2">
+                  <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
+                  {contactInfo.location}
+                </p>
+              )}
+            </div>
+          </>
+        )}
 
         {/* Kurzprofil link */}
         {kurzprofilUrl && (

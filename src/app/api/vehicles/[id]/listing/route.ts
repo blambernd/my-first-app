@@ -144,6 +144,7 @@ export async function PATCH(
   if (parsed.data.selected_photo_ids !== undefined) updateData.selected_photo_ids = parsed.data.selected_photo_ids;
   if (parsed.data.photo_order !== undefined) updateData.photo_order = parsed.data.photo_order;
   if (parsed.data.published_platforms !== undefined) updateData.published_platforms = parsed.data.published_platforms;
+  if (parsed.data.contact_info !== undefined) updateData.contact_info = parsed.data.contact_info;
 
   if (Object.keys(updateData).length === 0) {
     return NextResponse.json({ error: "Keine Daten zum Aktualisieren" }, { status: 400 });

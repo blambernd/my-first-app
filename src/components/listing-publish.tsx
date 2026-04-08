@@ -85,6 +85,14 @@ export function ListingPublish({
           }).format(listing.price_cents / 100)
         : "Auf Anfrage"
     }`;
+    const contact = listing.contact_info;
+    if (contact && (contact.name || contact.email || contact.phone || contact.location)) {
+      text += "\n\nKontakt:";
+      if (contact.name) text += `\n${contact.name}`;
+      if (contact.phone) text += `\nTel: ${contact.phone}`;
+      if (contact.email) text += `\nE-Mail: ${contact.email}`;
+      if (contact.location) text += `\nStandort: ${contact.location}`;
+    }
     if (kurzprofilUrl) {
       text += `\n\nFahrzeughistorie: ${kurzprofilUrl}`;
     }
