@@ -24,6 +24,11 @@ export const partsSearchSchema = z.object({
     .string()
     .min(2, "Suchbegriff muss mindestens 2 Zeichen lang sein")
     .max(200, "Suchbegriff darf maximal 200 Zeichen lang sein"),
+  partNumber: z
+    .string()
+    .max(50, "Teilenummer darf maximal 50 Zeichen lang sein")
+    .optional()
+    .or(z.literal("")),
   condition: z.enum(["all", "new", "used"]).default("all"),
   minPrice: z.coerce.number().min(0).optional().or(z.literal("")),
   maxPrice: z.coerce.number().min(0).optional().or(z.literal("")),

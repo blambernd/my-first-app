@@ -28,6 +28,7 @@ function checkRateLimit(userId: string): { allowed: boolean; remaining: number; 
 
 const searchQuerySchema = z.object({
   query: z.string().min(2).max(200),
+  partNumber: z.string().max(50).optional(),
   make: z.string().min(1),
   model: z.string().min(1),
   year: z.coerce.number().int().min(1886),
@@ -106,7 +107,7 @@ export async function GET(
     );
   }
 
-  const { query, make, model, year, condition, minPrice, maxPrice, platforms, page } =
+  const { query, partNumber, make, model, year, condition, minPrice, maxPrice, platforms, page } =
     parsed.data;
 
   // Check SERPAPI_API_KEY
@@ -124,7 +125,7 @@ export async function GET(
 
   // Execute search
   const result = await searchParts(
-    { query, make, model, year, condition, minPrice, maxPrice },
+    { query, make, model, year, condition, partNumber: partNumber || undefined, minPrice, maxPrice },
     platformIds,
     page
   );

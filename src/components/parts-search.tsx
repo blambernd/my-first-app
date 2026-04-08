@@ -226,6 +226,7 @@ export function PartsSearch({
     resolver: zodResolver(partsSearchSchema) as Resolver<PartsSearchFormData>,
     defaultValues: {
       query: "",
+      partNumber: "",
       condition: "all",
       minPrice: "",
       maxPrice: "",
@@ -247,6 +248,9 @@ export function PartsSearch({
         page: String(page),
       });
 
+      if (data.partNumber) {
+        params.set("partNumber", data.partNumber);
+      }
       if (data.minPrice) {
         params.set("minPrice", String(data.minPrice));
       }
@@ -337,6 +341,21 @@ export function PartsSearch({
                         {...field}
                       />
                     </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="partNumber"
+              render={({ field }) => (
+                <FormItem className="w-40 sm:w-48">
+                  <FormControl>
+                    <Input
+                      placeholder="OE-Nr. (optional)"
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

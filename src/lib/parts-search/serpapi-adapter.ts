@@ -7,7 +7,10 @@ import {
 } from "./manufacturer-sites";
 
 function buildSearchQuery(params: SearchParams): string {
-  return `${params.make} ${params.model} ${params.year} ${params.query} Ersatzteil`;
+  // Quote make+model to avoid cross-brand results (e.g. BMW parts for Mercedes)
+  const vehicle = `"${params.make}" "${params.model}"`;
+  const partNumber = params.partNumber ? `"${params.partNumber}"` : "";
+  return `${vehicle} ${params.year} ${params.query} ${partNumber} Ersatzteil`.replace(/\s+/g, " ").trim();
 }
 
 function mapCondition(
@@ -214,7 +217,7 @@ async function searchGoogleWithSiteFilter(
   const apiKey = process.env.SERPAPI_API_KEY;
   if (!apiKey) return [];
 
-  const partQuery = `${params.make} ${params.model} ${params.year} ${params.query} Ersatzteil`;
+  const partQuery = buildSearchQuery(params);
   const siteFilter = buildSiteFilter(sites);
   const fullQuery = `${partQuery} (${siteFilter})`;
 
