@@ -2,6 +2,7 @@ import { redirect, notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase-server";
 import { VehicleTimeline } from "@/components/vehicle-timeline";
 import type { VehicleMilestoneWithImages } from "@/lib/validations/milestone";
+import type { VehicleDocument } from "@/lib/validations/vehicle-document";
 
 interface HistoriePageProps {
   params: Promise<{ id: string }>;
@@ -52,6 +53,23 @@ export default async function HistoriePage({ params }: HistoriePageProps) {
     .order("created_at", { ascending: false })
     .limit(200);
 
+  // Fetch documents linked to milestones
+  const { data: milestoneDocuments } = await supabase
+    .from("vehicle_documents")
+    .select("*")
+    .eq("vehicle_id", id)
+    .not("milestone_id", "is", null);
+
+  const documentsByMilestone: Record<string, VehicleDocument[]> = {};
+  for (const doc of (milestoneDocuments ?? []) as VehicleDocument[]) {
+    if (doc.milestone_id) {
+      if (!documentsByMilestone[doc.milestone_id]) {
+        documentsByMilestone[doc.milestone_id] = [];
+      }
+      documentsByMilestone[doc.milestone_id].push(doc);
+    }
+  }
+
   return (
     <VehicleTimeline
       vehicleId={id}
@@ -59,6 +77,7 @@ export default async function HistoriePage({ params }: HistoriePageProps) {
       initialMilestones={
         (vehicleMilestones ?? []) as VehicleMilestoneWithImages[]
       }
+      documentsByMilestone={documentsByMilestone}
       canEdit={canEdit}
       canEditAll={canEditAll}
       userId={user.id}

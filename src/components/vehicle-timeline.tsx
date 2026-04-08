@@ -16,6 +16,7 @@ import {
   ChevronRight,
   Clock,
   FileCheck,
+  FileText,
   HandCoins,
   Hammer,
   AlertTriangle,
@@ -51,6 +52,10 @@ import {
   type MilestoneCategory,
   type VehicleMilestoneWithImages,
 } from "@/lib/validations/milestone";
+import {
+  formatFileSize,
+  type VehicleDocument,
+} from "@/lib/validations/vehicle-document";
 
 const CATEGORY_ICONS: Record<MilestoneCategory, typeof FileCheck> = {
   erstzulassung: FileCheck,
@@ -70,6 +75,7 @@ interface VehicleTimelineProps {
   vehicleId: string;
   supabaseUrl: string;
   initialMilestones: VehicleMilestoneWithImages[];
+  documentsByMilestone?: Record<string, VehicleDocument[]>;
   canEdit?: boolean;
   canEditAll?: boolean;
   userId?: string;
@@ -83,15 +89,18 @@ function MilestoneCard({
   milestone,
   supabaseUrl,
   isSelected,
+  docCount,
   onClick,
 }: {
   milestone: VehicleMilestoneWithImages;
   supabaseUrl: string;
   isSelected: boolean;
+  docCount: number;
   onClick: () => void;
 }) {
   const config = CATEGORY_CONFIG[milestone.category];
   const Icon = CATEGORY_ICONS[milestone.category];
+  const imageCount = milestone.vehicle_milestone_images?.length ?? 0;
 
   return (
     <button
@@ -126,6 +135,24 @@ function MilestoneCard({
       <p className="text-xs font-medium mt-0.5 leading-tight line-clamp-2">
         {milestone.title}
       </p>
+
+      {/* Attachment indicators */}
+      {(imageCount > 0 || docCount > 0) && (
+        <div className="flex items-center gap-1.5 mt-1 text-muted-foreground">
+          {imageCount > 0 && (
+            <span className="flex items-center gap-0.5 text-[10px]">
+              <Clock className="h-2.5 w-2.5" />
+              {imageCount}
+            </span>
+          )}
+          {docCount > 0 && (
+            <span className="flex items-center gap-0.5 text-[10px]">
+              <FileText className="h-2.5 w-2.5" />
+              {docCount}
+            </span>
+          )}
+        </div>
+      )}
     </button>
   );
 }
@@ -185,12 +212,14 @@ function MilestoneActions({
 function MilestoneDetail({
   milestone,
   supabaseUrl,
+  documents,
   onEdit,
   onDelete,
   canEdit,
 }: {
   milestone: VehicleMilestoneWithImages;
   supabaseUrl: string;
+  documents: VehicleDocument[];
   onEdit: () => void;
   onDelete: () => void;
   canEdit: boolean;
@@ -256,6 +285,36 @@ function MilestoneDetail({
           ))}
         </div>
       )}
+
+      {/* Linked documents */}
+      {documents.length > 0 && (
+        <div className="mt-4">
+          <p className="text-xs font-medium text-muted-foreground mb-2">
+            Dokumente ({documents.length})
+          </p>
+          <div className="space-y-1.5">
+            {documents.map((doc) => {
+              const fileUrl = `${supabaseUrl}/storage/v1/object/public/vehicle-documents/${doc.storage_path}`;
+              return (
+                <a
+                  key={doc.id}
+                  href={fileUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 rounded-md border p-2 hover:bg-muted/50 transition-colors"
+                >
+                  <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <span className="text-sm truncate flex-1">{doc.title || doc.file_name}</span>
+                  <span className="text-xs text-muted-foreground shrink-0">
+                    {formatFileSize(doc.file_size)}
+                  </span>
+                  <Download className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                </a>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -264,6 +323,7 @@ function RestorationDetail({
   milestone,
   allRestorations,
   supabaseUrl,
+  documents,
   onEdit,
   onDelete,
   onSelectMilestone,
@@ -272,6 +332,7 @@ function RestorationDetail({
   milestone: VehicleMilestoneWithImages;
   allRestorations: VehicleMilestoneWithImages[];
   supabaseUrl: string;
+  documents: VehicleDocument[];
   onEdit: (ms: VehicleMilestoneWithImages) => void;
   onDelete: (id: string) => void;
   onSelectMilestone: (id: string) => void;
@@ -314,46 +375,58 @@ function RestorationDetail({
           </p>
         )}
 
-        {/* Large photo gallery */}
+        {/* Photo gallery — vertical list with captions beside */}
         {images.length > 0 && (
-          <div className="mt-4">
-            {images.length === 1 ? (
-              <div className="space-y-1.5">
+          <div className="mt-4 space-y-3 max-h-[500px] overflow-y-auto pr-1">
+            {images.map((img) => (
+              <div key={img.id} className="flex gap-4 items-start">
                 <div
-                  className="rounded-lg overflow-hidden bg-muted cursor-pointer max-h-[400px]"
-                  onClick={() => setLightboxImg(getImageUrl(images[0].storage_path, supabaseUrl))}
+                  className="shrink-0 w-40 sm:w-52 aspect-[4/3] rounded-lg overflow-hidden bg-muted cursor-pointer"
+                  onClick={() => setLightboxImg(getImageUrl(img.storage_path, supabaseUrl))}
                 >
                   <img
-                    src={getImageUrl(images[0].storage_path, supabaseUrl)}
-                    alt={images[0].caption ?? ""}
-                    className="w-full h-full object-contain max-h-[400px]"
+                    src={getImageUrl(img.storage_path, supabaseUrl)}
+                    alt={img.caption ?? ""}
+                    className="w-full h-full object-contain"
                   />
                 </div>
-                {images[0].caption && (
-                  <p className="text-sm text-muted-foreground">{images[0].caption}</p>
+                {img.caption && (
+                  <p className="text-sm text-muted-foreground pt-1 flex-1 min-w-0">
+                    {img.caption}
+                  </p>
                 )}
               </div>
-            ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {images.map((img) => (
-                  <div key={img.id} className="space-y-1.5">
-                    <div
-                      className="rounded-lg overflow-hidden bg-muted cursor-pointer aspect-[4/3]"
-                      onClick={() => setLightboxImg(getImageUrl(img.storage_path, supabaseUrl))}
-                    >
-                      <img
-                        src={getImageUrl(img.storage_path, supabaseUrl)}
-                        alt={img.caption ?? ""}
-                        className="w-full h-full object-contain"
-                      />
-                    </div>
-                    {img.caption && (
-                      <p className="text-xs text-muted-foreground">{img.caption}</p>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
+            ))}
+          </div>
+        )}
+
+        {/* Linked documents */}
+        {documents.length > 0 && (
+          <div className="mt-4">
+            <p className="text-xs font-medium text-muted-foreground mb-2">
+              Dokumente ({documents.length})
+            </p>
+            <div className="space-y-1.5">
+              {documents.map((doc) => {
+                const fileUrl = `${supabaseUrl}/storage/v1/object/public/vehicle-documents/${doc.storage_path}`;
+                return (
+                  <a
+                    key={doc.id}
+                    href={fileUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 rounded-md border p-2 hover:bg-muted/50 transition-colors"
+                  >
+                    <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <span className="text-sm truncate flex-1">{doc.title || doc.file_name}</span>
+                    <span className="text-xs text-muted-foreground shrink-0">
+                      {formatFileSize(doc.file_size)}
+                    </span>
+                    <Download className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                  </a>
+                );
+              })}
+            </div>
           </div>
         )}
       </div>
@@ -429,6 +502,7 @@ export function VehicleTimeline({
   vehicleId,
   supabaseUrl,
   initialMilestones,
+  documentsByMilestone = {},
   canEdit = true,
   canEditAll = true,
   userId,
@@ -746,6 +820,7 @@ export function VehicleTimeline({
                     milestone={ms}
                     supabaseUrl={supabaseUrl}
                     isSelected={selectedMilestoneId === ms.id}
+                    docCount={(documentsByMilestone[ms.id] ?? []).length}
                     onClick={() => setSelectedMilestoneId(ms.id)}
                   />
                 ))}
@@ -774,6 +849,7 @@ export function VehicleTimeline({
                 milestone={selectedMilestone}
                 allRestorations={filteredMilestones.filter((m) => m.category === "restauration")}
                 supabaseUrl={supabaseUrl}
+                documents={documentsByMilestone[selectedMilestone.id] ?? []}
                 canEdit={canEdit && (canEditAll || selectedMilestone.created_by === userId)}
                 onEdit={handleEditMilestone}
                 onDelete={handleDeleteMilestone}
@@ -783,6 +859,7 @@ export function VehicleTimeline({
               <MilestoneDetail
                 milestone={selectedMilestone}
                 supabaseUrl={supabaseUrl}
+                documents={documentsByMilestone[selectedMilestone.id] ?? []}
                 canEdit={canEdit && (canEditAll || selectedMilestone.created_by === userId)}
                 onEdit={() => handleEditMilestone(selectedMilestone)}
                 onDelete={() => handleDeleteMilestone(selectedMilestone.id)}

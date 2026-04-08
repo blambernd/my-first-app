@@ -61,6 +61,7 @@ export interface VehicleDocument {
   file_size: number;
   mime_type: string;
   service_entry_id: string | null;
+  milestone_id: string | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;
