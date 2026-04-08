@@ -11,9 +11,13 @@ import {
   Download,
   FileImage,
   FolderOpen,
+  Pencil,
+  Check,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Select,
@@ -202,6 +206,178 @@ function DocumentCard({
   );
 }
 
+function ImageGallery({
+  images,
+  supabaseUrl,
+  canEdit,
+  canEditAll,
+  userId,
+  onDelete,
+  onUpdateDescription,
+}: {
+  images: VehicleDocument[];
+  supabaseUrl: string;
+  canEdit: boolean;
+  canEditAll: boolean;
+  userId?: string;
+  onDelete: (doc: VehicleDocument) => void;
+  onUpdateDescription: (docId: string, description: string) => void;
+}) {
+  const [lightboxImg, setLightboxImg] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingText, setEditingText] = useState("");
+
+  if (images.length === 0) return null;
+
+  return (
+    <div className="mb-8">
+      <h3 className="text-sm font-medium mb-3 flex items-center gap-2">
+        <FileImage className="h-4 w-4 text-muted-foreground" />
+        Bildergalerie ({images.length})
+      </h3>
+      <div className="space-y-3">
+        {images.map((img) => {
+          const fileUrl = `${supabaseUrl}/storage/v1/object/public/vehicle-documents/${img.storage_path}`;
+          const canEditThis = canEdit && (canEditAll || img.created_by === userId);
+          const isEditing = editingId === img.id;
+
+          return (
+            <div key={img.id} className="flex gap-4 items-start group/img rounded-lg border p-3">
+              <div
+                className="shrink-0 w-36 sm:w-48 aspect-[4/3] rounded-lg overflow-hidden bg-muted cursor-pointer relative"
+                onClick={() => setLightboxImg(fileUrl)}
+              >
+                <img
+                  src={fileUrl}
+                  alt={img.description ?? img.title}
+                  className="w-full h-full object-contain"
+                  loading="lazy"
+                />
+                {canEditThis && (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="destructive"
+                        size="icon"
+                        className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover/img:opacity-100 transition-opacity"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Bild löschen?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          &ldquo;{img.title}&rdquo; wird unwiderruflich gelöscht.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => onDelete(img)}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                          Löschen
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
+              </div>
+              <div className="flex-1 min-w-0 space-y-1">
+                <p className="text-sm font-medium truncate">{img.title}</p>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Badge className={`${CATEGORY_COLORS[img.category]} border-0 text-xs`}>
+                    {getCategoryLabel(img.category)}
+                  </Badge>
+                  <span className="text-xs text-muted-foreground">
+                    {new Date(img.document_date).toLocaleDateString("de-DE")}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {formatFileSize(img.file_size)}
+                  </span>
+                </div>
+                {isEditing ? (
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <Input
+                      value={editingText}
+                      onChange={(e) => setEditingText(e.target.value)}
+                      placeholder="Bildbeschreibung..."
+                      className="h-8 text-sm flex-1"
+                      autoFocus
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          onUpdateDescription(img.id, editingText);
+                          setEditingId(null);
+                        } else if (e.key === "Escape") {
+                          setEditingId(null);
+                        }
+                      }}
+                    />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 shrink-0 text-green-600"
+                      onClick={() => {
+                        onUpdateDescription(img.id, editingText);
+                        setEditingId(null);
+                      }}
+                    >
+                      <Check className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 shrink-0"
+                      onClick={() => setEditingId(null)}
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex items-start gap-1.5 mt-1">
+                    <p className="text-sm text-muted-foreground flex-1 min-w-0">
+                      {img.description || (canEditThis ? <span className="italic text-muted-foreground/50">Beschreibung hinzufügen...</span> : null)}
+                    </p>
+                    {canEditThis && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 shrink-0 text-muted-foreground"
+                        onClick={() => {
+                          setEditingId(img.id);
+                          setEditingText(img.description ?? "");
+                        }}
+                      >
+                        <Pencil className="h-3 w-3" />
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Lightbox */}
+      {lightboxImg && (
+        <div
+          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 cursor-pointer"
+          onClick={() => setLightboxImg(null)}
+        >
+          <img
+            src={lightboxImg}
+            alt=""
+            className="max-w-full max-h-full object-contain rounded-lg"
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function DocumentArchive({
   vehicleId,
   initialDocuments,
@@ -216,10 +392,13 @@ export function DocumentArchive({
   const [filterCategory, setFilterCategory] = useState<string>("all");
   const [uploadOpen, setUploadOpen] = useState(false);
 
+  const imageDocuments = documents.filter((d) => isImageMimeType(d.mime_type));
+  const nonImageDocuments = documents.filter((d) => !isImageMimeType(d.mime_type));
+
   const filteredDocuments =
     filterCategory === "all"
-      ? documents
-      : documents.filter((d) => d.category === filterCategory);
+      ? nonImageDocuments
+      : nonImageDocuments.filter((d) => d.category === filterCategory);
 
   const refreshDocuments = useCallback(() => {
     router.refresh();
@@ -265,6 +444,21 @@ export function DocumentArchive({
     }
   };
 
+  const handleUpdateDescription = async (docId: string, description: string) => {
+    try {
+      const supabase = createClient();
+      const { error } = await supabase
+        .from("vehicle_documents")
+        .update({ description: description || null })
+        .eq("id", docId);
+      if (error) throw error;
+      toast.success("Beschreibung gespeichert");
+      refreshDocuments();
+    } catch {
+      toast.error("Fehler beim Speichern");
+    }
+  };
+
   return (
     <div>
       {/* Summary */}
@@ -302,24 +496,8 @@ export function DocumentArchive({
         </Card>
       </div>
 
-      {/* Filter + Upload button */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <Filter className="h-4 w-4 text-muted-foreground" />
-          <Select value={filterCategory} onValueChange={setFilterCategory}>
-            <SelectTrigger className="w-[180px] h-9">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Alle Kategorien</SelectItem>
-              {DOCUMENT_CATEGORIES.map((cat) => (
-                <SelectItem key={cat.value} value={cat.value}>
-                  {cat.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+      {/* Upload button */}
+      <div className="flex items-center justify-end mb-4">
         {canEdit && (
           <Button size="sm" onClick={() => setUploadOpen(true)}>
             <Plus className="h-4 w-4 mr-1.5" />
@@ -328,7 +506,36 @@ export function DocumentArchive({
         )}
       </div>
 
-      {/* Document grid */}
+      {/* Image gallery */}
+      <ImageGallery
+        images={imageDocuments}
+        supabaseUrl={supabaseUrl}
+        canEdit={canEdit}
+        canEditAll={canEditAll}
+        userId={userId}
+        onDelete={handleDelete}
+        onUpdateDescription={handleUpdateDescription}
+      />
+
+      {/* Document filter */}
+      <div className="flex items-center gap-2 mb-4">
+        <Filter className="h-4 w-4 text-muted-foreground" />
+        <Select value={filterCategory} onValueChange={setFilterCategory}>
+          <SelectTrigger className="w-[180px] h-9">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Alle Kategorien</SelectItem>
+            {DOCUMENT_CATEGORIES.map((cat) => (
+              <SelectItem key={cat.value} value={cat.value}>
+                {cat.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Document grid (non-image files only) */}
       {filteredDocuments.length === 0 ? (
         <div className="text-center py-12">
           <FolderOpen className="h-12 w-12 mx-auto text-muted-foreground/30 mb-3" />

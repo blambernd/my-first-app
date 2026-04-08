@@ -15,6 +15,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock,
+  Check,
+  X,
   FileCheck,
   FileText,
   HandCoins,
@@ -28,6 +30,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { Calendar } from "@/components/ui/calendar";
 import {
   Popover,
@@ -396,6 +399,7 @@ function RestorationDetail({
   onDelete,
   onDeleteImage,
   onDeleteDocument,
+  onUpdateCaption,
   onSelectMilestone,
   canEdit,
 }: {
@@ -407,10 +411,13 @@ function RestorationDetail({
   onDelete: (id: string) => void;
   onDeleteImage: (imageId: string, storagePath: string) => void;
   onDeleteDocument: (docId: string, storagePath: string) => void;
+  onUpdateCaption: (imageId: string, caption: string) => void;
   onSelectMilestone: (id: string) => void;
   canEdit: boolean;
 }) {
   const [lightboxImg, setLightboxImg] = useState<string | null>(null);
+  const [editingCaptionId, setEditingCaptionId] = useState<string | null>(null);
+  const [editingCaptionText, setEditingCaptionText] = useState("");
   const images = [...(milestone.vehicle_milestone_images ?? [])].sort(
     (a, b) => a.position - b.position
   );
@@ -450,56 +457,113 @@ function RestorationDetail({
         {/* Photo gallery — vertical list with captions beside */}
         {images.length > 0 && (
           <div className="mt-4 space-y-3 max-h-[500px] overflow-y-auto pr-1">
-            {images.map((img) => (
-              <div key={img.id} className="flex gap-4 items-start group/img">
-                <div
-                  className="shrink-0 w-40 sm:w-52 aspect-[4/3] rounded-lg overflow-hidden bg-muted cursor-pointer relative"
-                  onClick={() => setLightboxImg(getImageUrl(img.storage_path, supabaseUrl))}
-                >
-                  <img
-                    src={getImageUrl(img.storage_path, supabaseUrl)}
-                    alt={img.caption ?? ""}
-                    className="w-full h-full object-contain"
-                  />
-                  {canEdit && (
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button
-                          variant="destructive"
-                          size="icon"
-                          className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover/img:opacity-100 transition-opacity"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Bild löschen?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Dieses Bild wird unwiderruflich gelöscht.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Abbrechen</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => onDeleteImage(img.id, img.storage_path)}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            {images.map((img) => {
+              const isEditingCaption = editingCaptionId === img.id;
+              return (
+                <div key={img.id} className="flex gap-4 items-start group/img">
+                  <div
+                    className="shrink-0 w-40 sm:w-52 aspect-[4/3] rounded-lg overflow-hidden bg-muted cursor-pointer relative"
+                    onClick={() => setLightboxImg(getImageUrl(img.storage_path, supabaseUrl))}
+                  >
+                    <img
+                      src={getImageUrl(img.storage_path, supabaseUrl)}
+                      alt={img.caption ?? ""}
+                      className="w-full h-full object-contain"
+                    />
+                    {canEdit && (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="destructive"
+                            size="icon"
+                            className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover/img:opacity-100 transition-opacity"
+                            onClick={(e) => e.stopPropagation()}
                           >
-                            Löschen
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  )}
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Bild löschen?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Dieses Bild wird unwiderruflich gelöscht.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => onDeleteImage(img.id, img.storage_path)}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              Löschen
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0 pt-1">
+                    {isEditingCaption ? (
+                      <div className="flex items-center gap-1.5">
+                        <Input
+                          value={editingCaptionText}
+                          onChange={(e) => setEditingCaptionText(e.target.value)}
+                          placeholder="Bildbeschreibung..."
+                          className="h-8 text-sm flex-1"
+                          autoFocus
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              onUpdateCaption(img.id, editingCaptionText);
+                              setEditingCaptionId(null);
+                            } else if (e.key === "Escape") {
+                              setEditingCaptionId(null);
+                            }
+                          }}
+                        />
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 shrink-0 text-green-600"
+                          onClick={() => {
+                            onUpdateCaption(img.id, editingCaptionText);
+                            setEditingCaptionId(null);
+                          }}
+                        >
+                          <Check className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 shrink-0"
+                          onClick={() => setEditingCaptionId(null)}
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex items-start gap-1.5">
+                        <p className="text-sm text-muted-foreground flex-1 min-w-0">
+                          {img.caption || (canEdit ? <span className="italic text-muted-foreground/50">Beschreibung hinzufügen...</span> : null)}
+                        </p>
+                        {canEdit && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 shrink-0 text-muted-foreground"
+                            onClick={() => {
+                              setEditingCaptionId(img.id);
+                              setEditingCaptionText(img.caption ?? "");
+                            }}
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </Button>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
-                {img.caption && (
-                  <p className="text-sm text-muted-foreground pt-1 flex-1 min-w-0">
-                    {img.caption}
-                  </p>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
@@ -789,6 +853,21 @@ export function VehicleTimeline({
     }
   };
 
+  const handleUpdateCaption = async (imageId: string, caption: string) => {
+    try {
+      const supabase = createClient();
+      const { error } = await supabase
+        .from("vehicle_milestone_images")
+        .update({ caption: caption || null })
+        .eq("id", imageId);
+      if (error) throw error;
+      toast.success("Bildbeschreibung gespeichert");
+      refreshMilestones();
+    } catch {
+      toast.error("Fehler beim Speichern");
+    }
+  };
+
   const handleExportPdf = async () => {
     setIsExporting(true);
     try {
@@ -1024,6 +1103,7 @@ export function VehicleTimeline({
                 onDelete={handleDeleteMilestone}
                 onDeleteImage={handleDeleteImage}
                 onDeleteDocument={handleDeleteDocument}
+                onUpdateCaption={handleUpdateCaption}
                 onSelectMilestone={setSelectedMilestoneId}
               />
             ) : (
