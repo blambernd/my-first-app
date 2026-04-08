@@ -1,6 +1,6 @@
 # PROJ-10: Fahrzeug-Kurzprofil (öffentlich)
 
-## Status: In Review
+## Status: Deployed
 **Created:** 2026-04-08
 **Last Updated:** 2026-04-08
 
@@ -270,4 +270,19 @@ Neuer Datensatz: Fahrzeug-Kurzprofil (vehicle_profiles)
 - **Recommendation:** Deploy. BUG-3, BUG-4, BUG-5 are low-priority and can be addressed in follow-up.
 
 ## Deployment
-_To be added by /deploy_
+
+**Deployed:** 2026-04-08
+**Tag:** v1.10.0-PROJ-10
+**Commit:** c9b58f8
+
+### Pre-deployment Checks
+- [x] `npm run build` succeeds
+- [x] `npm run lint` passes (0 errors)
+- [x] QA approved (10/10 AC, 0 critical/high bugs)
+- [x] Environment variables documented in `.env.example`
+- [x] No secrets committed
+- [x] Migration: `20260408_vehicle_profiles.sql` — must be applied in Supabase
+
+### Migration Required
+Run in Supabase SQL Editor before first use:
+- `supabase/migrations/20260408_vehicle_profiles.sql` — creates `vehicle_profiles` table with RLS
