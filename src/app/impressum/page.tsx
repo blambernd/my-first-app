@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { BrandLogoWithText } from "@/components/brand-logo";
-import { SiteFooter } from "@/components/site-footer";
+
 
 export default function ImpressumPage() {
   return (
@@ -63,7 +63,6 @@ export default function ImpressumPage() {
         </div>
       </main>
 
-      <SiteFooter />
     </div>
   );
 }

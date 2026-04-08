@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { BrandLogoWithText } from "@/components/brand-logo";
-import { SiteFooter } from "@/components/site-footer";
+
 
 export default function HaftungPage() {
   return (
@@ -105,7 +105,6 @@ export default function HaftungPage() {
         </div>
       </main>
 
-      <SiteFooter />
     </div>
   );
 }
