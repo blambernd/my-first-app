@@ -8,38 +8,21 @@ export async function GET(
   const { token } = await params;
   const supabase = await createClient();
 
-  // Server-side query bypasses the client-side RLS issues
-  // The server client still respects RLS, but has a valid session context
-  const { data: invitation, error } = await supabase
-    .from("vehicle_invitations")
-    .select("id, vehicle_id, role, status, expires_at, vehicles(make, model, year)")
-    .eq("token", token)
-    .single();
+  // Use RPC (SECURITY DEFINER) to bypass RLS issues
+  const { data, error } = await supabase.rpc("get_invitation_by_token", {
+    p_token: token,
+  });
 
-  if (error || !invitation) {
+  if (error) {
     return NextResponse.json({ status: "invalid" }, { status: 404 });
   }
 
-  if (invitation.status === "angenommen") {
-    return NextResponse.json({ status: "accepted" });
-  }
+  const result = data as {
+    status: string;
+    role?: string;
+    expiresAt?: string;
+    vehicleName?: string;
+  };
 
-  if (invitation.status === "widerrufen" || invitation.status === "abgelaufen") {
-    return NextResponse.json({ status: "expired" });
-  }
-
-  if (new Date(invitation.expires_at) < new Date()) {
-    return NextResponse.json({ status: "expired" });
-  }
-
-  const vehicle = invitation.vehicles as unknown as { make: string; model: string; year: number } | null;
-
-  return NextResponse.json({
-    status: "valid",
-    role: invitation.role,
-    expiresAt: invitation.expires_at,
-    vehicleName: vehicle
-      ? `${vehicle.make} ${vehicle.model} (${vehicle.year})`
-      : "Fahrzeug",
-  });
+  return NextResponse.json(result);
 }
