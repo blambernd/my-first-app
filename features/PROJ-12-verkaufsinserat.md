@@ -1,6 +1,6 @@
 # PROJ-12: Verkaufsinserat erstellen
 
-## Status: Planned
+## Status: Architected
 **Created:** 2026-04-08
 **Last Updated:** 2026-04-08
 
@@ -44,7 +44,125 @@
 ---
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture_
+
+### Komponentenstruktur
+
+```
+Fahrzeug-Detailseite (/vehicles/[id])
++-- Neuer Tab: "Verkaufen" (Tag-Icon)
+    |
+    +-- Inserat-Editor (/vehicles/[id]/verkaufen)
+        |
+        +-- Status-Leiste (Entwurf / Veröffentlicht)
+        |
+        +-- Inserat-Formular
+        |   +-- Titel-Editor
+        |   |   +-- Auto-generierter Titel (Marke + Modell + Baujahr + Werksbezeichnung)
+        |   |   +-- Frei editierbares Textfeld
+        |   |   +-- Zeichenzähler (max 70 Zeichen, Warnung bei Überschreitung)
+        |   |
+        |   +-- Beschreibung-Editor
+        |   |   +-- Auto-generierter Text (aus Template + Fahrzeugdaten)
+        |   |   +-- Frei editierbares Textarea
+        |   |   +-- Zeichenzähler (max 5.000 Zeichen)
+        |   |   +-- Kurzprofil-Link (automatisch eingefügt, wenn PROJ-10 aktiv)
+        |   |   +-- Hinweis falls kein Kurzprofil existiert
+        |   |
+        |   +-- Preis-Bereich
+        |   |   +-- Preistyp: "Festpreis" / "Verhandlungsbasis" (Radio)
+        |   |   +-- Preis-Eingabefeld (€)
+        |   |   +-- Preisempfehlung aus Marktanalyse (falls vorhanden)
+        |   |   +-- Hinweis "Marktanalyse durchführen" (falls keine vorhanden)
+        |   |
+        |   +-- Foto-Auswahl
+        |       +-- Galerie aller Fahrzeugbilder (aus PROJ-2)
+        |       +-- Galerie aller Historie-Bilder (aus PROJ-5)
+        |       +-- Checkboxen zur Auswahl
+        |       +-- Drag & Drop Reihenfolge
+        |       +-- Hinweis wenn keine Fotos vorhanden
+        |
+        +-- Vorschau-Panel
+        |   +-- Live-Vorschau des Inserats
+        |   +-- Simuliert Plattform-Darstellung (mobile.de-Stil)
+        |
+        +-- Aktions-Leiste
+            +-- "Entwurf speichern" Button
+            +-- "Vorschau" Toggle-Button
+            +-- "Weiter zu Veröffentlichung" Button (→ PROJ-13)
+```
+
+### Datenmodell
+
+```
+Neuer Datensatz: Verkaufsinserat (vehicle_listings)
+- Eindeutige ID
+- Fahrzeug-Referenz (vehicle_id, 1 aktiver Entwurf pro Fahrzeug)
+- Nutzer-Referenz (user_id)
+- Titel (max 70 Zeichen)
+- Beschreibung (max 5.000 Zeichen, inkl. Kurzprofil-Link)
+- Preis in Cent (ganzzahlig, wie bei Scheckheft)
+- Preistyp: "festpreis" oder "verhandlungsbasis"
+- Ausgewählte Foto-IDs (JSON-Array, Referenz auf vehicle_images + vehicle_milestone_images)
+- Foto-Reihenfolge (JSON-Array mit IDs in gewünschter Sortierung)
+- Status: "entwurf" oder "veroeffentlicht"
+- Erstellt am / Aktualisiert am
+```
+
+### Seitenstruktur
+
+| Seite | Auth? | Zweck |
+|-------|-------|-------|
+| `/vehicles/[id]/verkaufen` | Ja (Besitzer) | Inserat erstellen & bearbeiten |
+| `/api/vehicles/[id]/listing` | Ja | GET: Entwurf laden, POST: erstellen, PATCH: aktualisieren |
+| `/api/vehicles/[id]/listing/generate` | Ja | POST: Titel + Beschreibung aus Fahrzeugdaten generieren |
+
+### Text-Generierung (Template-basiert, kein LLM)
+
+Der Inserat-Text wird serverseitig aus einem deutschen Template generiert:
+
+**Titel-Template:**
+`{Marke} {Modell} {Werksbezeichnung} — Baujahr {Jahr}`
+
+**Beschreibungs-Template:**
+```
+Abschnitt 1: Fahrzeugdaten (Marke, Modell, Baujahr, Farbe, Motor, Leistung, km-Stand)
+Abschnitt 2: Highlights aus der Historie (Anzahl Scheckheft-Einträge, besondere Meilensteine)
+Abschnitt 3: Kurzprofil-Link ("Komplette Fahrzeughistorie einsehen: [Link]")
+```
+
+Die generierten Texte dienen als Startpunkt — der Nutzer kann alles frei bearbeiten.
+
+### Technische Entscheidungen
+
+| Entscheidung | Begründung |
+|-------------|-----------|
+| Template-basierte Textgenerierung (kein LLM) | Deterministisch, schnell, kostenlos, kein API-Key nötig. Für V1 ausreichend |
+| Preis in Cent speichern | Konsistent mit bestehendem Scheckheft (cost_cents), keine Rundungsfehler |
+| Foto-IDs als JSON-Array | Gleicher Ansatz wie PROJ-10 Kurzprofil (bewährt), Reihenfolge als separate Sortierung |
+| Ein Entwurf pro Fahrzeug | Einfacher UX-Flow, kein Verwaltungsaufwand für mehrere Entwürfe |
+| Vorschau im Split-Screen | Nutzer sieht sofort, wie das Inserat aussieht, ohne Seite zu wechseln |
+| Generate-Endpunkt separat | Text-Generierung ist aufwändig (DB-Abfragen), wird nur bei "Neu generieren" aufgerufen, nicht bei jedem Speichern |
+
+### Abhängigkeiten (neue Pakete)
+
+| Paket | Zweck |
+|-------|-------|
+| @dnd-kit/core + @dnd-kit/sortable | Drag & Drop für Foto-Reihenfolge (falls noch nicht installiert) |
+
+*Hinweis: Prüfen ob @dnd-kit bereits im Projekt vorhanden ist. Falls nicht, ist es das Standard-DnD-Paket für React/Next.js.*
+
+### Ablauf
+
+```
+1. Nutzer öffnet "Verkaufen" Tab bei seinem Fahrzeug
+2. Falls noch kein Entwurf existiert → "Inserat erstellen" Button
+3. System generiert automatisch Titel + Beschreibung aus Fahrzeugdaten
+4. System zeigt Preisempfehlung aus letzter Marktanalyse (falls vorhanden)
+5. Nutzer passt Titel, Beschreibung, Preis und Fotos nach Wunsch an
+6. Nutzer kann jederzeit "Entwurf speichern" → Daten werden in DB gespeichert
+7. Nutzer kann Live-Vorschau ein-/ausblenden
+8. Wenn fertig → "Weiter zu Veröffentlichung" leitet zu PROJ-13 weiter
+```
 
 ## QA Test Results
 _To be added by /qa_
