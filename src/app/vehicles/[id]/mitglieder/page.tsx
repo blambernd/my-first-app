@@ -21,7 +21,7 @@ export default async function MitgliederPage({ params }: MitgliederPageProps) {
   // Only the owner can see this page
   const { data: vehicle } = await supabase
     .from("vehicles")
-    .select("id")
+    .select("id, make, model, year")
     .eq("id", id)
     .eq("user_id", user.id)
     .single();
@@ -38,18 +38,20 @@ export default async function MitgliederPage({ params }: MitgliederPageProps) {
     .order("joined_at", { ascending: true })
     .limit(50);
 
-  // Fetch open invitations
+  // Fetch all invitations (open + past)
   const { data: invitations } = await supabase
     .from("vehicle_invitations")
     .select("*")
     .eq("vehicle_id", id)
-    .eq("status", "offen")
     .order("created_at", { ascending: false })
     .limit(50);
+
+  const vehicleName = `${vehicle.make} ${vehicle.model} (${vehicle.year})`;
 
   return (
     <VehicleMembers
       vehicleId={id}
+      vehicleName={vehicleName}
       initialMembers={(members ?? []) as VehicleMember[]}
       initialInvitations={(invitations ?? []) as VehicleInvitation[]}
     />

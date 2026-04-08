@@ -127,3 +127,84 @@ export async function POST(
     );
   }
 }
+
+// Resend invitation email
+export async function PUT(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id: vehicleId } = await params;
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json(
+        { error: "Nicht angemeldet" },
+        { status: 401 }
+      );
+    }
+
+    // Verify user is the vehicle owner
+    const { data: vehicle } = await supabase
+      .from("vehicles")
+      .select("id, make, model, year")
+      .eq("id", vehicleId)
+      .eq("user_id", user.id)
+      .single();
+
+    if (!vehicle) {
+      return NextResponse.json(
+        { error: "Keine Berechtigung" },
+        { status: 403 }
+      );
+    }
+
+    const { token, email, role } = await request.json();
+
+    if (!token || !email) {
+      return NextResponse.json(
+        { error: "Fehlende Parameter" },
+        { status: 400 }
+      );
+    }
+
+    const origin =
+      request.headers.get("origin") ||
+      request.headers.get("referer")?.replace(/\/+$/, "") ||
+      process.env.NEXT_PUBLIC_SITE_URL ||
+      "http://localhost:3000";
+
+    const inviteUrl = `${origin}/invite/${token}`;
+    const vehicleName = `${vehicle.make} ${vehicle.model} (${vehicle.year})`;
+    const roleLabel = ROLE_LABELS[role as InviteRole] || role;
+
+    if (!resend) {
+      return NextResponse.json(
+        { error: "E-Mail-Versand nicht konfiguriert" },
+        { status: 500 }
+      );
+    }
+
+    await resend.emails.send({
+      from: "Oldtimer Docs <noreply@oldtimer-docs.com>",
+      to: email,
+      subject: `Erinnerung: Einladung zu ${vehicleName}`,
+      react: MemberInviteEmail({
+        vehicleName,
+        role: roleLabel,
+        inviteUrl,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      }),
+    });
+
+    return NextResponse.json({ success: true });
+  } catch {
+    return NextResponse.json(
+      { error: "Fehler beim Senden der E-Mail" },
+      { status: 500 }
+    );
+  }
+}

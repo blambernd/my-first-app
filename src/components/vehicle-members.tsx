@@ -10,12 +10,14 @@ import type { VehicleMember, VehicleInvitation } from "@/lib/validations/member"
 
 interface VehicleMembersProps {
   vehicleId: string;
+  vehicleName: string;
   initialMembers: VehicleMember[];
   initialInvitations: VehicleInvitation[];
 }
 
 export function VehicleMembers({
   vehicleId,
+  vehicleName,
   initialMembers,
   initialInvitations,
 }: VehicleMembersProps) {
@@ -48,7 +50,12 @@ export function VehicleMembers({
       </Card>
 
       {/* Pending invitations */}
-      <PendingInvitations invitations={invitations} onUpdate={refresh} />
+      <PendingInvitations
+        vehicleId={vehicleId}
+        vehicleName={vehicleName}
+        invitations={invitations}
+        onUpdate={refresh}
+      />
 
       {/* Members list */}
       <div>
