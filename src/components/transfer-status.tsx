@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { Copy, Check, Clock, XCircle, CheckCircle, Ban } from "lucide-react";
+import { Copy, Check, Clock, XCircle, CheckCircle, Ban, Mail, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -24,6 +24,7 @@ import {
 
 interface TransferStatusProps {
   transfer: VehicleTransfer;
+  vehicleName?: string;
   onUpdate: () => void;
 }
 
@@ -34,9 +35,10 @@ const STATUS_CONFIG = {
   abgebrochen: { icon: Ban, variant: "secondary" as const, color: "text-muted-foreground" },
 };
 
-export function TransferStatus({ transfer, onUpdate }: TransferStatusProps) {
+export function TransferStatus({ transfer, vehicleName, onUpdate }: TransferStatusProps) {
   const [cancelling, setCancelling] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [resending, setResending] = useState(false);
 
   const config = STATUS_CONFIG[transfer.status];
   const StatusIcon = config.icon;
@@ -69,6 +71,27 @@ export function TransferStatus({ transfer, onUpdate }: TransferStatusProps) {
       toast.error("Fehler beim Abbrechen des Transfers");
     } finally {
       setCancelling(false);
+    }
+  };
+
+  const resendEmail = async () => {
+    setResending(true);
+    try {
+      const res = await fetch("/api/transfers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          token: transfer.token,
+          email: transfer.to_email,
+          vehicleName: vehicleName || "Fahrzeug-Transfer",
+        }),
+      });
+      if (!res.ok) throw new Error();
+      toast.success("E-Mail erneut gesendet!");
+    } catch {
+      toast.error("E-Mail konnte nicht gesendet werden");
+    } finally {
+      setResending(false);
     }
   };
 
@@ -136,6 +159,21 @@ export function TransferStatus({ transfer, onUpdate }: TransferStatusProps) {
               )}
             </Button>
           </div>
+
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full"
+            onClick={resendEmail}
+            disabled={resending}
+          >
+            {resending ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-1.5" />
+            ) : (
+              <Mail className="h-4 w-4 mr-1.5" />
+            )}
+            {resending ? "Wird gesendet..." : "E-Mail erneut senden"}
+          </Button>
 
           <AlertDialog>
             <AlertDialogTrigger asChild>

@@ -40,6 +40,15 @@ export default async function TransferPage({ params }: TransferPageProps) {
     .eq("status", "offen")
     .single();
 
+  // Load transfer history (non-active)
+  const { data: pastTransfers } = await supabase
+    .from("vehicle_transfers")
+    .select("*")
+    .eq("vehicle_id", id)
+    .neq("status", "offen")
+    .order("created_at", { ascending: false })
+    .limit(10);
+
   const vehicleName = `${vehicle.make} ${vehicle.model} (${vehicle.year})`;
 
   return (
@@ -63,6 +72,7 @@ export default async function TransferPage({ params }: TransferPageProps) {
         vehicleId={id}
         vehicleName={vehicleName}
         activeTransfer={(activeTransfer as VehicleTransfer) ?? null}
+        pastTransfers={(pastTransfers as VehicleTransfer[]) ?? []}
       />
     </div>
   );
