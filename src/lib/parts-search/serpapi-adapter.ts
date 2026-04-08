@@ -4,13 +4,26 @@ import {
   getSpecialistSites,
   buildSiteFilter,
   getSpecialistLabel,
+  MANUFACTURER_SITES,
 } from "./manufacturer-sites";
 
-function buildSearchQuery(params: SearchParams): string {
-  // Quote make+model to avoid cross-brand results (e.g. BMW parts for Mercedes)
-  const vehicle = `"${params.make}" "${params.model}"`;
-  const partNumber = params.partNumber ? `"${params.partNumber}"` : "";
-  return `${vehicle} ${params.year} ${params.query} ${partNumber} Ersatzteil`.replace(/\s+/g, " ").trim();
+/**
+ * Build search query for Google-based engines (Shopping, Search).
+ * Uses quotes around make+model for precision.
+ */
+function buildGoogleQuery(params: SearchParams): string {
+  const parts = [`"${params.make} ${params.model}"`, params.query];
+  if (params.partNumber) parts.push(`"${params.partNumber}"`);
+  return parts.join(" ");
+}
+
+/**
+ * Build search query for eBay (no quotes — eBay's _nkw doesn't support them well).
+ */
+function buildEbayQuery(params: SearchParams): string {
+  const parts = [params.make, params.model, params.query];
+  if (params.partNumber) parts.push(params.partNumber);
+  return parts.join(" ");
 }
 
 function mapCondition(
@@ -52,6 +65,63 @@ function filterByPrice(
 }
 
 /**
+ * Known competitor makes — used to filter out wrong-brand results.
+ * We collect all makes from MANUFACTURER_SITES plus common ones.
+ */
+const ALL_KNOWN_MAKES = new Set([
+  ...Object.keys(MANUFACTURER_SITES),
+  "BMW", "Mercedes-Benz", "Mercedes", "Audi", "Volkswagen", "VW",
+  "Opel", "Ford", "Porsche", "Fiat", "Alfa Romeo", "Jaguar",
+  "Volvo", "Saab", "Peugeot", "Renault", "Citroën", "Citroen",
+  "Toyota", "Mazda", "Honda", "Nissan", "Datsun",
+  "Chevrolet", "Dodge", "Buick", "Cadillac",
+  "Ferrari", "Lamborghini", "Maserati", "Lancia",
+  "Rolls-Royce", "Bentley", "Aston Martin",
+  "Triumph", "MG", "Lotus", "Land Rover",
+  "Trabant", "Wartburg", "Škoda", "Skoda",
+]);
+
+/**
+ * Filter out results that clearly belong to a different manufacturer.
+ * Checks if the title contains a competing brand name but NOT the searched make.
+ */
+function filterByMake(
+  items: SearchResultItem[],
+  make: string
+): SearchResultItem[] {
+  const makeLower = make.toLowerCase();
+  // Build aliases: e.g. "Mercedes-Benz" also matches "Mercedes", "MB"
+  const makeAliases = [makeLower];
+  if (makeLower === "mercedes-benz") makeAliases.push("mercedes", "mb ");
+  if (makeLower === "volkswagen") makeAliases.push("vw ");
+  if (makeLower === "bmw") makeAliases.push("bmw ");
+  if (makeLower === "citroën") makeAliases.push("citroen");
+  if (makeLower === "škoda") makeAliases.push("skoda");
+
+  // Competitor makes to check against (exclude the searched make)
+  const competitors = [...ALL_KNOWN_MAKES]
+    .filter((m) => m.toLowerCase() !== makeLower)
+    .map((m) => m.toLowerCase());
+
+  return items.filter((item) => {
+    const titleLower = item.title.toLowerCase();
+
+    // If title contains searched make → keep
+    if (makeAliases.some((alias) => titleLower.includes(alias))) {
+      return true;
+    }
+
+    // If title contains a competitor make → remove
+    if (competitors.some((comp) => titleLower.includes(comp))) {
+      return false;
+    }
+
+    // Title mentions neither → keep (generic part listing)
+    return true;
+  });
+}
+
+/**
  * eBay Kleinanzeigen adapter using SerpAPI's eBay engine
  */
 export const ebayKleinanzeigenAdapter: PlatformAdapter = {
@@ -64,7 +134,7 @@ export const ebayKleinanzeigenAdapter: PlatformAdapter = {
     const result = await getJson({
       engine: "ebay",
       ebay_domain: "ebay.de",
-      _nkw: buildSearchQuery(params),
+      _nkw: buildEbayQuery(params),
       api_key: apiKey,
     });
 
@@ -90,6 +160,7 @@ export const ebayKleinanzeigenAdapter: PlatformAdapter = {
       })
     );
 
+    items = filterByMake(items, params.make);
     items = filterByCondition(items, params.condition);
     items = filterByPrice(items, params.minPrice, params.maxPrice);
 
@@ -109,7 +180,7 @@ export const googleShoppingAdapter: PlatformAdapter = {
 
     const result = await getJson({
       engine: "google_shopping",
-      q: buildSearchQuery(params),
+      q: buildGoogleQuery(params),
       gl: "de",
       hl: "de",
       api_key: apiKey,
@@ -135,6 +206,7 @@ export const googleShoppingAdapter: PlatformAdapter = {
       })
     );
 
+    items = filterByMake(items, params.make);
     items = filterByCondition(items, params.condition);
     items = filterByPrice(items, params.minPrice, params.maxPrice);
 
@@ -200,6 +272,7 @@ function parseGoogleOrganicResults(
     }
   );
 
+  items = filterByMake(items, params.make);
   items = filterByCondition(items, params.condition);
   items = filterByPrice(items, params.minPrice, params.maxPrice);
   return items.slice(0, limit);
@@ -217,7 +290,7 @@ async function searchGoogleWithSiteFilter(
   const apiKey = process.env.SERPAPI_API_KEY;
   if (!apiKey) return [];
 
-  const partQuery = buildSearchQuery(params);
+  const partQuery = buildGoogleQuery(params);
   const siteFilter = buildSiteFilter(sites);
   const fullQuery = `${partQuery} (${siteFilter})`;
 
