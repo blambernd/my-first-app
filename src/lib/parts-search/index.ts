@@ -1,11 +1,12 @@
 import {
   ebayKleinanzeigenAdapter,
   googleShoppingAdapter,
+  createSpecialistAdapter,
 } from "./serpapi-adapter";
 import type { PlatformAdapter, SearchParams, SearchResultItem } from "./types";
 import type { PartGroup, PartsSearchResult } from "@/lib/validations/parts";
 
-const ALL_ADAPTERS: PlatformAdapter[] = [
+const BASE_ADAPTERS: PlatformAdapter[] = [
   ebayKleinanzeigenAdapter,
   googleShoppingAdapter,
 ];
@@ -26,6 +27,10 @@ export async function searchParts(
   page = 1,
   pageSize = 20
 ): Promise<PartsSearchResult> {
+  // Build adapter list: base adapters + dynamic specialist adapter for this make
+  const specialistAdapter = createSpecialistAdapter(params.make);
+  const ALL_ADAPTERS: PlatformAdapter[] = [...BASE_ADAPTERS, specialistAdapter];
+
   const adapters = platformIds
     ? ALL_ADAPTERS.filter((a) => platformIds.includes(a.id))
     : ALL_ADAPTERS;
@@ -156,5 +161,5 @@ export async function searchParts(
   };
 }
 
-export { ALL_ADAPTERS };
+export { BASE_ADAPTERS };
 export type { SearchParams, PlatformAdapter };

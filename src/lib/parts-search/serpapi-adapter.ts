@@ -1,5 +1,10 @@
 import { getJson } from "serpapi";
 import type { PlatformAdapter, SearchParams, SearchResultItem } from "./types";
+import {
+  getSpecialistSites,
+  buildSiteFilter,
+  getSpecialistLabel,
+} from "./manufacturer-sites";
 
 function buildSearchQuery(params: SearchParams): string {
   return `${params.make} ${params.model} ${params.year} ${params.query} Ersatzteil`;
@@ -133,3 +138,82 @@ export const googleShoppingAdapter: PlatformAdapter = {
     return items.slice(0, 40);
   },
 };
+
+/**
+ * Specialist adapter — searches manufacturer-specific shops via Google Search
+ * Uses site: filters to target known specialist parts dealers.
+ */
+export function createSpecialistAdapter(make: string): PlatformAdapter {
+  const sites = getSpecialistSites(make);
+  const label = getSpecialistLabel(make);
+
+  return {
+    id: "specialist",
+    label,
+    async search(params: SearchParams): Promise<SearchResultItem[]> {
+      const apiKey = process.env.SERPAPI_API_KEY;
+      if (!apiKey) return [];
+
+      const partQuery = `${params.make} ${params.model} ${params.year} ${params.query} Ersatzteil`;
+      const siteFilter = buildSiteFilter(sites);
+      const fullQuery = `${partQuery} (${siteFilter})`;
+
+      const result = await getJson({
+        engine: "google",
+        q: fullQuery,
+        gl: "de",
+        hl: "de",
+        num: 20,
+        api_key: apiKey,
+      });
+
+      if (result.error) {
+        throw new Error(`SerpAPI Google: ${result.error}`);
+      }
+
+      const organicResults = result.organic_results || [];
+
+      let items: SearchResultItem[] = organicResults.map(
+        (item: Record<string, unknown>) => {
+          // Try to extract price from snippet
+          const snippet = String(item.snippet || "");
+          const priceMatch = snippet.match(
+            /(\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2}))\s*€|€\s*(\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2}))/
+          );
+          let price: number | null = null;
+          if (priceMatch) {
+            const priceStr = (priceMatch[1] || priceMatch[2])
+              .replace(/\./g, "")
+              .replace(",", ".");
+            price = parseFloat(priceStr);
+            if (isNaN(price)) price = null;
+          }
+
+          // Extract domain as seller
+          const link = String(item.link || "");
+          let seller: string | null = null;
+          try {
+            seller = new URL(link).hostname.replace(/^www\./, "");
+          } catch {
+            seller = null;
+          }
+
+          return {
+            title: String(item.title || ""),
+            price,
+            currency: "EUR",
+            condition: mapCondition(snippet),
+            url: link,
+            imageUrl: item.thumbnail ? String(item.thumbnail) : null,
+            seller,
+          };
+        }
+      );
+
+      items = filterByCondition(items, params.condition);
+      items = filterByPrice(items, params.minPrice, params.maxPrice);
+
+      return items.slice(0, 20);
+    },
+  };
+}

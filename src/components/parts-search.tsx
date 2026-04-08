@@ -605,8 +605,8 @@ export function PartsSearch({
             Suche nach Ersatzteilen für dein Fahrzeug.
           </p>
           <p className="text-xs text-muted-foreground mt-1">
-            Wir durchsuchen eBay Kleinanzeigen, Mobile.de, Oldtimer-Markt.de
-            und Classic-Trader.
+            Wir durchsuchen eBay, Google Shopping und herstellerspezifische
+            Spezialisten-Shops.
           </p>
         </div>
       )}
