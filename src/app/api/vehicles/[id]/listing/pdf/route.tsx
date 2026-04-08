@@ -14,6 +14,7 @@ import { PRICE_TYPE_LABELS, type PriceType } from "@/lib/validations/listing";
 
 const styles = StyleSheet.create({
   page: { padding: 40, fontSize: 10, fontFamily: "Helvetica" },
+  photoPage: { padding: 30, fontFamily: "Helvetica" },
   title: { fontSize: 18, fontWeight: "bold", marginBottom: 4 },
   price: { fontSize: 14, fontWeight: "bold", marginBottom: 16, color: "#1a1a1a" },
   section: { marginBottom: 16 },
@@ -28,9 +29,12 @@ const styles = StyleSheet.create({
     paddingBottom: 3,
   },
   description: { fontSize: 10, lineHeight: 1.5, whiteSpace: "pre-wrap" as const },
-  photoGrid: { flexDirection: "row" as const, flexWrap: "wrap" as const, gap: 6, marginTop: 10 },
-  photo: { width: "48%", height: 140, objectFit: "contain" as const, borderRadius: 4, backgroundColor: "#f5f5f5" },
-  photoSingle: { width: "100%", height: 240, objectFit: "contain" as const, borderRadius: 4, marginBottom: 8, backgroundColor: "#f5f5f5" },
+  // Hero photo: full width, no fixed height — image scales proportionally
+  heroPhoto: { width: "100%", borderRadius: 6, marginBottom: 12 },
+  // Grid photos: 2-column, no fixed height
+  photoGrid: { flexDirection: "row" as const, flexWrap: "wrap" as const, gap: 8 },
+  photoWrapper: { width: "48.5%", marginBottom: 4 },
+  gridPhoto: { width: "100%", borderRadius: 4 },
   factRow: { flexDirection: "row" as const, marginBottom: 3 },
   factLabel: { fontSize: 9, color: "#888", width: 90 },
   factValue: { fontSize: 10, fontWeight: "bold" },
@@ -49,7 +53,7 @@ const styles = StyleSheet.create({
   profileUrl: { fontSize: 8, color: "#666" },
   footer: {
     position: "absolute" as const,
-    bottom: 30,
+    bottom: 20,
     left: 40,
     right: 40,
     textAlign: "center" as const,
@@ -89,21 +93,15 @@ interface ListingPdfData {
 }
 
 function ListingPdfDocument({ data }: { data: ListingPdfData }) {
+  const additionalPhotos = data.photos.slice(1);
+
   return (
     <Document>
+      {/* Page 1: Hero photo + title + facts */}
       <Page size="A4" style={styles.page}>
-        {/* Hero photo */}
+        {/* Hero photo — full width, natural aspect ratio */}
         {data.photos.length > 0 && (
-          <Image src={data.photos[0]} style={styles.photoSingle} />
-        )}
-
-        {/* Additional photos below hero */}
-        {data.photos.length > 1 && (
-          <View style={styles.photoGrid}>
-            {data.photos.slice(1, 5).map((url, i) => (
-              <Image key={i} src={url} style={styles.photo} />
-            ))}
-          </View>
+          <Image src={data.photos[0]} style={styles.heroPhoto} />
         )}
 
         {/* Title & Price */}
@@ -182,13 +180,15 @@ function ListingPdfDocument({ data }: { data: ListingPdfData }) {
         <Text style={styles.footer}>Erstellt mit Oldtimer Docs</Text>
       </Page>
 
-      {/* Additional photos page for remaining photos beyond the first 5 */}
-      {data.photos.length > 5 && (
-        <Page size="A4" style={styles.page}>
+      {/* Photo pages — natural aspect ratio, no cropping */}
+      {additionalPhotos.length > 0 && (
+        <Page size="A4" style={styles.photoPage} wrap>
           <Text style={styles.sectionTitle}>Weitere Fotos</Text>
           <View style={styles.photoGrid}>
-            {data.photos.slice(5).map((url, i) => (
-              <Image key={i} src={url} style={styles.photo} />
+            {additionalPhotos.map((url, i) => (
+              <View key={i} style={styles.photoWrapper} wrap={false}>
+                <Image src={url} style={styles.gridPhoto} />
+              </View>
             ))}
           </View>
           <Text style={styles.footer}>Erstellt mit Oldtimer Docs</Text>
