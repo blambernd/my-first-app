@@ -137,7 +137,7 @@ export async function GET(
   if (config.sections.dokumente) {
     let query = supabase
       .from("vehicle_documents")
-      .select("id, title, category, document_date, file_type, storage_path, mime_type")
+      .select("id, title, category, document_date, storage_path, mime_type")
       .eq("vehicle_id", vehicleId)
       .order("document_date", { ascending: false });
 

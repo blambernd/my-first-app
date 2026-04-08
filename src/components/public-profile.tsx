@@ -72,7 +72,6 @@ interface ProfileData {
     title: string;
     category: string | null;
     document_date: string | null;
-    file_type: string | null;
     storage_path: string;
     mime_type: string;
   }[];
