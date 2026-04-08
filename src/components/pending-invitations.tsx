@@ -16,7 +16,6 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { createClient } from "@/lib/supabase";
 import { ROLE_LABELS, type VehicleInvitation } from "@/lib/validations/member";
 
 interface PendingInvitationsProps {
@@ -48,13 +47,12 @@ export function PendingInvitations({
   const handleRevoke = async (invitationId: string) => {
     setRevokingId(invitationId);
     try {
-      const supabase = createClient();
-      const { error } = await supabase
-        .from("vehicle_invitations")
-        .update({ status: "widerrufen" })
-        .eq("id", invitationId);
-
-      if (error) throw error;
+      const res = await fetch(`/api/vehicles/${vehicleId}/invitations`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ invitationId }),
+      });
+      if (!res.ok) throw new Error();
       toast.success("Einladung widerrufen");
       onUpdate();
     } catch {

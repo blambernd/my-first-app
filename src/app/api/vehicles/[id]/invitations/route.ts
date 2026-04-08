@@ -208,3 +208,63 @@ export async function PUT(
     );
   }
 }
+
+// Revoke invitation
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id: vehicleId } = await params;
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json(
+        { error: "Nicht angemeldet" },
+        { status: 401 }
+      );
+    }
+
+    // Verify ownership
+    const { data: vehicle } = await supabase
+      .from("vehicles")
+      .select("id")
+      .eq("id", vehicleId)
+      .eq("user_id", user.id)
+      .single();
+
+    if (!vehicle) {
+      return NextResponse.json(
+        { error: "Keine Berechtigung" },
+        { status: 403 }
+      );
+    }
+
+    const { invitationId } = await request.json();
+
+    if (!invitationId) {
+      return NextResponse.json(
+        { error: "Fehlende Parameter" },
+        { status: 400 }
+      );
+    }
+
+    // Use service-level RPC to update status
+    const { error } = await supabase.rpc("revoke_vehicle_invitation", {
+      p_invitation_id: invitationId,
+      p_vehicle_id: vehicleId,
+    });
+
+    if (error) throw error;
+
+    return NextResponse.json({ success: true });
+  } catch {
+    return NextResponse.json(
+      { error: "Fehler beim Widerrufen" },
+      { status: 500 }
+    );
+  }
+}
