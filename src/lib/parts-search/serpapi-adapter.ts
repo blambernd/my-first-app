@@ -144,6 +144,81 @@ function filterByMake(
 }
 
 /**
+ * Factory code patterns per manufacturer.
+ * Regex patterns that match factory codes in listing titles (e.g. W123, E30, 911).
+ * Used to detect when a listing is for a DIFFERENT model of the same brand.
+ */
+const FACTORY_CODE_PATTERNS: Record<string, RegExp> = {
+  "Mercedes-Benz": /\b(W|C|S|R|V|A)\d{3}\b/gi,
+  BMW: /\b[EFG]\d{2}\b/gi,
+  Porsche: /\b(911|912|914|924|928|930|944|964|968|986|987|991|992|993|996|997|356|550|718)\b/g,
+  Volkswagen: /\b(T[1-7]|Golf\s*[IV]{1,3}|Käfer|Typ\s*\d{1,2})\b/gi,
+  Audi: /\b(B[1-9]|C[1-6]|D[1-4]|4[A-L]|8[A-Z])\b/gi,
+  Opel: /\b(Kadett\s*[A-E]|Ascona\s*[A-C]|Manta\s*[A-B]|Rekord\s*[A-E]|GT)\b/gi,
+  Fiat: /\b(124|125|126|127|128|130|131|500|600|850|1100|1500|Tipo\s*\d{3})\b/g,
+  "Alfa Romeo": /\b(105|115|116|750|101|GTV?|Spider|Giulia|Giulietta)\b/gi,
+  Jaguar: /\b(XJ[S6C]?|XK\d{3}|E-Type|Mark\s*[IVX]{1,3}|S-Type)\b/gi,
+  Volvo: /\b(P?V?\d{3}|Amazon|PV\d{3}|140|240|740|940|P1800)\b/gi,
+};
+
+/**
+ * Filter out results that mention a DIFFERENT factory code / model variant
+ * from the same manufacturer. E.g. searching for W123, remove results for W124.
+ *
+ * Logic:
+ * - Extract all factory codes mentioned in the result title
+ * - If the title mentions our factory code or model → keep
+ * - If the title mentions OTHER factory codes from the same brand but NOT ours → remove
+ * - If no factory codes detected → keep (generic listing)
+ */
+function filterByModel(
+  items: SearchResultItem[],
+  params: SearchParams
+): SearchResultItem[] {
+  const { make, model, factoryCode } = params;
+  const pattern = FACTORY_CODE_PATTERNS[make];
+
+  // If we don't have patterns for this brand, skip model filtering
+  if (!pattern) return items;
+
+  // Build a set of "our" identifiers to match against
+  const ourIdentifiers = new Set<string>();
+  if (factoryCode) ourIdentifiers.add(factoryCode.toLowerCase());
+  if (model) ourIdentifiers.add(model.toLowerCase());
+
+  return items.filter((item) => {
+    const titleLower = item.title.toLowerCase();
+
+    // Check if our factory code or model appears in the title
+    const hasOurModel =
+      (factoryCode && titleLower.includes(factoryCode.toLowerCase())) ||
+      titleLower.includes(model.toLowerCase());
+
+    if (hasOurModel) return true;
+
+    // Extract factory codes mentioned in this title
+    // Reset regex lastIndex for global patterns
+    pattern.lastIndex = 0;
+    const mentionedCodes: string[] = [];
+    let match;
+    while ((match = pattern.exec(item.title)) !== null) {
+      mentionedCodes.push(match[0].toLowerCase());
+    }
+
+    // If the title mentions factory codes that aren't ours → wrong model
+    if (mentionedCodes.length > 0) {
+      const hasMatchingCode = mentionedCodes.some((code) =>
+        ourIdentifiers.has(code)
+      );
+      if (!hasMatchingCode) return false;
+    }
+
+    // No factory codes detected → generic listing, keep
+    return true;
+  });
+}
+
+/**
  * eBay Kleinanzeigen adapter using SerpAPI's eBay engine
  */
 export const ebayKleinanzeigenAdapter: PlatformAdapter = {
@@ -183,6 +258,7 @@ export const ebayKleinanzeigenAdapter: PlatformAdapter = {
     );
 
     items = filterByMake(items, params.make);
+    items = filterByModel(items, params);
     items = filterByCondition(items, params.condition);
     items = filterByPrice(items, params.minPrice, params.maxPrice);
 
@@ -229,6 +305,7 @@ export const googleShoppingAdapter: PlatformAdapter = {
     );
 
     items = filterByMake(items, params.make);
+    items = filterByModel(items, params);
     items = filterByCondition(items, params.condition);
     items = filterByPrice(items, params.minPrice, params.maxPrice);
 
@@ -295,6 +372,7 @@ function parseGoogleOrganicResults(
   );
 
   items = filterByMake(items, params.make);
+  items = filterByModel(items, params);
   items = filterByCondition(items, params.condition);
   items = filterByPrice(items, params.minPrice, params.maxPrice);
   return items.slice(0, limit);
