@@ -235,7 +235,7 @@ function ImageGallery({
         <FileImage className="h-4 w-4 text-muted-foreground" />
         Bildergalerie ({images.length})
       </h3>
-      <div className="space-y-3">
+      <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
         {images.map((img) => {
           const fileUrl = `${supabaseUrl}/storage/v1/object/public/vehicle-documents/${img.storage_path}`;
           const canEditThis = canEdit && (canEditAll || img.created_by === userId);
