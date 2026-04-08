@@ -288,6 +288,29 @@ export function VehicleForm({ vehicle, vehicleImages = [], mode }: VehicleFormPr
             storage_path: datenkartePath,
             position: 0,
           });
+
+          // Also save as document with "datenkarte" category
+          const docPath = `${user.id}/${vehicleId}/documents/${datenkarteId}.${datenkarteExt}`;
+          const { error: docUploadError } = await supabase.storage
+            .from("vehicle-documents")
+            .upload(docPath, datenkarte, {
+              contentType: datenkarte.type,
+              upsert: false,
+            });
+          if (!docUploadError) {
+            await supabase.from("vehicle_documents").insert({
+              vehicle_id: vehicleId,
+              title: "Datenkarte",
+              category: "datenkarte",
+              document_date: deliveryDate,
+              storage_path: docPath,
+              file_name: datenkarte.name,
+              file_size: datenkarte.size,
+              mime_type: datenkarte.type,
+              milestone_id: milestone.id,
+              created_by: user.id,
+            });
+          }
         } catch (dkError) {
           console.error("Datenkarte error:", dkError);
           toast.error("Datenkarte konnte nicht gespeichert werden.");

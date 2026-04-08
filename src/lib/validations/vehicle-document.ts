@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 export const DOCUMENT_CATEGORIES = [
+  { value: "datenkarte", label: "Datenkarte" },
   { value: "rechnung", label: "Rechnung" },
   { value: "gutachten", label: "Gutachten" },
   { value: "tuev_bericht", label: "TÜV-Bericht" },
@@ -29,7 +30,7 @@ export const vehicleDocumentSchema = z.object({
     .min(1, "Titel ist erforderlich")
     .max(200, "Titel darf maximal 200 Zeichen lang sein"),
   category: z.enum(
-    ["rechnung", "gutachten", "tuev_bericht", "kaufvertrag", "versicherung", "zulassung", "sonstiges"],
+    ["datenkarte", "rechnung", "gutachten", "tuev_bericht", "kaufvertrag", "versicherung", "zulassung", "sonstiges"],
     { error: "Bitte wähle eine Kategorie" }
   ),
   document_date: z.string().min(1, "Datum ist erforderlich"),
