@@ -2,6 +2,7 @@ import {
   ebayKleinanzeigenAdapter,
   googleShoppingAdapter,
   createSpecialistAdapter,
+  recyclerAdapter,
 } from "./serpapi-adapter";
 import type { PlatformAdapter, SearchParams, SearchResultItem } from "./types";
 import type { PartGroup, PartsSearchResult } from "@/lib/validations/parts";
@@ -9,6 +10,7 @@ import type { PartGroup, PartsSearchResult } from "@/lib/validations/parts";
 const BASE_ADAPTERS: PlatformAdapter[] = [
   ebayKleinanzeigenAdapter,
   googleShoppingAdapter,
+  recyclerAdapter,
 ];
 
 interface PlatformResult {

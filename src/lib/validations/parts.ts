@@ -14,6 +14,7 @@ export const PLATFORMS = [
   { value: "ebay_kleinanzeigen", label: "eBay" },
   { value: "google_shopping", label: "Google Shopping" },
   { value: "specialist", label: "Spezialisten" },
+  { value: "recycler", label: "Verwerter" },
 ] as const;
 
 export type PlatformId = (typeof PLATFORMS)[number]["value"];

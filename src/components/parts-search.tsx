@@ -605,8 +605,8 @@ export function PartsSearch({
             Suche nach Ersatzteilen für dein Fahrzeug.
           </p>
           <p className="text-xs text-muted-foreground mt-1">
-            Wir durchsuchen eBay, Google Shopping und herstellerspezifische
-            Spezialisten-Shops.
+            Wir durchsuchen eBay, Google Shopping, Spezialisten-Shops und
+            Autoverwerter.
           </p>
         </div>
       )}
