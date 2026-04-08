@@ -67,6 +67,7 @@ interface PhotoItem {
   file?: File;
   preview: string;
   storagePath?: string; // existing photo
+  caption?: string;
 }
 
 interface DocItem {
@@ -121,6 +122,7 @@ export function MilestoneForm({
             id: img.id,
             preview: getImageUrl(img.storage_path, supabaseUrl),
             storagePath: img.storage_path,
+            caption: img.caption ?? "",
           }));
         setPhotos(existing);
       } else {
@@ -272,6 +274,15 @@ export function MilestoneForm({
             .delete()
             .in("id", deletedIds);
         }
+
+        // Update captions for existing photos
+        const existingPhotos = photos.filter((p) => p.storagePath);
+        for (const photo of existingPhotos) {
+          await supabase
+            .from("vehicle_milestone_images")
+            .update({ caption: photo.caption || null })
+            .eq("id", photo.id);
+        }
       } else {
         const { data: inserted, error } = await supabase
           .from("vehicle_milestones")
@@ -307,6 +318,7 @@ export function MilestoneForm({
             milestone_id: milestoneId,
             storage_path: storagePath,
             position: startPosition + i,
+            caption: photo.caption || null,
           });
         if (dbError) throw dbError;
       }
@@ -490,26 +502,39 @@ export function MilestoneForm({
               </p>
 
               {photos.length > 0 && (
-                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                <div className="space-y-3">
                   {photos.map((photo) => (
-                    <div
-                      key={photo.id}
-                      className="relative aspect-square rounded-md overflow-hidden bg-muted"
-                    >
-                      <img
-                        src={photo.preview}
-                        alt=""
-                        className="w-full h-full object-contain"
+                    <div key={photo.id} className="flex gap-3 items-start">
+                      <div className="relative w-20 h-20 shrink-0 rounded-md overflow-hidden bg-muted">
+                        <img
+                          src={photo.preview}
+                          alt=""
+                          className="w-full h-full object-contain"
+                        />
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="icon"
+                          className="absolute top-0.5 right-0.5 h-5 w-5"
+                          onClick={() => removePhoto(photo.id)}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                      <Input
+                        placeholder="Bildbeschreibung (optional)"
+                        value={photo.caption ?? ""}
+                        onChange={(e) =>
+                          setPhotos((prev) =>
+                            prev.map((p) =>
+                              p.id === photo.id
+                                ? { ...p, caption: e.target.value }
+                                : p
+                            )
+                          )
+                        }
+                        className="flex-1"
                       />
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        size="icon"
-                        className="absolute top-1 right-1 h-6 w-6"
-                        onClick={() => removePhoto(photo.id)}
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
                     </div>
                   ))}
                 </div>

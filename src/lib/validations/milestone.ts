@@ -74,6 +74,7 @@ export interface VehicleMilestoneImage {
   milestone_id: string;
   storage_path: string;
   position: number;
+  caption: string | null;
   created_at: string;
 }
 

@@ -237,17 +237,21 @@ function MilestoneDetail({
 
       {/* Photo gallery */}
       {images.length > 0 && (
-        <div className="flex gap-2 mt-4 overflow-x-auto pb-1">
+        <div className="flex gap-3 mt-4 overflow-x-auto pb-1">
           {images.map((img) => (
-            <div
-              key={img.id}
-              className="shrink-0 w-28 h-28 rounded-md overflow-hidden bg-muted"
-            >
-              <img
-                src={getImageUrl(img.storage_path, supabaseUrl)}
-                alt=""
-                className="w-full h-full object-contain"
-              />
+            <div key={img.id} className="shrink-0 w-28 space-y-1">
+              <div className="w-28 h-28 rounded-md overflow-hidden bg-muted">
+                <img
+                  src={getImageUrl(img.storage_path, supabaseUrl)}
+                  alt={img.caption ?? ""}
+                  className="w-full h-full object-contain"
+                />
+              </div>
+              {img.caption && (
+                <p className="text-[11px] text-muted-foreground leading-tight line-clamp-2">
+                  {img.caption}
+                </p>
+              )}
             </div>
           ))}
         </div>
@@ -314,29 +318,38 @@ function RestorationDetail({
         {images.length > 0 && (
           <div className="mt-4">
             {images.length === 1 ? (
-              <div
-                className="rounded-lg overflow-hidden bg-muted cursor-pointer max-h-[400px]"
-                onClick={() => setLightboxImg(getImageUrl(images[0].storage_path, supabaseUrl))}
-              >
-                <img
-                  src={getImageUrl(images[0].storage_path, supabaseUrl)}
-                  alt=""
-                  className="w-full h-full object-contain max-h-[400px]"
-                />
+              <div className="space-y-1.5">
+                <div
+                  className="rounded-lg overflow-hidden bg-muted cursor-pointer max-h-[400px]"
+                  onClick={() => setLightboxImg(getImageUrl(images[0].storage_path, supabaseUrl))}
+                >
+                  <img
+                    src={getImageUrl(images[0].storage_path, supabaseUrl)}
+                    alt={images[0].caption ?? ""}
+                    className="w-full h-full object-contain max-h-[400px]"
+                  />
+                </div>
+                {images[0].caption && (
+                  <p className="text-sm text-muted-foreground">{images[0].caption}</p>
+                )}
               </div>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {images.map((img) => (
-                  <div
-                    key={img.id}
-                    className="rounded-lg overflow-hidden bg-muted cursor-pointer aspect-[4/3]"
-                    onClick={() => setLightboxImg(getImageUrl(img.storage_path, supabaseUrl))}
-                  >
-                    <img
-                      src={getImageUrl(img.storage_path, supabaseUrl)}
-                      alt=""
-                      className="w-full h-full object-contain"
-                    />
+                  <div key={img.id} className="space-y-1.5">
+                    <div
+                      className="rounded-lg overflow-hidden bg-muted cursor-pointer aspect-[4/3]"
+                      onClick={() => setLightboxImg(getImageUrl(img.storage_path, supabaseUrl))}
+                    >
+                      <img
+                        src={getImageUrl(img.storage_path, supabaseUrl)}
+                        alt={img.caption ?? ""}
+                        className="w-full h-full object-contain"
+                      />
+                    </div>
+                    {img.caption && (
+                      <p className="text-xs text-muted-foreground">{img.caption}</p>
+                    )}
                   </div>
                 ))}
               </div>
