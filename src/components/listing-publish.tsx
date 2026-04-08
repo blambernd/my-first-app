@@ -30,6 +30,7 @@ import {
 interface ListingPublishProps {
   listing: VehicleListing;
   vehicleId: string;
+  kurzprofilUrl?: string | null;
   onPlatformUpdate: (platforms: PlatformEntry[]) => void;
 }
 
@@ -63,17 +64,19 @@ function getPlatformEntry(
 export function ListingPublish({
   listing,
   vehicleId,
+  kurzprofilUrl,
   onPlatformUpdate,
 }: ListingPublishProps) {
   const [copied, setCopied] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editingUrls, setEditingUrls] = useState<Record<string, string>>({});
 
   const platforms = listing.published_platforms || [];
 
   const handleCopyText = () => {
-    const text = `${listing.title}\n\n${listing.description}\n\nPreis: ${
+    let text = `${listing.title}\n\n${listing.description}\n\nPreis: ${
       listing.price_cents
         ? new Intl.NumberFormat("de-DE", {
             style: "currency",
@@ -82,10 +85,33 @@ export function ListingPublish({
           }).format(listing.price_cents / 100)
         : "Auf Anfrage"
     }`;
+    if (kurzprofilUrl) {
+      text += `\n\nFahrzeughistorie: ${kurzprofilUrl}`;
+    }
     navigator.clipboard.writeText(text);
     setCopied(true);
     toast.success("Text in Zwischenablage kopiert");
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleDownloadPdf = async () => {
+    setDownloadingPdf(true);
+    try {
+      const res = await fetch(`/api/vehicles/${vehicleId}/listing/pdf`);
+      if (!res.ok) throw new Error("PDF-Erstellung fehlgeschlagen");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "inserat.pdf";
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("PDF heruntergeladen");
+    } catch {
+      toast.error("Fehler beim Erstellen des PDFs");
+    } finally {
+      setDownloadingPdf(false);
+    }
   };
 
   const handleDownloadPhotos = async () => {
@@ -226,6 +252,19 @@ export function ListingPublish({
             <Download className="h-4 w-4 mr-1" />
           )}
           Fotos herunterladen ({listing.selected_photo_ids.length})
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleDownloadPdf}
+          disabled={downloadingPdf}
+        >
+          {downloadingPdf ? (
+            <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+          ) : (
+            <Download className="h-4 w-4 mr-1" />
+          )}
+          PDF herunterladen
         </Button>
         {hasActiveListings && (
           <Button

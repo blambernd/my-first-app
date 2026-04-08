@@ -243,6 +243,11 @@ export function SalesWizard({
             <ListingPublish
               listing={listing}
               vehicleId={vehicleId}
+              kurzprofilUrl={
+                hasKurzprofil && kurzprofilToken
+                  ? `${typeof window !== "undefined" ? window.location.origin : ""}/profil/${kurzprofilToken}`
+                  : null
+              }
               onPlatformUpdate={handlePlatformUpdate}
             />
           ) : (

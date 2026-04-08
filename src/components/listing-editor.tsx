@@ -527,6 +527,11 @@ export function ListingEditor({
             <ListingPublish
               listing={listing}
               vehicleId={vehicleId}
+              kurzprofilUrl={
+                hasKurzprofil && kurzprofilToken
+                  ? `${typeof window !== "undefined" ? window.location.origin : ""}/profil/${kurzprofilToken}`
+                  : null
+              }
               onPlatformUpdate={handlePlatformUpdate}
             />
           )}
@@ -542,6 +547,11 @@ export function ListingEditor({
               priceType={priceType}
               photoUrls={previewPhotoUrls}
               vehicleData={vehicleData}
+              kurzprofilUrl={
+                hasKurzprofil && kurzprofilToken
+                  ? `${typeof window !== "undefined" ? window.location.origin : ""}/profil/${kurzprofilToken}`
+                  : null
+              }
             />
           </div>
         )}

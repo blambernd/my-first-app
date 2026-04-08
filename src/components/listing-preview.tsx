@@ -22,6 +22,7 @@ interface ListingPreviewProps {
     displacement_ccm: number | null;
     engine_type: string | null;
   };
+  kurzprofilUrl?: string | null;
 }
 
 function formatPrice(cents: number): string {
@@ -40,6 +41,7 @@ export function ListingPreview({
   priceType,
   photoUrls,
   vehicleData,
+  kurzprofilUrl,
 }: ListingPreviewProps) {
   const primaryPhoto = photoUrls[0];
 
@@ -159,6 +161,32 @@ export function ListingPreview({
             </span>
           )}
         </div>
+
+        {/* Kurzprofil link */}
+        {kurzprofilUrl && (
+          <>
+            <Separator />
+            <div className="flex items-center gap-3 bg-muted/30 rounded-md p-3">
+              <div className="shrink-0 w-16 h-16 bg-muted rounded flex items-center justify-center">
+                <svg viewBox="0 0 21 21" className="w-12 h-12">
+                  <rect width="21" height="21" fill="white" rx="2" />
+                  <text x="10.5" y="12" textAnchor="middle" fontSize="5" fill="#666">QR</text>
+                </svg>
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-medium">Vollständige Fahrzeughistorie</p>
+                <a
+                  href={kurzprofilUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-primary underline truncate block"
+                >
+                  {kurzprofilUrl}
+                </a>
+              </div>
+            </div>
+          </>
+        )}
       </CardContent>
     </Card>
   );
