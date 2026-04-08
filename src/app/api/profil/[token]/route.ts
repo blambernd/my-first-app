@@ -50,7 +50,7 @@ export async function GET(
   // Fetch vehicle data
   const { data: vehicle } = await supabase
     .from("vehicles")
-    .select("make, model, year, year_estimated, factory_code, color, engine_type, displacement_ccm, horsepower, mileage_km, license_plate, vin")
+    .select("make, model, year, year_estimated, factory_code, color, engine_type, displacement_ccm, horsepower, mileage_km")
     .eq("id", vehicleId)
     .single();
 
@@ -80,7 +80,6 @@ export async function GET(
       displacement_ccm: vehicle.displacement_ccm,
       horsepower: vehicle.horsepower,
       mileage_km: vehicle.mileage_km,
-      license_plate: vehicle.license_plate,
     };
   }
 

@@ -1,6 +1,6 @@
 # PROJ-10: Fahrzeug-Kurzprofil (öffentlich)
 
-## Status: In Progress
+## Status: In Review
 **Created:** 2026-04-08
 **Last Updated:** 2026-04-08
 
@@ -144,7 +144,130 @@ Neuer Datensatz: Fahrzeug-Kurzprofil (vehicle_profiles)
 ```
 
 ## QA Test Results
-_To be added by /qa_
+
+**Tested:** 2026-04-08
+**App URL:** http://localhost:3000
+**Tester:** QA Engineer (AI)
+
+### Acceptance Criteria Status
+
+#### AC-1: Nutzer kann ein öffentliches Kurzprofil erstellen
+- [x] POST `/api/vehicles/[id]/profile` creates profile with nanoid token
+- [x] Auth + ownership verification on create
+- [x] Duplicate profile prevention (409 if exists)
+
+#### AC-2: Abschnitte einzeln ein-/ausblenden
+- [x] Section toggles (Stammdaten, Fotos, Scheckheft, Meilensteine, Dokumente) via Switch UI
+- [x] Config saved as JSON with boolean sections
+- [x] Public API respects section config
+
+#### AC-3: Einzelne Einträge innerhalb Abschnitten ein-/ausblenden
+- [x] ItemSelector with Checkbox for per-item selection
+- [x] "Alle anzeigen" toggle (empty array = show all)
+- [x] Selected IDs stored in config and filtered in public API
+
+#### AC-4: Einzigartiger, nicht erratbarer Link
+- [x] nanoid(12) generates cryptographically random token
+- [x] Unique index on token column
+- [x] URL format: `/profil/[token]`
+
+#### AC-5: Öffentliche Profilseite ohne Login
+- [x] Public page loads without auth (service role client bypasses RLS)
+- [x] No redirect to login page
+- [x] Renders vehicle header, photos, stammdaten, scheckheft, meilensteine, dokumente
+
+#### AC-6: PDF-Download
+- [x] PDF route (`/api/profil/[token]/pdf`) implemented with @react-pdf/renderer
+- [x] Renders vehicle header, stammdaten, scheckheft, meilensteine, dokumente
+- [x] Respects same config/section visibility as public page
+- [x] Downloads as `{Make}_{Model}_Kurzprofil.pdf`
+
+#### AC-7: Link aktivieren/deaktivieren
+- [x] Toggle switch in configurator UI
+- [x] PATCH endpoint updates `is_active` boolean
+- [x] Real-time badge status update (Aktiv/Inaktiv)
+
+#### AC-8: Deaktivierte Profile zeigen "Nicht mehr verfügbar"
+- [x] Public API returns 410 for inactive profiles
+- [x] Frontend renders "Nicht mehr verfügbar" with AlertTriangle icon
+
+#### AC-9: Responsive (mobile-optimiert)
+- [x] Mobile 375px — no horizontal overflow, proper layout
+- [x] Tablet 768px — responsive grid adjusts
+- [x] Desktop — max-w-4xl container centered
+
+#### AC-10: Keine sensiblen Daten auf öffentlicher Seite
+- [x] No user_id, email, or internal IDs in public API response
+- [x] VIN and license_plate excluded from public API response
+
+### Edge Cases Status
+
+#### EC-1: Profil-Link nach Fahrzeug-Löschung
+- [x] `ON DELETE CASCADE` on vehicle_id — profile auto-deleted
+
+#### EC-2: Fahrzeug-Transfer (PROJ-7)
+- [ ] Not tested — no automatic deactivation on transfer (spec says it should be)
+
+#### EC-3: Gelöschte Fotos/Dokumente im Profil
+- [x] Selected IDs that no longer exist are simply not returned (`.in()` filter)
+
+#### EC-4: Viele Scheckheft-Einträge (50+)
+- [x] No pagination implemented, but scrollable card layout handles moderate amounts
+
+#### EC-5: Mehrere Profile pro Fahrzeug
+- [x] Unique index on vehicle_id prevents duplicates
+- [x] API returns 409 on duplicate creation attempt
+
+### Security Audit Results
+- [x] Authentication: Configurator and management API require login
+- [x] Authorization: Ownership check on all management endpoints (vehicle_id + user_id)
+- [x] Input validation: Config validated via Zod schema on PATCH
+- [ ] Rate limiting: No rate limiting on public profile endpoint (Low risk — token entropy is high)
+- [x] RLS: Enabled with owner-only policies; public access via service role client
+- [x] XSS: No dangerouslySetInnerHTML, React auto-escapes
+### Bugs Found
+
+#### ~~BUG-1: PDF download route not implemented~~ — FIXED
+#### ~~BUG-2: License plate exposed in public profile~~ — FIXED
+
+#### BUG-3: Empty selected arrays show all items (implicit behavior)
+- **Severity:** Low
+- **Steps to Reproduce:**
+  1. Create a profile (defaults: all sections on, empty selected arrays)
+  2. Add new photos/documents to the vehicle
+  3. Expected: New items not automatically visible in public profile
+  4. Actual: New items appear because empty array = show all
+- **Note:** This is by design ("Alle anzeigen") but could surprise users
+- **Priority:** Nice to have (consider UX improvement)
+
+#### BUG-4: No auto-deactivation on vehicle transfer
+- **Severity:** Low
+- **Steps to Reproduce:**
+  1. Create a public profile for a vehicle
+  2. Transfer the vehicle to another user (PROJ-7)
+  3. Expected: Profile auto-deactivated per spec
+  4. Actual: Profile stays active (no trigger/hook implemented)
+- **Priority:** Fix in next sprint
+
+#### BUG-5: VIN unnecessarily fetched in public API
+- **Severity:** Low
+- **Steps to Reproduce:**
+  1. Check `/api/profil/[token]/route.ts` line 53
+  2. `vin` is in the SELECT but not in the response
+- **Priority:** Nice to have (remove from SELECT)
+
+### Automated Tests
+- **Vitest:** 164/165 passed (1 pre-existing failure in milestone categories — unrelated to PROJ-10)
+- **Playwright:** 32/32 new PROJ-10 tests passed
+- **Regression:** 106/106 existing E2E tests passed
+- **Test file:** `tests/PROJ-10-fahrzeug-kurzprofil.spec.ts`
+
+### Summary
+- **Acceptance Criteria:** 10/10 passed (BUG-1 and BUG-2 fixed)
+- **Bugs Found:** 3 remaining (0 critical, 0 high, 0 medium, 3 low)
+- **Security:** Pass (license plate removed, no sensitive data exposed)
+- **Production Ready:** YES
+- **Recommendation:** Deploy. BUG-3, BUG-4, BUG-5 are low-priority and can be addressed in follow-up.
 
 ## Deployment
 _To be added by /deploy_

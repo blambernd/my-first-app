@@ -34,7 +34,6 @@ interface ProfileData {
     displacement_ccm: number | null;
     horsepower: number | null;
     mileage_km: number | null;
-    license_plate: string | null;
   };
   fotos?: {
     id: string;
