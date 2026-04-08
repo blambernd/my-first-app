@@ -32,22 +32,14 @@ export default async function TransferPage({ params }: TransferPageProps) {
     notFound();
   }
 
-  // Check for existing active transfer
-  const { data: activeTransfer } = await supabase
-    .from("vehicle_transfers")
-    .select("*")
-    .eq("vehicle_id", id)
-    .eq("status", "offen")
-    .single();
+  // Load transfers via RPC (bypasses RLS issues)
+  const { data: transferData } = await supabase.rpc("get_vehicle_transfers", {
+    p_vehicle_id: id,
+  });
 
-  // Load transfer history (non-active)
-  const { data: pastTransfers } = await supabase
-    .from("vehicle_transfers")
-    .select("*")
-    .eq("vehicle_id", id)
-    .neq("status", "offen")
-    .order("created_at", { ascending: false })
-    .limit(10);
+  const transfers = transferData as { active: VehicleTransfer | null; past: VehicleTransfer[] } | null;
+  const activeTransfer = transfers?.active ?? null;
+  const pastTransfers = transfers?.past ?? [];
 
   const vehicleName = `${vehicle.make} ${vehicle.model} (${vehicle.year})`;
 
