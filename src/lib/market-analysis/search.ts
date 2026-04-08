@@ -1,6 +1,6 @@
 import { getJson } from "serpapi";
 import type { MarketSearchParams, MarketListing, MarketSearchResult } from "./types";
-import { isSparePartListing, parsePrice, isPricePlausible } from "./filters";
+import { isSparePartListing, parsePrice, isPricePlausible, matchesFactoryCode } from "./filters";
 
 /**
  * Build a Google Search query for finding vehicle listings on a specific platform.
@@ -87,6 +87,9 @@ async function searchPlatform(
       const isMakeRelevant = makeAliases.some((a) => titleLower.includes(a));
       if (!isMakeRelevant) continue;
 
+      // Filter: check factory code match (e.g. reject W124 when searching W123)
+      if (params.factoryCode && !matchesFactoryCode(title, snippet, params.factoryCode)) continue;
+
       // Try to extract price from title first, then snippet
       const price = parsePrice(title) ?? parsePrice(snippet);
 
@@ -162,6 +165,9 @@ async function searchEbay(params: MarketSearchParams): Promise<{ listings: Marke
       if (makeLower === "volkswagen") makeAliases.push("vw");
 
       if (!makeAliases.some((a) => titleLower.includes(a))) continue;
+
+      // Filter: check factory code match
+      if (params.factoryCode && !matchesFactoryCode(title, "", params.factoryCode)) continue;
 
       listings.push({
         title,

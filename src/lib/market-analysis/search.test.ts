@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect } from "vitest";
-import { isSparePartListing, parsePrice, isPricePlausible } from "./filters";
+import { isSparePartListing, parsePrice, isPricePlausible, matchesFactoryCode } from "./filters";
 
 describe("parsePrice", () => {
   it("parses German format: 25.000 €", () => {
@@ -112,5 +112,41 @@ describe("isPricePlausible", () => {
   it("accepts round numbers when € sign is present", () => {
     expect(isPricePlausible(50000, "Mercedes W123 50.000 €")).toBe(true);
     expect(isPricePlausible(100000, "BMW E30 EUR 100.000")).toBe(true);
+  });
+});
+
+describe("matchesFactoryCode", () => {
+  it("accepts listings that contain the factory code", () => {
+    expect(matchesFactoryCode("Mercedes W123 280CE", "", "W123")).toBe(true);
+    expect(matchesFactoryCode("BMW E30 325i", "", "E30")).toBe(true);
+    expect(matchesFactoryCode("Porsche 911", "Baureihe R107", "R107")).toBe(true);
+  });
+
+  it("rejects listings with a different code from the same series", () => {
+    expect(matchesFactoryCode("Mercedes W124 300E", "", "W123")).toBe(false);
+    expect(matchesFactoryCode("Mercedes W126 500 SEL", "", "W123")).toBe(false);
+    expect(matchesFactoryCode("BMW E36 Coupé", "", "E30")).toBe(false);
+  });
+
+  it("accepts listings when factory code appears in snippet", () => {
+    expect(matchesFactoryCode("Mercedes 280CE", "Baureihe W123, BJ 1975", "W123")).toBe(true);
+  });
+
+  it("rejects when wrong code in snippet", () => {
+    expect(matchesFactoryCode("Mercedes 300E", "W124 Limousine", "W123")).toBe(false);
+  });
+
+  it("accepts listings with no factory code mentions (neutral)", () => {
+    expect(matchesFactoryCode("Mercedes 280 CE Coupé 1975", "", "W123")).toBe(true);
+  });
+
+  it("handles case insensitivity", () => {
+    expect(matchesFactoryCode("mercedes w123 coupé", "", "W123")).toBe(true);
+    expect(matchesFactoryCode("MERCEDES W124", "", "W123")).toBe(false);
+  });
+
+  it("handles codes with hyphen like C-107", () => {
+    expect(matchesFactoryCode("Mercedes SLC C107", "", "C107")).toBe(true);
+    expect(matchesFactoryCode("Mercedes SL R107", "", "C107")).toBe(false);
   });
 });

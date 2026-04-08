@@ -55,6 +55,64 @@ export function isSparePartListing(title: string, snippet: string = ""): boolean
 }
 
 /**
+ * Check if a listing matches the expected factory code (Werksbezeichnung).
+ * E.g. for a W123, reject listings that mention W124, W126, etc.
+ *
+ * Returns true if the listing is relevant (matches or doesn't mention a conflicting code).
+ */
+export function matchesFactoryCode(
+  title: string,
+  snippet: string,
+  factoryCode: string
+): boolean {
+  const combined = (title + " " + snippet).toLowerCase();
+  const code = factoryCode.toLowerCase();
+
+  // If the factory code appears in the listing → relevant
+  if (combined.includes(code)) return true;
+
+  // Extract the letter prefix and numeric part from the factory code
+  // Covers patterns like W123, R107, C107, E30, E36, etc.
+  const codeMatch = factoryCode.match(/^([A-Za-z]+)[\s-]?(\d+)$/);
+  if (!codeMatch) return true; // Can't parse → don't filter
+
+  const [, prefix, number] = codeMatch;
+  const prefixLower = prefix.toLowerCase();
+
+  // Look for codes with the SAME prefix but different number (e.g. W124 when searching W123)
+  const samePrefixPattern = new RegExp(
+    `\\b${prefixLower}[\\s-]?(\\d+)\\b`,
+    "gi"
+  );
+  let match: RegExpExecArray | null;
+
+  while ((match = samePrefixPattern.exec(combined)) !== null) {
+    if (match[1] !== number) return false; // Different code, same prefix → reject
+  }
+
+  // Also look for any letter+number factory code pattern in the text
+  // If the listing mentions a different factory code entirely (e.g. R107 when searching C107),
+  // and our code is NOT mentioned, it's probably a different vehicle
+  const anyCodePattern = /\b([A-Za-z])\s?(\d{2,3})\b/g;
+  let hasOtherCode = false;
+
+  while ((match = anyCodePattern.exec(combined)) !== null) {
+    const foundCode = (match[1] + match[2]).toLowerCase();
+    if (foundCode === code) return true; // Our code found → definitely relevant
+    // Only flag as conflict if the found code looks like a chassis code
+    // (single letter + 2-3 digits, like W123, E30, R107)
+    if (match[1].match(/[wercstWERCST]/i)) {
+      hasOtherCode = true;
+    }
+  }
+
+  // If other chassis codes found but not ours → likely wrong vehicle
+  if (hasOtherCode) return false;
+
+  return true;
+}
+
+/**
  * Parse a price from text (German format: "25.000 €", "25000€", "EUR 25.000").
  * Returns null if no price found or price is implausible.
  */
