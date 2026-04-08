@@ -215,6 +215,8 @@ function MilestoneDetail({
   documents,
   onEdit,
   onDelete,
+  onDeleteImage,
+  onDeleteDocument,
   canEdit,
 }: {
   milestone: VehicleMilestoneWithImages;
@@ -222,6 +224,8 @@ function MilestoneDetail({
   documents: VehicleDocument[];
   onEdit: () => void;
   onDelete: () => void;
+  onDeleteImage: (imageId: string, storagePath: string) => void;
+  onDeleteDocument: (docId: string, storagePath: string) => void;
   canEdit: boolean;
 }) {
   const config = CATEGORY_CONFIG[milestone.category];
@@ -268,13 +272,43 @@ function MilestoneDetail({
       {images.length > 0 && (
         <div className="flex gap-3 mt-4 overflow-x-auto pb-1">
           {images.map((img) => (
-            <div key={img.id} className="shrink-0 w-28 space-y-1">
-              <div className="w-28 h-28 rounded-md overflow-hidden bg-muted">
+            <div key={img.id} className="shrink-0 w-28 space-y-1 group/img relative">
+              <div className="w-28 h-28 rounded-md overflow-hidden bg-muted relative">
                 <img
                   src={getImageUrl(img.storage_path, supabaseUrl)}
                   alt={img.caption ?? ""}
                   className="w-full h-full object-contain"
                 />
+                {canEdit && (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="destructive"
+                        size="icon"
+                        className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover/img:opacity-100 transition-opacity"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Bild löschen?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Dieses Bild wird unwiderruflich gelöscht.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => onDeleteImage(img.id, img.storage_path)}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                          Löschen
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
               </div>
               {img.caption && (
                 <p className="text-[11px] text-muted-foreground leading-tight line-clamp-2">
@@ -296,20 +330,54 @@ function MilestoneDetail({
             {documents.map((doc) => {
               const fileUrl = `${supabaseUrl}/storage/v1/object/public/vehicle-documents/${doc.storage_path}`;
               return (
-                <a
+                <div
                   key={doc.id}
-                  href={fileUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
                   className="flex items-center gap-2 rounded-md border p-2 hover:bg-muted/50 transition-colors"
                 >
-                  <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
-                  <span className="text-sm truncate flex-1">{doc.title || doc.file_name}</span>
-                  <span className="text-xs text-muted-foreground shrink-0">
-                    {formatFileSize(doc.file_size)}
-                  </span>
-                  <Download className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                </a>
+                  <a
+                    href={fileUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 flex-1 min-w-0"
+                  >
+                    <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <span className="text-sm truncate flex-1">{doc.title || doc.file_name}</span>
+                    <span className="text-xs text-muted-foreground shrink-0">
+                      {formatFileSize(doc.file_size)}
+                    </span>
+                    <Download className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                  </a>
+                  {canEdit && (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 shrink-0 text-destructive"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Dokument löschen?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            &ldquo;{doc.title || doc.file_name}&rdquo; wird unwiderruflich gelöscht.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => onDeleteDocument(doc.id, doc.storage_path)}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          >
+                            Löschen
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  )}
+                </div>
               );
             })}
           </div>
@@ -326,6 +394,8 @@ function RestorationDetail({
   documents,
   onEdit,
   onDelete,
+  onDeleteImage,
+  onDeleteDocument,
   onSelectMilestone,
   canEdit,
 }: {
@@ -335,6 +405,8 @@ function RestorationDetail({
   documents: VehicleDocument[];
   onEdit: (ms: VehicleMilestoneWithImages) => void;
   onDelete: (id: string) => void;
+  onDeleteImage: (imageId: string, storagePath: string) => void;
+  onDeleteDocument: (docId: string, storagePath: string) => void;
   onSelectMilestone: (id: string) => void;
   canEdit: boolean;
 }) {
@@ -379,9 +451,9 @@ function RestorationDetail({
         {images.length > 0 && (
           <div className="mt-4 space-y-3 max-h-[500px] overflow-y-auto pr-1">
             {images.map((img) => (
-              <div key={img.id} className="flex gap-4 items-start">
+              <div key={img.id} className="flex gap-4 items-start group/img">
                 <div
-                  className="shrink-0 w-40 sm:w-52 aspect-[4/3] rounded-lg overflow-hidden bg-muted cursor-pointer"
+                  className="shrink-0 w-40 sm:w-52 aspect-[4/3] rounded-lg overflow-hidden bg-muted cursor-pointer relative"
                   onClick={() => setLightboxImg(getImageUrl(img.storage_path, supabaseUrl))}
                 >
                   <img
@@ -389,6 +461,37 @@ function RestorationDetail({
                     alt={img.caption ?? ""}
                     className="w-full h-full object-contain"
                   />
+                  {canEdit && (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="destructive"
+                          size="icon"
+                          className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover/img:opacity-100 transition-opacity"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Bild löschen?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Dieses Bild wird unwiderruflich gelöscht.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => onDeleteImage(img.id, img.storage_path)}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          >
+                            Löschen
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  )}
                 </div>
                 {img.caption && (
                   <p className="text-sm text-muted-foreground pt-1 flex-1 min-w-0">
@@ -410,20 +513,54 @@ function RestorationDetail({
               {documents.map((doc) => {
                 const fileUrl = `${supabaseUrl}/storage/v1/object/public/vehicle-documents/${doc.storage_path}`;
                 return (
-                  <a
+                  <div
                     key={doc.id}
-                    href={fileUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
                     className="flex items-center gap-2 rounded-md border p-2 hover:bg-muted/50 transition-colors"
                   >
-                    <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
-                    <span className="text-sm truncate flex-1">{doc.title || doc.file_name}</span>
-                    <span className="text-xs text-muted-foreground shrink-0">
-                      {formatFileSize(doc.file_size)}
-                    </span>
-                    <Download className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                  </a>
+                    <a
+                      href={fileUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 flex-1 min-w-0"
+                    >
+                      <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <span className="text-sm truncate flex-1">{doc.title || doc.file_name}</span>
+                      <span className="text-xs text-muted-foreground shrink-0">
+                        {formatFileSize(doc.file_size)}
+                      </span>
+                      <Download className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                    </a>
+                    {canEdit && (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 shrink-0 text-destructive"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Dokument löschen?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              &ldquo;{doc.title || doc.file_name}&rdquo; wird unwiderruflich gelöscht.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => onDeleteDocument(doc.id, doc.storage_path)}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              Löschen
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    )}
+                  </div>
                 );
               })}
             </div>
@@ -617,6 +754,38 @@ export function VehicleTimeline({
       refreshMilestones();
     } catch {
       toast.error("Fehler beim Löschen");
+    }
+  };
+
+  const handleDeleteImage = async (imageId: string, storagePath: string) => {
+    try {
+      const supabase = createClient();
+      await supabase.storage.from("vehicle-images").remove([storagePath]);
+      const { error } = await supabase
+        .from("vehicle_milestone_images")
+        .delete()
+        .eq("id", imageId);
+      if (error) throw error;
+      toast.success("Bild gelöscht");
+      refreshMilestones();
+    } catch {
+      toast.error("Fehler beim Löschen des Bildes");
+    }
+  };
+
+  const handleDeleteDocument = async (docId: string, storagePath: string) => {
+    try {
+      const supabase = createClient();
+      await supabase.storage.from("vehicle-documents").remove([storagePath]);
+      const { error } = await supabase
+        .from("vehicle_documents")
+        .delete()
+        .eq("id", docId);
+      if (error) throw error;
+      toast.success("Dokument gelöscht");
+      refreshMilestones();
+    } catch {
+      toast.error("Fehler beim Löschen des Dokuments");
     }
   };
 
@@ -853,6 +1022,8 @@ export function VehicleTimeline({
                 canEdit={canEdit && (canEditAll || selectedMilestone.created_by === userId)}
                 onEdit={handleEditMilestone}
                 onDelete={handleDeleteMilestone}
+                onDeleteImage={handleDeleteImage}
+                onDeleteDocument={handleDeleteDocument}
                 onSelectMilestone={setSelectedMilestoneId}
               />
             ) : (
@@ -863,6 +1034,8 @@ export function VehicleTimeline({
                 canEdit={canEdit && (canEditAll || selectedMilestone.created_by === userId)}
                 onEdit={() => handleEditMilestone(selectedMilestone)}
                 onDelete={() => handleDeleteMilestone(selectedMilestone.id)}
+                onDeleteImage={handleDeleteImage}
+                onDeleteDocument={handleDeleteDocument}
               />
             )
           )}
