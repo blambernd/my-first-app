@@ -11,7 +11,8 @@ export const PART_CONDITIONS = [
 export type PartConditionFilter = (typeof PART_CONDITIONS)[number]["value"];
 
 export const PLATFORMS = [
-  { value: "ebay_kleinanzeigen", label: "eBay" },
+  { value: "ebay", label: "eBay" },
+  { value: "kleinanzeigen", label: "Kleinanzeigen" },
   { value: "google_shopping", label: "Google Shopping" },
   { value: "specialist", label: "Spezialisten" },
   { value: "recycler", label: "Verwerter" },

@@ -1,5 +1,6 @@
 import {
-  ebayKleinanzeigenAdapter,
+  ebayAdapter,
+  kleinanzeigenAdapter,
   googleShoppingAdapter,
   createSpecialistAdapter,
   recyclerAdapter,
@@ -8,7 +9,8 @@ import type { PlatformAdapter, SearchParams, SearchResultItem } from "./types";
 import type { PartGroup, PartsSearchResult } from "@/lib/validations/parts";
 
 const BASE_ADAPTERS: PlatformAdapter[] = [
-  ebayKleinanzeigenAdapter,
+  ebayAdapter,
+  kleinanzeigenAdapter,
   googleShoppingAdapter,
   recyclerAdapter,
 ];

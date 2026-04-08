@@ -219,11 +219,11 @@ function filterByModel(
 }
 
 /**
- * eBay Kleinanzeigen adapter using SerpAPI's eBay engine
+ * eBay adapter using SerpAPI's eBay engine (ebay.de auctions & buy-now)
  */
-export const ebayKleinanzeigenAdapter: PlatformAdapter = {
-  id: "ebay_kleinanzeigen",
-  label: "eBay Kleinanzeigen",
+export const ebayAdapter: PlatformAdapter = {
+  id: "ebay",
+  label: "eBay",
   async search(params: SearchParams): Promise<SearchResultItem[]> {
     const apiKey = process.env.SERPAPI_API_KEY;
     if (!apiKey) return [];
@@ -263,6 +263,22 @@ export const ebayKleinanzeigenAdapter: PlatformAdapter = {
     items = filterByPrice(items, params.minPrice, params.maxPrice);
 
     return items.slice(0, 20);
+  },
+};
+
+/**
+ * Kleinanzeigen.de adapter — searches via Google with site: filter
+ */
+export const kleinanzeigenAdapter: PlatformAdapter = {
+  id: "kleinanzeigen",
+  label: "Kleinanzeigen",
+  async search(params: SearchParams): Promise<SearchResultItem[]> {
+    return searchGoogleWithSiteFilter(
+      params,
+      ["kleinanzeigen.de"],
+      "Kleinanzeigen",
+      20
+    );
   },
 };
 
