@@ -171,14 +171,12 @@ export async function GET(request: Request) {
   let totalSkipped = 0;
 
   for (const event of events) {
-    // Geocode the PLZ
+    // Geocode the PLZ (events without coordinates are still stored)
     const coords = await getPlzCoordinates(event.plz);
-    if (!coords) {
-      totalSkipped++;
-      continue;
+    if (coords) {
+      event.lat = coords.lat;
+      event.lng = coords.lng;
     }
-    event.lat = coords.lat;
-    event.lng = coords.lng;
 
     // Upsert: use source_url as unique key for deduplication
     const { error, status } = await supabase

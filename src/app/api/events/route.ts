@@ -21,8 +21,47 @@ export async function GET(request: Request) {
   const radiusParam = searchParams.get("radius");
   const categoriesParam = searchParams.get("categories");
 
+  // Parse categories
+  const categories = categoriesParam
+    ? categoriesParam.split(",").filter((c): c is (typeof VALID_CATEGORIES)[number] =>
+        (VALID_CATEGORIES as readonly string[]).includes(c)
+      )
+    : [...VALID_CATEGORIES];
+
+  if (categories.length === 0) {
+    return NextResponse.json(
+      { error: "Mindestens eine Kategorie erforderlich" },
+      { status: 400 }
+    );
+  }
+
+  // No PLZ provided: return all future events without distance filter
+  if (!plz) {
+    const { data: events, error } = await supabase
+      .from("events")
+      .select("id, name, date_start, date_end, location, plz, category, description, entry_price, website_url")
+      .gte("date_start", new Date().toISOString().split("T")[0])
+      .in("category", categories)
+      .order("date_start", { ascending: true })
+      .limit(MAX_RESULTS);
+
+    if (error) {
+      return NextResponse.json(
+        { error: "Fehler beim Laden der Veranstaltungen" },
+        { status: 500 }
+      );
+    }
+
+    const eventsWithoutDistance = (events ?? []).map((event) => ({
+      ...event,
+      distance_km: null,
+    }));
+
+    return NextResponse.json({ events: eventsWithoutDistance });
+  }
+
   // Validate PLZ
-  if (!plz || !/^\d{5}$/.test(plz)) {
+  if (!/^\d{5}$/.test(plz)) {
     return NextResponse.json(
       { error: "Ungültige PLZ (5-stellig, numerisch)" },
       { status: 400 }
@@ -34,20 +73,6 @@ export async function GET(request: Request) {
   if (!VALID_RADII.includes(radius)) {
     return NextResponse.json(
       { error: "Ungültiger Umkreis (25, 50, 100 oder 200 km)" },
-      { status: 400 }
-    );
-  }
-
-  // Parse categories
-  const categories = categoriesParam
-    ? categoriesParam.split(",").filter((c): c is (typeof VALID_CATEGORIES)[number] =>
-        (VALID_CATEGORIES as readonly string[]).includes(c)
-      )
-    : [...VALID_CATEGORIES];
-
-  if (categories.length === 0) {
-    return NextResponse.json(
-      { error: "Mindestens eine Kategorie erforderlich" },
       { status: 400 }
     );
   }

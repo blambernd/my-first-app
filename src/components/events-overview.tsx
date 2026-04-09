@@ -44,7 +44,7 @@ interface EventItem {
   description: string | null;
   entry_price: string | null;
   website_url: string | null;
-  distance_km: number;
+  distance_km: number | null;
 }
 
 const CATEGORY_CONFIG: Record<
@@ -113,9 +113,11 @@ function EventCard({ event }: { event: EventItem }) {
             <MapPin className="h-3.5 w-3.5 shrink-0" />
             <span>
               {event.location}
-              <span className="ml-1 text-xs text-muted-foreground/70">
-                ({Math.round(event.distance_km)} km)
-              </span>
+              {event.distance_km != null && (
+                <span className="ml-1 text-xs text-muted-foreground/70">
+                  ({Math.round(event.distance_km)} km)
+                </span>
+              )}
             </span>
           </div>
           {event.entry_price && (
@@ -165,10 +167,8 @@ export function EventsOverview() {
   const isValidPlz = /^\d{5}$/.test(plz);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Debounced auto-fetch when PLZ is valid and filters change
+  // Debounced auto-fetch: loads all events initially, filters by PLZ when entered
   useEffect(() => {
-    if (!isValidPlz) return;
-
     if (debounceRef.current) clearTimeout(debounceRef.current);
 
     debounceRef.current = setTimeout(async () => {
@@ -177,10 +177,12 @@ export function EventsOverview() {
       setShowAll(false);
       try {
         const params = new URLSearchParams({
-          plz,
-          radius,
           categories: categories.join(","),
         });
+        if (isValidPlz) {
+          params.set("plz", plz);
+          params.set("radius", radius);
+        }
         const res = await fetch(`/api/events?${params}`);
         if (res.ok) {
           const data = await res.json();
@@ -277,14 +279,6 @@ export function EventsOverview() {
         </div>
 
         {/* Content */}
-        {!isValidPlz && !hasSearched && (
-          <div className="text-center py-12 text-muted-foreground">
-            <Info className="h-10 w-10 mx-auto mb-3 text-muted-foreground/40" />
-            <p className="text-sm">
-              Gib deine PLZ ein, um Veranstaltungen in deiner Nähe zu sehen.
-            </p>
-          </div>
-        )}
 
         {loading && (
           <div className="space-y-4">
