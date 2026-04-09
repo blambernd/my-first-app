@@ -52,6 +52,7 @@ import {
 
 export interface ExistingDatekarte {
   id: string;
+  milestone_id: string | null;
   storage_path: string;
   file_name: string;
   file_size: number;
@@ -269,7 +270,7 @@ export function VehicleForm({ vehicle, vehicleImages = [], existingDatekarte = n
         });
       }
 
-      // Remove old Datenkarte if user deleted it
+      // Remove old Datenkarte if user deleted it (including linked milestone)
       if (removedDatekarteId && currentDatekarte) {
         try {
           await supabase.storage
@@ -279,6 +280,12 @@ export function VehicleForm({ vehicle, vehicleImages = [], existingDatekarte = n
             .from("vehicle_documents")
             .delete()
             .eq("id", removedDatekarteId);
+          if (currentDatekarte.milestone_id) {
+            await supabase
+              .from("vehicle_milestones")
+              .delete()
+              .eq("id", currentDatekarte.milestone_id);
+          }
         } catch (rmError) {
           console.error("Datenkarte remove error:", rmError);
         }

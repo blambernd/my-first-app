@@ -41,7 +41,7 @@ export default async function EditVehiclePage({ params }: EditVehiclePageProps) 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
   const { data: datenkarteDoc } = await supabase
     .from("vehicle_documents")
-    .select("id, storage_path, file_name, file_size, mime_type")
+    .select("id, storage_path, file_name, file_size, mime_type, milestone_id")
     .eq("vehicle_id", id)
     .eq("category", "datenkarte")
     .order("created_at", { ascending: false })
