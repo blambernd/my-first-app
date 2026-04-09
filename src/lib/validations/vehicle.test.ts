@@ -89,9 +89,9 @@ describe("vehicleSchema — VIN validation", () => {
     expect(result.success).toBe(true);
   });
 
-  it("rejects VIN with invalid length (not 0 or 17)", () => {
+  it("accepts VIN with any length (no minimum)", () => {
     const result = vehicleSchema.safeParse({ ...validVehicle, vin: "WDB198036" });
-    expect(result.success).toBe(false);
+    expect(result.success).toBe(true);
   });
 
   it("rejects VIN with forbidden characters (I, O, Q)", () => {

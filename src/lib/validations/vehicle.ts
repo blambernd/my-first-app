@@ -116,13 +116,14 @@ export const vehicleSchema = z.object({
   year_estimated: z.boolean().default(false),
   vin: z
     .string()
-    .max(17, "FIN darf maximal 17 Zeichen lang sein")
+    .max(50, "FIN darf maximal 50 Zeichen lang sein")
     .regex(/^[A-HJ-NPR-Z0-9]*$/i, "FIN darf nur Buchstaben (außer I, O, Q) und Ziffern enthalten")
     .optional()
     .or(z.literal("")),
   license_plate: z
     .string()
     .max(15, "Kennzeichen darf maximal 15 Zeichen lang sein")
+    .transform((val) => val.toUpperCase())
     .optional()
     .or(z.literal("")),
   body_type: z
@@ -147,6 +148,7 @@ export const vehicleSchema = z.object({
     .or(z.literal("")),
   displacement_ccm: z.coerce.number().int().positive("Hubraum muss positiv sein").optional().or(z.literal("")),
   horsepower: z.coerce.number().int().positive("Leistung muss positiv sein").optional().or(z.literal("")),
+  power_unit: z.enum(["ps", "kw"]).default("ps"),
   mileage_km: z.coerce.number().int().min(0, "Laufleistung kann nicht negativ sein").optional().or(z.literal("")),
   mileage_date: z.string().optional().or(z.literal("")),
   insurance_company: z
@@ -159,10 +161,7 @@ export const vehicleSchema = z.object({
     .max(50, "Versicherungsnummer darf maximal 50 Zeichen lang sein")
     .optional()
     .or(z.literal("")),
-}).refine(
-  (data) => !data.vin || data.vin.length === 0 || data.vin.length === 17,
-  { message: "FIN muss genau 17 Zeichen lang sein", path: ["vin"] }
-);
+});
 
 export interface VehicleFormData {
   make: string;
