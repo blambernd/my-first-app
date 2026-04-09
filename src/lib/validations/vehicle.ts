@@ -123,7 +123,6 @@ export const vehicleSchema = z.object({
   license_plate: z
     .string()
     .max(15, "Kennzeichen darf maximal 15 Zeichen lang sein")
-    .transform((val) => val.toUpperCase())
     .optional()
     .or(z.literal("")),
   body_type: z
@@ -148,7 +147,6 @@ export const vehicleSchema = z.object({
     .or(z.literal("")),
   displacement_ccm: z.coerce.number().int().positive("Hubraum muss positiv sein").optional().or(z.literal("")),
   horsepower: z.coerce.number().int().positive("Leistung muss positiv sein").optional().or(z.literal("")),
-  power_unit: z.enum(["ps", "kw"]).default("ps"),
   mileage_km: z.coerce.number().int().min(0, "Laufleistung kann nicht negativ sein").optional().or(z.literal("")),
   mileage_date: z.string().optional().or(z.literal("")),
   insurance_company: z
