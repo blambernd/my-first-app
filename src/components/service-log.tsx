@@ -493,10 +493,6 @@ function ServiceEntryCard({
           </div>
           <p className="mt-1.5 text-sm">{detailOpen ? entry.description : summaryText}</p>
           <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1">
-              <Gauge className="h-3 w-3" />
-              {entry.mileage_km.toLocaleString("de-DE")} km
-            </span>
             {entry.cost_cents != null && entry.cost_cents > 0 && (
               <span className="flex items-center gap-1">
                 <Banknote className="h-3 w-3" />
@@ -519,8 +515,12 @@ function ServiceEntryCard({
             )}
           </div>
         </div>
-        {canEdit && (
-          <div className="flex gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center gap-2 shrink-0">
+          <span className="text-sm font-semibold tabular-nums text-muted-foreground">
+            {entry.mileage_km.toLocaleString("de-DE")} km
+          </span>
+          {canEdit && (
+          <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onEdit}>
               <Pencil className="h-3.5 w-3.5" />
             </Button>
@@ -549,7 +549,8 @@ function ServiceEntryCard({
               </AlertDialogContent>
             </AlertDialog>
           </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Detail panel — shown on click */}
