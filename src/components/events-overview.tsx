@@ -18,6 +18,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Calendar,
   MapPin,
@@ -28,7 +29,6 @@ import {
   Flag,
   Ticket,
   Loader2,
-  Info,
 } from "lucide-react";
 
 type EventCategory = "rallye" | "messe" | "regional";
@@ -303,14 +303,14 @@ export function EventsOverview() {
         )}
 
         {!loading && events.length > 0 && (
-          <>
+          <ScrollArea className="max-h-[600px] pr-1">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {displayEvents.map((event) => (
                 <EventCard key={event.id} event={event} />
               ))}
             </div>
             {events.length > 20 && !showAll && (
-              <div className="text-center mt-4">
+              <div className="text-center mt-4 pb-2">
                 <Button
                   variant="outline"
                   size="sm"
@@ -320,7 +320,7 @@ export function EventsOverview() {
                 </Button>
               </div>
             )}
-          </>
+          </ScrollArea>
         )}
       </CollapsibleContent>
     </Collapsible>
