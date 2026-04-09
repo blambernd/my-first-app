@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Gift, Check, Copy, Users, Clock } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Gift, Check, Copy, Users, Clock, Mail } from "lucide-react";
 
 interface ReferralData {
   referralCode: string;
@@ -19,6 +20,7 @@ export function ReferralCard() {
   const [data, setData] = useState<ReferralData | null>(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [email, setEmail] = useState("");
 
   useEffect(() => {
     async function fetchReferral() {
@@ -96,6 +98,32 @@ export function ReferralCard() {
             ) : (
               <Copy className="h-4 w-4" />
             )}
+          </Button>
+        </div>
+
+        <div className="flex gap-2">
+          <Input
+            type="email"
+            placeholder="E-Mail-Adresse eingeben"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="text-sm"
+          />
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => {
+              const subject = encodeURIComponent("Empfehlung: Oldtimer Docs — Digitales Scheckheft für Oldtimer");
+              const body = encodeURIComponent(
+                `Hallo,\n\nich nutze Oldtimer Docs, um alle wichtigen Daten meiner Oldtimer digital zu dokumentieren — Scheckheft, Wartungen, Dokumente und mehr, alles an einem Ort.\n\nIch kann es dir nur empfehlen! Über meinen Einladungslink bekommst du 4 Wochen kostenlosen Premium-Zugang:\n\n${referralLink}\n\nViele Grüße`
+              );
+              window.open(`mailto:${encodeURIComponent(email)}?subject=${subject}&body=${body}`);
+              setEmail("");
+            }}
+            disabled={!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)}
+            aria-label="Per E-Mail einladen"
+          >
+            <Mail className="h-4 w-4" />
           </Button>
         </div>
 
