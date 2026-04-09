@@ -2,7 +2,7 @@ import { redirect, notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase-server";
 import { SalesWizard } from "@/components/sales-wizard";
 import { PremiumUpsell } from "@/components/premium-upsell";
-import { getEffectivePlan, hasPremiumAccess } from "@/lib/subscription";
+import { getEffectivePlan, hasPremiumAccess, isBetaMode } from "@/lib/subscription";
 
 interface VerkaufsassistentPageProps {
   params: Promise<{ id: string }>;
@@ -42,7 +42,7 @@ export default async function VerkaufsassistentPage({
     .eq("user_id", user.id)
     .single();
 
-  const effectivePlan = subscription ? getEffectivePlan(subscription) : "free";
+  const effectivePlan = subscription ? getEffectivePlan(subscription) : isBetaMode ? "premium" : "free";
 
   if (!hasPremiumAccess(effectivePlan)) {
     return (

@@ -9,7 +9,7 @@ import { PlanOverview } from "@/components/plan-overview";
 import { Car } from "lucide-react";
 import type { VehicleWithImages } from "@/lib/validations/vehicle";
 import { ROLE_LABELS, type MemberRole } from "@/lib/validations/member";
-import { getEffectivePlan, canAddVehicle } from "@/lib/subscription";
+import { getEffectivePlan, canAddVehicle, isBetaMode } from "@/lib/subscription";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -52,7 +52,7 @@ export default async function DashboardPage() {
     .eq("user_id", user.id)
     .single();
 
-  const effectivePlan = subscription ? getEffectivePlan(subscription) : "free";
+  const effectivePlan = subscription ? getEffectivePlan(subscription) : isBetaMode ? "premium" : "free";
   const canAdd = canAddVehicle(effectivePlan, typedVehicles.length);
 
   return (

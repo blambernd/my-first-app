@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase-server";
-import { getEffectivePlan, calculateStorageUsageMb } from "@/lib/subscription";
+import { getEffectivePlan, calculateStorageUsageMb, isBetaMode } from "@/lib/subscription";
 import { PLANS } from "@/lib/stripe";
 
 export async function GET() {
@@ -22,7 +22,7 @@ export async function GET() {
 
   const effectivePlan = subscription
     ? getEffectivePlan(subscription)
-    : "free";
+    : isBetaMode ? "premium" : "free";
 
   const planLimits = PLANS[effectivePlan];
 

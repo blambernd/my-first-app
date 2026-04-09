@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase-server";
-import { getEffectivePlan, calculateStorageUsageMb } from "@/lib/subscription";
+import { getEffectivePlan, calculateStorageUsageMb, isBetaMode } from "@/lib/subscription";
 import { PLANS } from "@/lib/stripe";
 
 export async function GET() {
@@ -20,20 +20,23 @@ export async function GET() {
     .eq("user_id", user.id)
     .single();
 
+  const effectivePlan = subscription
+    ? getEffectivePlan(subscription)
+    : isBetaMode ? "premium" : "free";
+
   if (!subscription) {
-    // No subscription row — treat as free
     return NextResponse.json({
-      plan: "free",
+      plan: effectivePlan,
       status: "active",
       trialEnd: null,
       cancelAtPeriodEnd: false,
       currentPeriodEnd: null,
       stripeCustomerId: null,
-      limits: PLANS.free,
+      limits: PLANS[effectivePlan],
+      vehicleCount: 0,
+      storageMb: 0,
     });
   }
-
-  const effectivePlan = getEffectivePlan(subscription);
 
   // Get vehicle count and storage usage in parallel
   const [vehicleResult, storageMb] = await Promise.all([

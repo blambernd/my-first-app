@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase-server";
-import { getEffectivePlan, hasPremiumAccess } from "@/lib/subscription";
+import { getEffectivePlan, hasPremiumAccess, isBetaMode } from "@/lib/subscription";
 import { PremiumUpsell } from "@/components/premium-upsell";
 
 interface MarktpreisPageProps {
@@ -24,7 +24,7 @@ export default async function MarktpreisPage({ params }: MarktpreisPageProps) {
     .eq("user_id", user.id)
     .single();
 
-  const effectivePlan = subscription ? getEffectivePlan(subscription) : "free";
+  const effectivePlan = subscription ? getEffectivePlan(subscription) : isBetaMode ? "premium" : "free";
 
   if (!hasPremiumAccess(effectivePlan)) {
     return (
