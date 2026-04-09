@@ -251,6 +251,7 @@ export function VehicleForm({ vehicle, vehicleImages = [], mode }: VehicleFormPr
           storage_path: filePath,
           position: startPosition + i,
           is_primary: startPosition === 0 && i === 0,
+          file_size: image.file.size,
         });
       }
 
@@ -291,6 +292,7 @@ export function VehicleForm({ vehicle, vehicleImages = [], mode }: VehicleFormPr
             milestone_id: milestone.id,
             storage_path: datenkartePath,
             position: 0,
+            file_size: datenkarte.size,
           });
 
           // Also save as document with "datenkarte" category

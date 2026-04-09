@@ -325,6 +325,7 @@ export function MilestoneForm({
             storage_path: storagePath,
             position: startPosition + i,
             caption: photo.caption || null,
+            file_size: photo.file!.size,
           });
         if (dbError) throw dbError;
       }

@@ -88,6 +88,7 @@ export async function POST(request: Request) {
             current_period_end: periodEnd,
             trial_end: null,
             cancel_at_period_end: false,
+            past_due_since: null,
             updated_at: new Date().toISOString(),
           })
           .eq("user_id", userId);
@@ -177,6 +178,7 @@ export async function POST(request: Request) {
           .from("subscriptions")
           .update({
             status: "past_due",
+            past_due_since: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           })
           .eq("stripe_customer_id", customerId);

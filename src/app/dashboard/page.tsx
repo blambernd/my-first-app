@@ -5,9 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { AccountHeader } from "@/components/account-header";
 import { VehicleCard, AddVehicleCard } from "@/components/vehicle-card";
+import { PlanOverview } from "@/components/plan-overview";
 import { Car } from "lucide-react";
 import type { VehicleWithImages } from "@/lib/validations/vehicle";
 import { ROLE_LABELS, type MemberRole } from "@/lib/validations/member";
+import { getEffectivePlan, canAddVehicle } from "@/lib/subscription";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -43,11 +45,23 @@ export default async function DashboardPage() {
       role: m.role as MemberRole,
     }));
 
+  // Get subscription for vehicle limit check
+  const { data: subscription } = await supabase
+    .from("subscriptions")
+    .select("plan, status, trial_end")
+    .eq("user_id", user.id)
+    .single();
+
+  const effectivePlan = subscription ? getEffectivePlan(subscription) : "free";
+  const canAdd = canAddVehicle(effectivePlan, typedVehicles.length);
+
   return (
     <div className="bg-muted/40">
       <AccountHeader email={user.email || ""} />
 
       <main className="container mx-auto px-4 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-8">
+        <div>
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold">Meine Fahrzeuge</h2>
         </div>
@@ -68,7 +82,7 @@ export default async function DashboardPage() {
             {typedVehicles.map((vehicle) => (
               <VehicleCard key={vehicle.id} vehicle={vehicle} />
             ))}
-            <AddVehicleCard />
+            {canAdd && <AddVehicleCard />}
           </div>
         )}
 
@@ -93,6 +107,13 @@ export default async function DashboardPage() {
             </div>
           </>
         )}
+        </div>
+
+        {/* Sidebar: Plan overview */}
+        <div className="space-y-4">
+          <PlanOverview />
+        </div>
+        </div>
       </main>
     </div>
   );

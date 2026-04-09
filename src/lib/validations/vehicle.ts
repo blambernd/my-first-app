@@ -199,6 +199,7 @@ export interface Vehicle {
   mileage_km: number | null;
   insurance_company: string | null;
   insurance_policy_number: string | null;
+  is_locked: boolean;
   created_at: string;
   updated_at: string;
 }

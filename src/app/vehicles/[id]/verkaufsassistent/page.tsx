@@ -1,6 +1,8 @@
 import { redirect, notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase-server";
 import { SalesWizard } from "@/components/sales-wizard";
+import { PremiumUpsell } from "@/components/premium-upsell";
+import { getEffectivePlan, hasPremiumAccess } from "@/lib/subscription";
 
 interface VerkaufsassistentPageProps {
   params: Promise<{ id: string }>;
@@ -31,6 +33,24 @@ export default async function VerkaufsassistentPage({
 
   if (!vehicle) {
     notFound();
+  }
+
+  // Check premium access
+  const { data: subscription } = await supabase
+    .from("subscriptions")
+    .select("plan, status, trial_end")
+    .eq("user_id", user.id)
+    .single();
+
+  const effectivePlan = subscription ? getEffectivePlan(subscription) : "free";
+
+  if (!hasPremiumAccess(effectivePlan)) {
+    return (
+      <PremiumUpsell
+        feature="Verkaufsassistent"
+        description="Der Verkaufsassistent hilft dir Schritt für Schritt beim Verkauf deines Oldtimers — von der Marktpreis-Analyse bis zur Veröffentlichung."
+      />
+    );
   }
 
   // Fetch all data for all steps in parallel

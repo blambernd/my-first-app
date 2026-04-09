@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Car, Calendar, Plus } from "lucide-react";
+import { Car, Calendar, Plus, Lock } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { VehicleWithImages } from "@/lib/validations/vehicle";
@@ -39,7 +39,15 @@ export function VehicleCard({ vehicle }: VehicleCardProps) {
               <Car className="h-12 w-12 text-muted-foreground/40" />
             </div>
           )}
-          {vehicle.year_estimated && (
+          {vehicle.is_locked && (
+            <div className="absolute inset-0 bg-background/60 flex items-center justify-center">
+              <Badge variant="secondary" className="text-xs gap-1">
+                <Lock className="h-3 w-3" />
+                Gesperrt
+              </Badge>
+            </div>
+          )}
+          {vehicle.year_estimated && !vehicle.is_locked && (
             <Badge
               variant="secondary"
               className="absolute top-2 right-2 text-xs"

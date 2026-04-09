@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BookOpen, Clock, FileText, Car, Cog, Workflow } from "lucide-react";
+import { BookOpen, Clock, FileText, Car, Workflow, Lock } from "lucide-react";
+import { useSubscription } from "@/hooks/use-subscription";
 import { Badge } from "@/components/ui/badge";
 
 interface VehicleProfileNavProps {
@@ -31,11 +32,12 @@ const navItems = [
     href: "/dokumente",
     icon: FileText,
   },
-  {
-    label: "Ersatzteile",
-    href: "/ersatzteile",
-    icon: Cog,
-  },
+  // Ersatzteil-Suche vorübergehend deaktiviert (Ergebnisqualität)
+  // {
+  //   label: "Ersatzteile",
+  //   href: "/ersatzteile",
+  //   icon: Cog,
+  // },
   {
     label: "Verkaufsassistent",
     href: "/verkaufsassistent",
@@ -47,6 +49,7 @@ const navItems = [
 export function VehicleProfileNav({ vehicleId }: VehicleProfileNavProps) {
   const pathname = usePathname();
   const basePath = `/vehicles/${vehicleId}`;
+  const { isPremium, loading } = useSubscription();
 
   const allItems = navItems;
 
@@ -59,6 +62,7 @@ export function VehicleProfileNav({ vehicleId }: VehicleProfileNavProps) {
             ? pathname === basePath
             : pathname.startsWith(fullPath);
         const Icon = item.icon;
+        const showLock = "premium" in item && item.premium && !loading && !isPremium;
 
         return (
           <Link
@@ -72,10 +76,14 @@ export function VehicleProfileNav({ vehicleId }: VehicleProfileNavProps) {
           >
             <Icon className="h-4 w-4" />
             {item.label}
-            {"premium" in item && item.premium && (
-              <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                Premium
-              </Badge>
+            {showLock ? (
+              <Lock className="h-3 w-3 text-amber-500" />
+            ) : (
+              "premium" in item && item.premium && (
+                <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                  Premium
+                </Badge>
+              )
             )}
           </Link>
         );

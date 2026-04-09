@@ -62,6 +62,7 @@
     "resend": "^6.10.0",
     "serpapi": "^2.2.1",
     "sonner": "^2.0.7",
+    "stripe": "^22.0.1",
     "tailwind-merge": "^2.2.0",
     "zod": "^4.3.5"
   },
