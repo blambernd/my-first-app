@@ -340,7 +340,8 @@ export function VehicleForm({ vehicle, vehicleImages = [], mode }: VehicleFormPr
       router.refresh();
     } catch (error) {
       console.error("Submit error:", error);
-      toast.error("Ein Fehler ist aufgetreten. Bitte versuche es erneut.");
+      const msg = error instanceof Error ? error.message : String(error);
+      toast.error(`Fehler: ${msg}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -590,58 +591,61 @@ export function VehicleForm({ vehicle, vehicleImages = [], mode }: VehicleFormPr
             <FormField
               control={form.control}
               name="horsepower"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Leistung</FormLabel>
-                  <div className="flex gap-2">
-                    <FormControl>
-                      <Input
-                        type="number"
-                        placeholder={powerUnit === "ps" ? "z.B. 215" : "z.B. 158"}
-                        value={field.value ?? ""}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          if (val === "") {
-                            field.onChange("");
-                          } else {
-                            const num = parseFloat(val);
-                            field.onChange(powerUnit === "kw" ? Math.round(num * 1.35962) : num);
-                          }
-                        }}
-                      />
-                    </FormControl>
-                    <div className="flex rounded-md border">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (powerUnit === "kw" && field.value) {
-                            // Convert displayed KW value back: stored PS -> display stays
-                          }
-                          setPowerUnit("ps");
-                        }}
-                        className={`px-3 py-2 text-sm rounded-l-md ${powerUnit === "ps" ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}
-                      >
-                        PS
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setPowerUnit("kw")}
-                        className={`px-3 py-2 text-sm rounded-r-md ${powerUnit === "kw" ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}
-                      >
-                        KW
-                      </button>
+              render={({ field }) => {
+                const psValue = field.value ? Number(field.value) : null;
+                const displayValue = psValue != null
+                  ? (powerUnit === "kw" ? Math.round(psValue * 0.7355) : psValue)
+                  : "";
+                return (
+                  <FormItem>
+                    <FormLabel>Leistung</FormLabel>
+                    <div className="flex gap-2">
+                      <FormControl>
+                        <Input
+                          type="number"
+                          placeholder={powerUnit === "ps" ? "z.B. 215" : "z.B. 158"}
+                          value={displayValue}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (val === "") {
+                              field.onChange("");
+                            } else {
+                              const num = parseInt(val, 10);
+                              if (!isNaN(num)) {
+                                field.onChange(powerUnit === "kw" ? Math.round(num * 1.35962) : num);
+                              }
+                            }
+                          }}
+                        />
+                      </FormControl>
+                      <div className="flex rounded-md border">
+                        <button
+                          type="button"
+                          onClick={() => setPowerUnit("ps")}
+                          className={`px-3 py-2 text-sm rounded-l-md ${powerUnit === "ps" ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}
+                        >
+                          PS
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPowerUnit("kw")}
+                          className={`px-3 py-2 text-sm rounded-r-md ${powerUnit === "kw" ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}
+                        >
+                          KW
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                  <FormDescription>
-                    {field.value ? (
-                      powerUnit === "ps"
-                        ? `${Math.round(Number(field.value) * 0.7355)} KW`
-                        : `Gespeichert: ${field.value} PS`
-                    ) : "Wird intern als PS gespeichert"}
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
+                    {psValue != null && (
+                      <FormDescription>
+                        {powerUnit === "ps"
+                          ? `${Math.round(psValue * 0.7355)} KW`
+                          : `${psValue} PS`}
+                      </FormDescription>
+                    )}
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
             />
             <FormField
               control={form.control}
