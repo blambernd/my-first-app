@@ -51,7 +51,8 @@ function RegisterForm() {
             text: "Diese E-Mail-Adresse ist bereits registriert",
           });
         } else {
-          setMessage({ type: "error", text: "Registrierung fehlgeschlagen" });
+          console.error("Registration error:", error.message, error);
+          setMessage({ type: "error", text: `Registrierung fehlgeschlagen: ${error.message}` });
         }
         return;
       }

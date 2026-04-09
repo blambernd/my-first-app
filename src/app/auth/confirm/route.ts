@@ -7,6 +7,7 @@ export async function GET(request: NextRequest) {
   const type = searchParams.get("type");
   const code = searchParams.get("code");
   const next = searchParams.get("next") ?? "/dashboard";
+  const redirectParam = searchParams.get("redirect");
 
   const redirectTo = request.nextUrl.clone();
   redirectTo.pathname = next;
@@ -36,6 +37,18 @@ export async function GET(request: NextRequest) {
   if (code) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
+      // Recovery flow: redirect to reset-password page
+      if (type === "recovery") {
+        redirectTo.pathname = "/reset-password";
+        const response = NextResponse.redirect(redirectTo);
+        request.cookies.getAll().forEach((cookie) => {
+          response.cookies.set(cookie.name, cookie.value);
+        });
+        return response;
+      }
+      // Signup/other: show confirmation page
+      redirectTo.pathname = "/auth/confirmed";
+      redirectTo.searchParams.set("next", redirectParam ?? next);
       const response = NextResponse.redirect(redirectTo);
       request.cookies.getAll().forEach((cookie) => {
         response.cookies.set(cookie.name, cookie.value);
@@ -51,6 +64,18 @@ export async function GET(request: NextRequest) {
       token_hash,
     });
     if (!error) {
+      // Recovery flow: redirect to reset-password page
+      if (type === "recovery") {
+        redirectTo.pathname = "/reset-password";
+        const response = NextResponse.redirect(redirectTo);
+        request.cookies.getAll().forEach((cookie) => {
+          response.cookies.set(cookie.name, cookie.value);
+        });
+        return response;
+      }
+      // Signup/other: show confirmation page
+      redirectTo.pathname = "/auth/confirmed";
+      redirectTo.searchParams.set("next", redirectParam ?? next);
       const response = NextResponse.redirect(redirectTo);
       request.cookies.getAll().forEach((cookie) => {
         response.cookies.set(cookie.name, cookie.value);
