@@ -17,11 +17,14 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock,
+  Archive,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -92,20 +95,34 @@ function DocumentCard({
   onDelete,
   onDownload,
   canEdit,
+  selectMode,
+  selected,
+  onToggleSelect,
 }: {
   document: VehicleDocument;
   supabaseUrl: string;
   onDelete: () => void;
   onDownload: () => void;
   canEdit: boolean;
+  selectMode?: boolean;
+  selected?: boolean;
+  onToggleSelect?: () => void;
 }) {
   const isImage = isImageMimeType(document.mime_type);
   const fileUrl = `${supabaseUrl}/storage/v1/object/public/vehicle-documents/${document.storage_path}`;
 
   return (
-    <Card className="overflow-hidden group">
+    <Card
+      className={`overflow-hidden group ${selectMode ? "cursor-pointer" : ""} ${selected ? "ring-2 ring-primary" : ""}`}
+      onClick={selectMode ? onToggleSelect : undefined}
+    >
       {/* Thumbnail / Icon area */}
       <div className="aspect-[4/3] bg-muted flex items-center justify-center relative">
+        {selectMode && (
+          <div className="absolute top-2 left-2 z-10">
+            <Checkbox checked={selected} />
+          </div>
+        )}
         {isImage ? (
           <img
             src={fileUrl}
@@ -231,6 +248,9 @@ function ImageGallery({
   userId,
   onDelete,
   onUpdateDescription,
+  selectMode,
+  selectedIds,
+  onToggleSelect,
 }: {
   images: VehicleDocument[];
   supabaseUrl: string;
@@ -239,6 +259,9 @@ function ImageGallery({
   userId?: string;
   onDelete: (doc: VehicleDocument) => void;
   onUpdateDescription: (docId: string, description: string) => void;
+  selectMode?: boolean;
+  selectedIds?: Set<string>;
+  onToggleSelect?: (id: string) => void;
 }) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -275,10 +298,19 @@ function ImageGallery({
           const isEditing = editingId === img.id;
 
           return (
-            <div key={img.id} className="flex gap-4 items-start group/img rounded-lg border p-3">
+            <div
+              key={img.id}
+              className={`flex gap-4 items-start group/img rounded-lg border p-3 ${selectMode ? "cursor-pointer" : ""} ${selectMode && selectedIds?.has(img.id) ? "ring-2 ring-primary" : ""}`}
+              onClick={selectMode ? () => onToggleSelect?.(img.id) : undefined}
+            >
+              {selectMode && (
+                <div className="shrink-0 flex items-center pt-2">
+                  <Checkbox checked={selectedIds?.has(img.id)} />
+                </div>
+              )}
               <div
                 className="shrink-0 w-36 sm:w-48 aspect-[4/3] rounded-lg overflow-hidden bg-muted cursor-pointer relative"
-                onClick={() => setLightboxIndex(imgIdx)}
+                onClick={selectMode ? undefined : () => setLightboxIndex(imgIdx)}
               >
                 <img
                   src={fileUrl}
@@ -457,9 +489,15 @@ function ImageGallery({
 function HistorieGallery({
   entries,
   supabaseUrl,
+  selectMode,
+  selectedIds,
+  onToggleSelect,
 }: {
   entries: MilestoneImageEntry[];
   supabaseUrl: string;
+  selectMode?: boolean;
+  selectedIds?: Set<string>;
+  onToggleSelect?: (id: string) => void;
 }) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const touchStartX = useRef(0);
@@ -493,10 +531,19 @@ function HistorieGallery({
           const categoryConfig = CATEGORY_CONFIG[entry.milestoneCategory as keyof typeof CATEGORY_CONFIG];
 
           return (
-            <div key={entry.image.id} className="flex gap-4 items-start rounded-lg border p-3">
+            <div
+              key={entry.image.id}
+              className={`flex gap-4 items-start rounded-lg border p-3 ${selectMode ? "cursor-pointer" : ""} ${selectMode && selectedIds?.has(entry.image.id) ? "ring-2 ring-primary" : ""}`}
+              onClick={selectMode ? () => onToggleSelect?.(entry.image.id) : undefined}
+            >
+              {selectMode && (
+                <div className="shrink-0 flex items-center pt-2">
+                  <Checkbox checked={selectedIds?.has(entry.image.id)} />
+                </div>
+              )}
               <div
                 className="shrink-0 w-36 sm:w-48 aspect-[4/3] rounded-lg overflow-hidden bg-muted cursor-pointer"
-                onClick={() => setLightboxIndex(idx)}
+                onClick={selectMode ? undefined : () => setLightboxIndex(idx)}
               >
                 <img
                   src={fileUrl}
@@ -605,6 +652,10 @@ export function DocumentArchive({
   const [documents, setDocuments] = useState<VehicleDocument[]>(initialDocuments);
   const [filterCategory, setFilterCategory] = useState<string>("all");
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedDocIds, setSelectedDocIds] = useState<Set<string>>(new Set());
+  const [selectedMilestoneImgIds, setSelectedMilestoneImgIds] = useState<Set<string>>(new Set());
+  const [downloading, setDownloading] = useState(false);
 
   const imageDocuments = documents.filter((d) => isImageMimeType(d.mime_type));
   const nonImageDocuments = documents.filter((d) => !isImageMimeType(d.mime_type));
@@ -690,6 +741,78 @@ export function DocumentArchive({
     }
   };
 
+  const totalSelected = selectedDocIds.size + selectedMilestoneImgIds.size;
+
+  const toggleDocSelect = (id: string) => {
+    setSelectedDocIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleMilestoneImgSelect = (id: string) => {
+    setSelectedMilestoneImgIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const selectAll = () => {
+    setSelectedDocIds(new Set(documents.map((d) => d.id)));
+    setSelectedMilestoneImgIds(new Set(milestoneImageEntries.map((e) => e.image.id)));
+  };
+
+  const deselectAll = () => {
+    setSelectedDocIds(new Set());
+    setSelectedMilestoneImgIds(new Set());
+  };
+
+  const exitSelectMode = () => {
+    setSelectMode(false);
+    deselectAll();
+  };
+
+  const handleZipDownload = async (all: boolean) => {
+    setDownloading(true);
+    try {
+      const body = all
+        ? { all: true }
+        : {
+            documentIds: Array.from(selectedDocIds),
+            milestoneImageIds: Array.from(selectedMilestoneImgIds),
+          };
+
+      const res = await fetch(`/api/vehicles/${vehicleId}/documents-zip`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Download fehlgeschlagen");
+      }
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "dokumente.zip";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      if (!all) exitSelectMode();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Download fehlgeschlagen");
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   return (
     <div>
       {/* Summary */}
@@ -727,14 +850,79 @@ export function DocumentArchive({
         </Card>
       </div>
 
-      {/* Upload button */}
-      <div className="flex items-center justify-end mb-4">
-        {canEdit && (
-          <Button size="sm" onClick={() => setUploadOpen(true)}>
-            <Plus className="h-4 w-4 mr-1.5" />
-            Hochladen
-          </Button>
-        )}
+      {/* Toolbar */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          {selectMode ? (
+            <>
+              <Button size="sm" variant="outline" onClick={exitSelectMode}>
+                <X className="h-4 w-4 mr-1.5" />
+                Abbrechen
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() =>
+                  totalSelected === documents.length + milestoneImageEntries.length
+                    ? deselectAll()
+                    : selectAll()
+                }
+              >
+                {totalSelected === documents.length + milestoneImageEntries.length
+                  ? "Keine auswählen"
+                  : "Alle auswählen"}
+              </Button>
+              {totalSelected > 0 && (
+                <Button
+                  size="sm"
+                  onClick={() => handleZipDownload(false)}
+                  disabled={downloading}
+                >
+                  {downloading ? (
+                    <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                  ) : (
+                    <Archive className="h-4 w-4 mr-1.5" />
+                  )}
+                  {totalSelected} herunterladen
+                </Button>
+              )}
+            </>
+          ) : (
+            <>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => handleZipDownload(true)}
+                disabled={downloading || (documents.length === 0 && milestoneImageEntries.length === 0)}
+              >
+                {downloading ? (
+                  <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                ) : (
+                  <Archive className="h-4 w-4 mr-1.5" />
+                )}
+                Alle als ZIP
+              </Button>
+              {(documents.length + milestoneImageEntries.length) > 1 && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setSelectMode(true)}
+                >
+                  <Check className="h-4 w-4 mr-1.5" />
+                  Auswählen
+                </Button>
+              )}
+            </>
+          )}
+        </div>
+        <div>
+          {canEdit && !selectMode && (
+            <Button size="sm" onClick={() => setUploadOpen(true)}>
+              <Plus className="h-4 w-4 mr-1.5" />
+              Hochladen
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Image gallery */}
@@ -746,12 +934,18 @@ export function DocumentArchive({
         userId={userId}
         onDelete={handleDelete}
         onUpdateDescription={handleUpdateDescription}
+        selectMode={selectMode}
+        selectedIds={selectedDocIds}
+        onToggleSelect={toggleDocSelect}
       />
 
       {/* Historie images from milestones */}
       <HistorieGallery
         entries={milestoneImageEntries}
         supabaseUrl={supabaseUrl}
+        selectMode={selectMode}
+        selectedIds={selectedMilestoneImgIds}
+        onToggleSelect={toggleMilestoneImgSelect}
       />
 
       {/* Document filter */}
@@ -794,6 +988,9 @@ export function DocumentArchive({
                 canEdit={canEditThis}
                 onDelete={() => handleDelete(doc)}
                 onDownload={() => handleDownload(doc)}
+                selectMode={selectMode}
+                selected={selectedDocIds.has(doc.id)}
+                onToggleSelect={() => toggleDocSelect(doc.id)}
               />
             );
           })}
