@@ -49,6 +49,7 @@ import { createClient } from "@/lib/supabase";
 import {
   SERVICE_ENTRY_TYPES,
   getEntryTypeLabel,
+  OIL_CHANGE_CATEGORIES,
   getOilCategoryLabel,
   formatCentsToEur,
   getNextTuvDate,
@@ -200,101 +201,136 @@ function DueDateCard({
   );
 }
 
+const OIL_DUE_TYPE_MAP: Record<OilChangeCategory, string> = {
+  motor_oil: "oil_motor_oil",
+  transmission_oil: "oil_transmission_oil",
+  rear_axle_oil: "oil_rear_axle_oil",
+  other_oil: "oil_other_oil",
+};
+
 function OilChangeDueDateCard({
   entries,
-  overrideDate,
+  overrides,
   canEdit,
-  onSave,
+  onSaveCategory,
 }: {
   entries: ServiceEntry[];
-  overrideDate: string | null;
+  overrides: DueDateOverride[];
   canEdit: boolean;
-  onSave: (date: string) => void;
+  onSaveCategory: (dueType: string, date: string) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const [editing, setEditing] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
 
-  const nextOilChange = getNextOilChangeDate(entries);
-  const nextOilDate = overrideDate || nextOilChange?.date || null;
-  const allDueDates = getAllOilChangeDueDates(entries);
+  const entryDueDates = getAllOilChangeDueDates(entries);
 
-  const handleEdit = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setEditValue(nextOilDate || "");
-    setEditing(true);
+  // Merge entry-based dates with overrides per category
+  const allCategories = OIL_CHANGE_CATEGORIES.map((cat) => {
+    const dueType = OIL_DUE_TYPE_MAP[cat.value as OilChangeCategory];
+    const override = overrides.find((o) => o.due_type === dueType)?.due_date;
+    const fromEntry = entryDueDates.find((d) => d.category === cat.value);
+    const date = override || fromEntry?.date || null;
+    return {
+      category: cat.value as OilChangeCategory,
+      label: fromEntry?.label || cat.label,
+      date,
+      dueType,
+      isOverride: !!override,
+    };
+  });
+
+  const categoriesWithDates = allCategories.filter((c) => c.date);
+  const categoriesWithoutDates = allCategories.filter((c) => !c.date);
+
+  // Find the earliest due date for the main display
+  const earliest = categoriesWithDates.length > 0
+    ? categoriesWithDates.reduce((a, b) => (a.date! < b.date! ? a : b))
+    : null;
+
+  const nextOilDate = earliest?.date || null;
+
+  const handleStartEdit = (category: string, currentDate: string | null, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setEditingCategory(category);
+    setEditValue(currentDate || "");
   };
 
-  const handleSave = () => {
+  const handleSave = (dueType: string) => {
     if (editValue) {
-      onSave(editValue);
+      onSaveCategory(dueType, editValue);
     }
-    setEditing(false);
+    setEditingCategory(null);
+    setEditValue("");
   };
 
-  if (editing) {
+  const handleCancel = () => {
+    setEditingCategory(null);
+    setEditValue("");
+  };
+
+  if (!nextOilDate && !canEdit) {
     return (
       <Card>
-        <CardContent className="p-4">
-          <p className="text-xs text-muted-foreground mb-2">Nächster Ölwechsel</p>
-          <div className="flex items-center gap-1.5">
-            <Input
-              type="date"
-              value={editValue}
-              onChange={(e) => setEditValue(e.target.value)}
-              className="h-8 text-sm flex-1"
-              autoFocus
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleSave();
-                if (e.key === "Escape") setEditing(false);
-              }}
-            />
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-green-600" onClick={handleSave}>
-              <Check className="h-3.5 w-3.5" />
-            </Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditing(false)}>
-              <X className="h-3.5 w-3.5" />
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (!nextOilDate) {
-    return (
-      <Card
-        className={canEdit ? "cursor-pointer hover:bg-muted/50 transition-colors" : ""}
-        onClick={canEdit ? handleEdit : undefined}
-      >
         <CardContent className="p-4 flex items-center gap-3">
           <Droplets className="h-5 w-5 text-muted-foreground" />
           <div className="flex-1">
             <p className="text-lg font-bold text-muted-foreground">–</p>
             <p className="text-xs text-muted-foreground">Nächster Ölwechsel</p>
           </div>
-          {canEdit && <Pencil className="h-3.5 w-3.5 text-muted-foreground" />}
         </CardContent>
       </Card>
     );
   }
 
-  const status = getDueStatus(nextOilDate);
-  const formatted = new Date(nextOilDate).toLocaleDateString("de-DE");
-  const hasSubcategories = allDueDates.length > 0;
-  const mainLabel = nextOilChange && !overrideDate
-    ? `Nächster Ölwechsel (${nextOilChange.label})`
+  if (!nextOilDate && canEdit) {
+    return (
+      <Card className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => setExpanded(!expanded)}>
+        <CardContent className="p-4">
+          <div className="flex items-center gap-3">
+            <Droplets className="h-5 w-5 text-muted-foreground" />
+            <div className="flex-1">
+              <p className="text-lg font-bold text-muted-foreground">–</p>
+              <p className="text-xs text-muted-foreground">Nächster Ölwechsel</p>
+            </div>
+            {expanded
+              ? <ChevronUp className="h-4 w-4 text-muted-foreground" />
+              : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+          </div>
+          {expanded && (
+            <div className="mt-3 pt-3 border-t space-y-2">
+              {allCategories.map((item) => (
+                <OilSubcategoryRow
+                  key={item.category}
+                  item={item}
+                  canEdit={canEdit}
+                  editingCategory={editingCategory}
+                  editValue={editValue}
+                  setEditValue={setEditValue}
+                  onStartEdit={handleStartEdit}
+                  onSave={handleSave}
+                  onCancel={handleCancel}
+                />
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const status = getDueStatus(nextOilDate!);
+  const formatted = new Date(nextOilDate!).toLocaleDateString("de-DE");
+  const mainLabel = earliest
+    ? `Nächster Ölwechsel (${earliest.label})`
     : "Nächster Ölwechsel";
 
   return (
     <Card className="transition-colors">
       <CardContent className="p-4">
         <div
-          className={`flex items-center gap-3 ${hasSubcategories ? "cursor-pointer" : canEdit ? "cursor-pointer" : ""}`}
-          onClick={() => {
-            if (hasSubcategories) setExpanded(!expanded);
-            else if (canEdit) { setEditValue(nextOilDate || ""); setEditing(true); }
-          }}
+          className="flex items-center gap-3 cursor-pointer"
+          onClick={() => setExpanded(!expanded)}
         >
           <Droplets className="h-5 w-5 text-muted-foreground" />
           <div className="flex-1">
@@ -315,53 +351,129 @@ function OilChangeDueDateCard({
               )}
             </div>
           </div>
-          <div className="flex items-center gap-1">
-            {canEdit && (
-              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleEdit}>
-                <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
-              </Button>
-            )}
-            {hasSubcategories && (
-              expanded
-                ? <ChevronUp className="h-4 w-4 text-muted-foreground" />
-                : <ChevronDown className="h-4 w-4 text-muted-foreground" />
-            )}
-          </div>
+          {expanded
+            ? <ChevronUp className="h-4 w-4 text-muted-foreground" />
+            : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
         </div>
 
-        {expanded && hasSubcategories && (
+        {expanded && (
           <div className="mt-3 pt-3 border-t space-y-2">
-            {allDueDates.map((item) => {
-              const itemStatus = getDueStatus(item.date);
-              return (
-                <div key={item.category} className="flex items-center justify-between text-sm">
-                  <div className="flex items-center gap-2">
-                    <Droplets className="h-3 w-3 text-amber-600" />
-                    <span>{item.label}</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className={DUE_STATUS_STYLES[itemStatus]}>
-                      {new Date(item.date).toLocaleDateString("de-DE")}
-                    </span>
-                    {itemStatus === "overdue" && (
-                      <Badge className={`${DUE_STATUS_BADGE.overdue} border-0 text-[10px] px-1.5 py-0`}>
-                        Überfällig
-                      </Badge>
-                    )}
-                    {itemStatus === "soon" && (
-                      <Badge className={`${DUE_STATUS_BADGE.soon} border-0 text-[10px] px-1.5 py-0`}>
-                        Bald fällig
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+            {allCategories.map((item) => (
+              <OilSubcategoryRow
+                key={item.category}
+                item={item}
+                canEdit={canEdit}
+                editingCategory={editingCategory}
+                editValue={editValue}
+                setEditValue={setEditValue}
+                onStartEdit={handleStartEdit}
+                onSave={handleSave}
+                onCancel={handleCancel}
+              />
+            ))}
           </div>
         )}
       </CardContent>
     </Card>
   );
+}
+
+function OilSubcategoryRow({
+  item,
+  canEdit,
+  editingCategory,
+  editValue,
+  setEditValue,
+  onStartEdit,
+  onSave,
+  onCancel,
+}: {
+  item: { category: string; label: string; date: string | null; dueType: string };
+  canEdit: boolean;
+  editingCategory: string | null;
+  editValue: string;
+  setEditValue: (v: string) => void;
+  onStartEdit: (category: string, date: string | null, e?: React.MouseEvent) => void;
+  onSave: (dueType: string) => void;
+  onCancel: () => void;
+}) {
+  if (editingCategory === item.category) {
+    return (
+      <div className="flex items-center gap-1.5">
+        <Droplets className="h-3 w-3 text-amber-600 shrink-0" />
+        <span className="text-sm shrink-0">{item.label}</span>
+        <Input
+          type="date"
+          value={editValue}
+          onChange={(e) => setEditValue(e.target.value)}
+          className="h-7 text-xs flex-1"
+          autoFocus
+          onKeyDown={(e) => {
+            if (e.key === "Enter") onSave(item.dueType);
+            if (e.key === "Escape") onCancel();
+          }}
+        />
+        <Button variant="ghost" size="icon" className="h-7 w-7 text-green-600" onClick={() => onSave(item.dueType)}>
+          <Check className="h-3 w-3" />
+        </Button>
+        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onCancel}>
+          <X className="h-3 w-3" />
+        </Button>
+      </div>
+    );
+  }
+
+  if (item.date) {
+    const itemStatus = getDueStatus(item.date);
+    return (
+      <div
+        className={`flex items-center justify-between text-sm ${canEdit ? "cursor-pointer hover:bg-muted/50 rounded px-1 -mx-1 py-0.5" : ""}`}
+        onClick={canEdit ? (e) => onStartEdit(item.category, item.date, e) : undefined}
+      >
+        <div className="flex items-center gap-2">
+          <Droplets className="h-3 w-3 text-amber-600" />
+          <span>{item.label}</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className={DUE_STATUS_STYLES[itemStatus]}>
+            {new Date(item.date).toLocaleDateString("de-DE")}
+          </span>
+          {itemStatus === "overdue" && (
+            <Badge className={`${DUE_STATUS_BADGE.overdue} border-0 text-[10px] px-1.5 py-0`}>
+              Überfällig
+            </Badge>
+          )}
+          {itemStatus === "soon" && (
+            <Badge className={`${DUE_STATUS_BADGE.soon} border-0 text-[10px] px-1.5 py-0`}>
+              Bald fällig
+            </Badge>
+          )}
+          {canEdit && <Pencil className="h-3 w-3 text-muted-foreground" />}
+        </div>
+      </div>
+    );
+  }
+
+  // No date — show "add" option
+  if (canEdit) {
+    return (
+      <div
+        className="flex items-center justify-between text-sm cursor-pointer hover:bg-muted/50 rounded px-1 -mx-1 py-0.5 text-muted-foreground"
+        onClick={(e) => onStartEdit(item.category, null, e)}
+      >
+        <div className="flex items-center gap-2">
+          <Droplets className="h-3 w-3" />
+          <span>{item.label}</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs">Termin hinzufügen</span>
+          <Plus className="h-3 w-3" />
+        </div>
+      </div>
+    );
+  }
+
+  return null;
 }
 
 interface DueDateOverride {
@@ -397,14 +509,12 @@ function ServiceSummary({
 
   const tuvOverride = overrides.find((o) => o.due_type === "tuv_hu")?.due_date;
   const serviceOverride = overrides.find((o) => o.due_type === "service")?.due_date;
-  const oilOverride = overrides.find((o) => o.due_type === "oil_change")?.due_date;
+  const oilOverrides = overrides.filter((o) => o.due_type.startsWith("oil_"));
 
   const nextTuv = tuvOverride || getNextTuvDate(entries);
   const nextService = serviceOverride || getNextServiceDate(entries);
-  const nextOilChange = getNextOilChangeDate(entries);
-  const nextOilDate = oilOverride || nextOilChange?.date || null;
 
-  const handleSaveDueDate = async (dueType: "tuv_hu" | "service" | "oil_change", date: string) => {
+  const handleSaveDueDate = async (dueType: string, date: string) => {
     try {
       const res = await fetch(`/api/vehicles/${vehicleId}/due-dates`, {
         method: "PUT",
@@ -428,9 +538,9 @@ function ServiceSummary({
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
       <OilChangeDueDateCard
         entries={entries}
-        overrideDate={oilOverride || null}
+        overrides={oilOverrides}
         canEdit={canEdit}
-        onSave={(date) => handleSaveDueDate("oil_change", date)}
+        onSaveCategory={handleSaveDueDate}
       />
       <DueDateCard
         label="Nächster TÜV/HU"
