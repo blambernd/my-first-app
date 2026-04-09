@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
@@ -180,16 +181,17 @@ export function LandingPage() {
           </div>
         </div>
 
-        {/* Hero visual placeholder */}
+        {/* Hero visual */}
         <div className="container mx-auto max-w-4xl mt-16 px-4">
-          <div className="rounded-xl border bg-gradient-to-br from-muted/50 to-muted p-8 sm:p-12 text-center">
-            <div className="flex items-center justify-center gap-3 text-muted-foreground">
-              <Car className="h-12 w-12" />
-              <div className="text-left">
-                <p className="font-semibold text-foreground text-lg">App-Vorschau</p>
-                <p className="text-sm">Dashboard mit Fahrzeug-Timeline und Scheckheft</p>
-              </div>
-            </div>
+          <div className="rounded-xl border shadow-2xl overflow-hidden">
+            <Image
+              src="/images/dashboard-preview.png"
+              alt="Oldtimer Docs Dashboard — Fahrzeugübersicht mit Timeline und Scheckheft"
+              width={1200}
+              height={675}
+              className="w-full h-auto"
+              priority
+            />
           </div>
         </div>
       </section>
