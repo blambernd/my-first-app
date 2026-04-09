@@ -120,17 +120,17 @@ const premiumPlanFeatures = [
 export function LandingPage() {
   const searchParams = useSearchParams();
   const registeredParam = searchParams.get("registered") === "true";
-  const [isRegistered, setIsRegistered] = useState(false);
+  const [isRegistered, setIsRegistered] = useState(() => {
+    try { return localStorage.getItem("registered") === "true"; } catch { return false; }
+  });
   const [isYearly, setIsYearly] = useState(false);
 
   useEffect(() => {
-    if (registeredParam) {
+    if (registeredParam && !isRegistered) {
       localStorage.setItem("registered", "true");
       setIsRegistered(true);
-    } else if (localStorage.getItem("registered") === "true") {
-      setIsRegistered(true);
     }
-  }, [registeredParam]);
+  }, [registeredParam, isRegistered]);
 
   return (
     <div className="flex flex-col">
