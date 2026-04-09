@@ -264,11 +264,12 @@ export function VehicleForm({ vehicle, vehicleImages = [], mode }: VehicleFormPr
           const datenkarteExt =
             datenkarte.name.split(".").pop()?.toLowerCase() ?? "jpg";
           const datenkarteId = crypto.randomUUID();
-          const datenkartePath = `${user.id}/${vehicleId}/milestones/${datenkarteId}.${datenkarteExt}`;
+          const docPath = `${user.id}/${vehicleId}/documents/${datenkarteId}.${datenkarteExt}`;
 
+          // Upload once to vehicle-documents bucket
           const { error: dkUploadError } = await supabase.storage
-            .from("vehicle-images")
-            .upload(datenkartePath, datenkarte, {
+            .from("vehicle-documents")
+            .upload(docPath, datenkarte, {
               contentType: datenkarte.type,
               upsert: false,
             });
@@ -290,36 +291,27 @@ export function VehicleForm({ vehicle, vehicleImages = [], mode }: VehicleFormPr
             .single();
           if (msError) throw msError;
 
-          // Link Datenkarte as milestone image
+          // Link Datenkarte as milestone image (referencing vehicle-documents bucket)
           await supabase.from("vehicle_milestone_images").insert({
             milestone_id: milestone.id,
-            storage_path: datenkartePath,
+            storage_path: docPath,
             position: 0,
             file_size: datenkarte.size,
           });
 
-          // Also save as document with "datenkarte" category
-          const docPath = `${user.id}/${vehicleId}/documents/${datenkarteId}.${datenkarteExt}`;
-          const { error: docUploadError } = await supabase.storage
-            .from("vehicle-documents")
-            .upload(docPath, datenkarte, {
-              contentType: datenkarte.type,
-              upsert: false,
-            });
-          if (!docUploadError) {
-            await supabase.from("vehicle_documents").insert({
-              vehicle_id: vehicleId,
-              title: "Datenkarte",
-              category: "datenkarte",
-              document_date: deliveryDate,
-              storage_path: docPath,
-              file_name: datenkarte.name,
-              file_size: datenkarte.size,
-              mime_type: datenkarte.type,
-              milestone_id: milestone.id,
-              created_by: user.id,
-            });
-          }
+          // Save as document with "datenkarte" category
+          await supabase.from("vehicle_documents").insert({
+            vehicle_id: vehicleId,
+            title: "Datenkarte",
+            category: "datenkarte",
+            document_date: deliveryDate,
+            storage_path: docPath,
+            file_name: datenkarte.name,
+            file_size: datenkarte.size,
+            mime_type: datenkarte.type,
+            milestone_id: milestone.id,
+            created_by: user.id,
+          });
         } catch (dkError) {
           console.error("Datenkarte error:", dkError);
           toast.error("Datenkarte konnte nicht gespeichert werden.");
