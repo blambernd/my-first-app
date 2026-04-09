@@ -338,9 +338,16 @@ export function VehicleForm({ vehicle, vehicleImages = [], mode }: VehicleFormPr
       );
       router.push(`/vehicles/${vehicleId}`);
       router.refresh();
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Submit error:", error);
-      const msg = error instanceof Error ? error.message : String(error);
+      let msg = "Unbekannter Fehler";
+      if (error instanceof Error) {
+        msg = error.message;
+      } else if (error && typeof error === "object" && "message" in error) {
+        msg = String((error as { message: unknown }).message);
+      } else if (error && typeof error === "object" && "details" in error) {
+        msg = String((error as { details: unknown }).details);
+      }
       toast.error(`Fehler: ${msg}`);
     } finally {
       setIsSubmitting(false);
