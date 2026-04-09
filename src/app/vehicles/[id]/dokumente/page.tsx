@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase-server";
 import { DocumentArchive } from "@/components/document-archive";
 import type { VehicleDocument } from "@/lib/validations/vehicle-document";
 import type { ServiceEntry } from "@/lib/validations/service-entry";
+import type { VehicleMilestoneWithImages } from "@/lib/validations/milestone";
 
 interface DokumentePageProps {
   params: Promise<{ id: string }>;
@@ -61,11 +62,19 @@ export default async function DokumentePage({ params }: DokumentePageProps) {
     .order("created_at", { ascending: false })
     .limit(200);
 
+  // Fetch milestone images for the Historie section in the gallery
+  const { data: milestones } = await supabase
+    .from("vehicle_milestones")
+    .select("*, vehicle_milestone_images(*)")
+    .eq("vehicle_id", id)
+    .order("milestone_date", { ascending: false });
+
   return (
     <DocumentArchive
       vehicleId={id}
       initialDocuments={(vehicleDocuments ?? []) as VehicleDocument[]}
       serviceEntries={(serviceEntries ?? []) as ServiceEntry[]}
+      milestones={(milestones ?? []) as VehicleMilestoneWithImages[]}
       supabaseUrl={supabaseUrl}
       canEdit={canEdit}
       canEditAll={canEditAll}

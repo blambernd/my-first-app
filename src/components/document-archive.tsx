@@ -16,6 +16,7 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
+  Clock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -50,6 +51,11 @@ import {
   type DocumentCategory,
 } from "@/lib/validations/vehicle-document";
 import type { ServiceEntry } from "@/lib/validations/service-entry";
+import {
+  CATEGORY_CONFIG,
+  type VehicleMilestoneWithImages,
+  type VehicleMilestoneImage,
+} from "@/lib/validations/milestone";
 
 const CATEGORY_COLORS: Record<DocumentCategory, string> = {
   datenkarte: "bg-teal-100 text-teal-800",
@@ -62,10 +68,18 @@ const CATEGORY_COLORS: Record<DocumentCategory, string> = {
   sonstiges: "bg-gray-100 text-gray-800",
 };
 
+interface MilestoneImageEntry {
+  image: VehicleMilestoneImage;
+  milestoneTitle: string;
+  milestoneCategory: string;
+  milestoneDate: string;
+}
+
 interface DocumentArchiveProps {
   vehicleId: string;
   initialDocuments: VehicleDocument[];
   serviceEntries: ServiceEntry[];
+  milestones?: VehicleMilestoneWithImages[];
   supabaseUrl: string;
   canEdit?: boolean;
   canEditAll?: boolean;
@@ -440,10 +454,148 @@ function ImageGallery({
   );
 }
 
+function HistorieGallery({
+  entries,
+  supabaseUrl,
+}: {
+  entries: MilestoneImageEntry[];
+  supabaseUrl: string;
+}) {
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const touchStartX = useRef(0);
+  const touchDeltaX = useRef(0);
+
+  const goNext = useCallback(() => setLightboxIndex((i) => i !== null ? Math.min(i + 1, entries.length - 1) : null), [entries.length]);
+  const goPrev = useCallback(() => setLightboxIndex((i) => i !== null ? Math.max(i - 1, 0) : null), []);
+
+  useEffect(() => {
+    if (lightboxIndex === null) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setLightboxIndex(null);
+      if (e.key === "ArrowRight") goNext();
+      if (e.key === "ArrowLeft") goPrev();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [lightboxIndex, goNext, goPrev]);
+
+  if (entries.length === 0) return null;
+
+  return (
+    <div className="mb-8">
+      <h3 className="text-sm font-medium mb-3 flex items-center gap-2">
+        <Clock className="h-4 w-4 text-muted-foreground" />
+        Historie ({entries.length})
+      </h3>
+      <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
+        {entries.map((entry, idx) => {
+          const fileUrl = `${supabaseUrl}/storage/v1/object/public/vehicle-images/${entry.image.storage_path}`;
+          const categoryConfig = CATEGORY_CONFIG[entry.milestoneCategory as keyof typeof CATEGORY_CONFIG];
+
+          return (
+            <div key={entry.image.id} className="flex gap-4 items-start rounded-lg border p-3">
+              <div
+                className="shrink-0 w-36 sm:w-48 aspect-[4/3] rounded-lg overflow-hidden bg-muted cursor-pointer"
+                onClick={() => setLightboxIndex(idx)}
+              >
+                <img
+                  src={fileUrl}
+                  alt={entry.image.caption ?? entry.milestoneTitle}
+                  className="w-full h-full object-contain"
+                  loading="lazy"
+                />
+              </div>
+              <div className="flex-1 min-w-0 space-y-1">
+                <p className="text-sm font-medium truncate">{entry.milestoneTitle}</p>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {categoryConfig && (
+                    <Badge className={`${categoryConfig.color} border-0 text-xs`}>
+                      {categoryConfig.label}
+                    </Badge>
+                  )}
+                  <span className="text-xs text-muted-foreground">
+                    {new Date(entry.milestoneDate).toLocaleDateString("de-DE")}
+                  </span>
+                  {"file_size" in entry.image && entry.image.file_size ? (
+                    <span className="text-xs text-muted-foreground">
+                      {formatFileSize(entry.image.file_size as number)}
+                    </span>
+                  ) : null}
+                </div>
+                {entry.image.caption && (
+                  <p className="text-sm text-muted-foreground">{entry.image.caption}</p>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Lightbox with swipe navigation */}
+      {lightboxIndex !== null && (
+        <div
+          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center"
+          onClick={() => setLightboxIndex(null)}
+        >
+          <button
+            type="button"
+            className="absolute top-4 right-4 z-10 text-white/70 hover:text-white"
+            onClick={() => setLightboxIndex(null)}
+          >
+            <X className="h-6 w-6" />
+          </button>
+
+          {entries.length > 1 && lightboxIndex > 0 && (
+            <button
+              type="button"
+              className="absolute left-3 top-1/2 -translate-y-1/2 z-10 h-10 w-10 rounded-full bg-black/50 flex items-center justify-center text-white/70 hover:text-white hover:bg-black/70 transition-colors"
+              onClick={(e) => { e.stopPropagation(); goPrev(); }}
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+          )}
+
+          <div
+            className="max-w-[90vw] max-h-[85vh] flex items-center justify-center"
+            onClick={(e) => e.stopPropagation()}
+            onTouchStart={(e) => { touchStartX.current = e.touches[0].clientX; touchDeltaX.current = 0; }}
+            onTouchMove={(e) => { touchDeltaX.current = e.touches[0].clientX - touchStartX.current; }}
+            onTouchEnd={() => { if (touchDeltaX.current > 60) goPrev(); else if (touchDeltaX.current < -60) goNext(); }}
+          >
+            <img
+              src={`${supabaseUrl}/storage/v1/object/public/vehicle-images/${entries[lightboxIndex].image.storage_path}`}
+              alt={entries[lightboxIndex].image.caption ?? entries[lightboxIndex].milestoneTitle}
+              className="max-w-full max-h-[85vh] object-contain rounded-lg select-none"
+              draggable={false}
+            />
+          </div>
+
+          {entries.length > 1 && lightboxIndex < entries.length - 1 && (
+            <button
+              type="button"
+              className="absolute right-3 top-1/2 -translate-y-1/2 z-10 h-10 w-10 rounded-full bg-black/50 flex items-center justify-center text-white/70 hover:text-white hover:bg-black/70 transition-colors"
+              onClick={(e) => { e.stopPropagation(); goNext(); }}
+            >
+              <ChevronRight className="h-5 w-5" />
+            </button>
+          )}
+
+          {entries.length > 1 && (
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white/70 text-sm bg-black/50 px-3 py-1 rounded-full">
+              {lightboxIndex + 1} / {entries.length}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function DocumentArchive({
   vehicleId,
   initialDocuments,
   serviceEntries,
+  milestones = [],
   supabaseUrl,
   canEdit = true,
   canEditAll = true,
@@ -456,6 +608,15 @@ export function DocumentArchive({
 
   const imageDocuments = documents.filter((d) => isImageMimeType(d.mime_type));
   const nonImageDocuments = documents.filter((d) => !isImageMimeType(d.mime_type));
+
+  const milestoneImageEntries: MilestoneImageEntry[] = milestones.flatMap((m) =>
+    m.vehicle_milestone_images.map((img) => ({
+      image: img,
+      milestoneTitle: m.title,
+      milestoneCategory: m.category,
+      milestoneDate: m.milestone_date,
+    }))
+  );
 
   const filteredDocuments =
     filterCategory === "all"
@@ -547,7 +708,7 @@ export function DocumentArchive({
             <FileImage className="h-5 w-5 text-muted-foreground" />
             <div>
               <p className="text-2xl font-bold">
-                {documents.filter((d) => isImageMimeType(d.mime_type)).length}
+                {documents.filter((d) => isImageMimeType(d.mime_type)).length + milestoneImageEntries.length}
               </p>
               <p className="text-xs text-muted-foreground">Bilder</p>
             </div>
@@ -585,6 +746,12 @@ export function DocumentArchive({
         userId={userId}
         onDelete={handleDelete}
         onUpdateDescription={handleUpdateDescription}
+      />
+
+      {/* Historie images from milestones */}
+      <HistorieGallery
+        entries={milestoneImageEntries}
+        supabaseUrl={supabaseUrl}
       />
 
       {/* Document filter */}
