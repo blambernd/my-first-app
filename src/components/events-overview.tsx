@@ -99,17 +99,16 @@ function EventCard({ event }: { event: EventItem }) {
       <CardContent className="p-4 space-y-3">
         <div className="flex items-start justify-between gap-2">
           <h4 className="font-semibold text-sm leading-tight">{event.name}</h4>
-          <Badge variant="secondary" className={`shrink-0 text-xs ${config.color}`}>
-            <Icon className="h-3 w-3 mr-1" />
-            {config.label}
-          </Badge>
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="text-xs text-muted-foreground">{formatDateRange(event.date_start, event.date_end)}</span>
+            <Badge variant="secondary" className={`text-xs ${config.color}`}>
+              <Icon className="h-3 w-3 mr-1" />
+              {config.label}
+            </Badge>
+          </div>
         </div>
 
         <div className="space-y-1.5 text-sm text-muted-foreground">
-          <div className="flex items-center gap-2">
-            <Calendar className="h-3.5 w-3.5 shrink-0" />
-            <span>{formatDateRange(event.date_start, event.date_end)}</span>
-          </div>
           <div className="flex items-center gap-2">
             <MapPin className="h-3.5 w-3.5 shrink-0" />
             <span>
@@ -344,13 +343,13 @@ export function EventsOverview() {
             <p className="text-xs text-muted-foreground mb-2">
               {filteredEvents.length} Veranstaltung{filteredEvents.length !== 1 ? "en" : ""}
             </p>
-            <ScrollArea className="h-[420px]">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pr-4">
+            <ScrollArea className="h-[480px] [&>div>div[style]]:!block [&_[data-radix-scroll-area-scrollbar]]:w-2.5 [&_[data-radix-scroll-area-scrollbar]]:bg-muted/50 [&_[data-radix-scroll-area-thumb]]:bg-muted-foreground/30">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pr-4">
                 {filteredEvents.map((event) => (
                   <EventCard key={event.id} event={event} />
                 ))}
               </div>
-              <ScrollBar />
+              <ScrollBar forceMount />
             </ScrollArea>
           </>
         )}
