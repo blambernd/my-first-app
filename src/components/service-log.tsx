@@ -594,60 +594,56 @@ function ServiceEntryCard({
             {getEntryTypeLabel(entry.entry_type)}
           </Badge>
           <div className="flex-1 min-w-0">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-sm text-muted-foreground">
-                  {new Date(entry.service_date).toLocaleDateString("de-DE")}
-                </span>
+            <div className="flex items-start justify-between gap-2">
+              <div className="text-sm">
+                <span className="text-muted-foreground">{new Date(entry.service_date).toLocaleDateString("de-DE")}</span>
+                {" "}
+                {detailOpen ? entry.description : summaryText}
+                {entry.cost_cents != null && entry.cost_cents > 0 && (
+                  <span className="text-muted-foreground">{" · "}{formatCentsToEur(entry.cost_cents)}</span>
+                )}
                 {entry.is_odometer_correction && (
-                  <Badge variant="outline" className="text-xs">Tacho-Korrektur</Badge>
+                  <Badge variant="outline" className="text-xs ml-1 align-middle">Tacho-Korrektur</Badge>
                 )}
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 <span className="text-sm font-semibold tabular-nums text-muted-foreground">
                   {entry.mileage_km.toLocaleString("de-DE")} km
                 </span>
-            {canEdit && (
-            <div className="flex gap-0.5" onClick={(e) => e.stopPropagation()}>
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onEdit}>
-              <Pencil className="h-3.5 w-3.5" />
-            </Button>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive">
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Eintrag löschen?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Dieser Scheckheft-Eintrag wird unwiderruflich gelöscht.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Abbrechen</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={onDelete}
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  >
-                    Löschen
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </div>
-          )}
+                {canEdit && (
+                  <div className="flex gap-0.5" onClick={(e) => e.stopPropagation()}>
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onEdit}>
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive">
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Eintrag löschen?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Dieser Scheckheft-Eintrag wird unwiderruflich gelöscht.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={onDelete}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          >
+                            Löschen
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
+                )}
               </div>
             </div>
-            <p className="mt-1 text-sm">{detailOpen ? entry.description : summaryText}</p>
-            <div className="flex items-center gap-4 mt-1.5 text-xs text-muted-foreground">
-              {entry.cost_cents != null && entry.cost_cents > 0 && (
-                <span className="flex items-center gap-1">
-                  <Banknote className="h-3 w-3" />
-                  {formatCentsToEur(entry.cost_cents)}
-                </span>
-              )}
+            <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
               {documents.length > 0 && (
                 <span className="flex items-center gap-1">
                   <FileText className="h-3 w-3" />
