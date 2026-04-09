@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase-server";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { AccountHeader } from "@/components/account-header";
+import { MobileBottomNav } from "@/components/mobile-bottom-nav";
 import { VehicleCard, AddVehicleCard } from "@/components/vehicle-card";
 import { PlanOverview } from "@/components/plan-overview";
 import { ReferralCard } from "@/components/referral-card";
@@ -61,7 +62,7 @@ export default async function DashboardPage() {
     <div className="bg-muted/40">
       <AccountHeader email={user.email || ""} />
 
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-4 py-8 pb-20 md:pb-8">
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-8">
         <div>
         <div className="flex items-center justify-between mb-6">
@@ -122,6 +123,7 @@ export default async function DashboardPage() {
         {/* Events Overview - full width */}
         <EventsOverview />
       </main>
+      <MobileBottomNav />
     </div>
   );
 }

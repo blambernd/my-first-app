@@ -109,10 +109,10 @@ export function MembersList({ vehicleId, members, onUpdate }: MembersListProps) 
         return (
           <div
             key={member.id}
-            className="flex items-center justify-between py-3 gap-4"
+            className="flex items-center justify-between py-3 gap-3 sm:gap-4"
           >
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="h-9 w-9 rounded-full bg-muted flex items-center justify-center shrink-0">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+              <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-full bg-muted flex items-center justify-center shrink-0">
                 <Icon className="h-4 w-4 text-muted-foreground" />
               </div>
               <div className="min-w-0">
@@ -126,7 +126,7 @@ export function MembersList({ vehicleId, members, onUpdate }: MembersListProps) 
               </div>
             </div>
 
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
               {isOwner ? (
                 <Badge className={`${ROLE_BADGE_COLORS.besitzer} border-0`}>
                   {ROLE_LABELS.besitzer}
@@ -140,7 +140,7 @@ export function MembersList({ vehicleId, members, onUpdate }: MembersListProps) 
                     }
                     disabled={changingRole === member.id}
                   >
-                    <SelectTrigger className="w-[140px] h-8 text-xs">
+                    <SelectTrigger className="w-[110px] sm:w-[140px] h-8 text-xs">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>

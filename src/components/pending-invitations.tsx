@@ -155,7 +155,7 @@ export function PendingInvitations({
                     </div>
 
                     {/* Link + actions */}
-                    <div className="flex items-center gap-2 rounded-md border bg-muted/50 p-2 ml-12">
+                    <div className="flex items-center gap-2 rounded-md border bg-muted/50 p-2 ml-0 sm:ml-12">
                       <code className="flex-1 text-xs truncate">
                         {inviteLink}
                       </code>
@@ -174,7 +174,7 @@ export function PendingInvitations({
                       </Button>
                     </div>
 
-                    <div className="flex gap-2 ml-12">
+                    <div className="flex flex-wrap gap-2 ml-0 sm:ml-12">
                       <Button
                         variant="outline"
                         size="sm"

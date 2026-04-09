@@ -44,10 +44,13 @@ import { createClient } from "@/lib/supabase";
 import {
   serviceEntrySchema,
   SERVICE_ENTRY_TYPES,
+  OIL_CHANGE_CATEGORIES,
   eurToCents,
   getEntryTypeLabel,
   type ServiceEntryFormData,
   type ServiceEntry,
+  type OilChangeCategoryEntry,
+  type OilChangeCategory,
 } from "@/lib/validations/service-entry";
 import {
   DOCUMENT_CATEGORIES,
@@ -75,6 +78,12 @@ export function ServiceEntryForm({
   const [showOdometerWarning, setShowOdometerWarning] = useState(false);
   const [documentFile, setDocumentFile] = useState<File | null>(null);
   const [documentCategory, setDocumentCategory] = useState<DocumentCategory>("rechnung");
+  const [oilCategories, setOilCategories] = useState<OilChangeCategoryEntry[]>(
+    entry?.oil_change_categories ?? []
+  );
+  const [otherOilLabel, setOtherOilLabel] = useState(
+    entry?.oil_change_categories?.find((c) => c.category === "other_oil")?.custom_label ?? ""
+  );
   const isEditing = !!entry;
 
   const onDocumentDrop = useCallback((acceptedFiles: File[]) => {
@@ -135,11 +144,16 @@ export function ServiceEntryForm({
       setShowOdometerWarning(false);
       setDocumentFile(null);
       setDocumentCategory("rechnung");
+      setOilCategories(entry?.oil_change_categories ?? []);
+      setOtherOilLabel(
+        entry?.oil_change_categories?.find((c) => c.category === "other_oil")?.custom_label ?? ""
+      );
     }
   }, [open, entry, form]);
 
   const watchMileage = form.watch("mileage_km");
   const watchOdometerCorrection = form.watch("is_odometer_correction");
+  const watchEntryType = form.watch("entry_type");
 
   useEffect(() => {
     if (
@@ -168,6 +182,14 @@ export function ServiceEntryForm({
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Nicht eingeloggt");
 
+      // Prepare oil change categories with custom label
+      const finalOilCategories = data.entry_type === "oil_change" && oilCategories.length > 0
+        ? oilCategories.map((cat) => ({
+            ...cat,
+            custom_label: cat.category === "other_oil" ? otherOilLabel || undefined : undefined,
+          }))
+        : null;
+
       const cleanData = {
         vehicle_id: vehicleId,
         service_date: data.service_date,
@@ -179,6 +201,7 @@ export function ServiceEntryForm({
         workshop_name: data.workshop_name || null,
         notes: data.notes || null,
         next_due_date: data.next_due_date || null,
+        oil_change_categories: finalOilCategories,
       };
 
       let entryId: string;
@@ -259,7 +282,7 @@ export function ServiceEntryForm({
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 mt-6">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="service_date"
@@ -329,6 +352,69 @@ export function ServiceEntryForm({
               />
             </div>
 
+            {/* Oil change subcategories */}
+            {watchEntryType === "oil_change" && (
+              <div className="rounded-lg border p-4 space-y-3">
+                <p className="text-sm font-medium">Ölkategorien</p>
+                <p className="text-xs text-muted-foreground">
+                  Wähle die Ölarten aus und gib jeweils den nächsten fälligen Termin an.
+                </p>
+                {OIL_CHANGE_CATEGORIES.map((cat) => {
+                  const isSelected = oilCategories.some((c) => c.category === cat.value);
+                  const catEntry = oilCategories.find((c) => c.category === cat.value);
+                  return (
+                    <div key={cat.value} className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Checkbox
+                          checked={isSelected}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setOilCategories((prev) => [
+                                ...prev,
+                                { category: cat.value as OilChangeCategory, next_due_date: null },
+                              ]);
+                            } else {
+                              setOilCategories((prev) =>
+                                prev.filter((c) => c.category !== cat.value)
+                              );
+                            }
+                          }}
+                        />
+                        <span className="text-sm">{cat.label}</span>
+                      </div>
+                      {isSelected && cat.value === "other_oil" && (
+                        <Input
+                          placeholder="Bezeichnung eingeben..."
+                          value={otherOilLabel}
+                          onChange={(e) => setOtherOilLabel(e.target.value)}
+                          className="ml-6 h-8 text-sm max-w-xs"
+                        />
+                      )}
+                      {isSelected && (
+                        <div className="ml-6">
+                          <label className="text-xs text-muted-foreground">Nächster Ölwechsel</label>
+                          <Input
+                            type="date"
+                            value={catEntry?.next_due_date ?? ""}
+                            onChange={(e) => {
+                              setOilCategories((prev) =>
+                                prev.map((c) =>
+                                  c.category === cat.value
+                                    ? { ...c, next_due_date: e.target.value || null }
+                                    : c
+                                )
+                              );
+                            }}
+                            className="h-8 text-sm max-w-xs mt-1"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
             <FormField
               control={form.control}
               name="description"
@@ -351,7 +437,7 @@ export function ServiceEntryForm({
               )}
             />
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="mileage_km"

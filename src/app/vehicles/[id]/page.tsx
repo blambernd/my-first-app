@@ -108,7 +108,7 @@ export default async function VehicleDetailPage({
             />
           </div>
           {sortedImages.length > 1 && (
-            <div className="grid grid-cols-6 gap-1.5 mt-1.5">
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-1.5 mt-1.5">
               {sortedImages.slice(0, 6).map((img) => (
                 <div
                   key={img.id}

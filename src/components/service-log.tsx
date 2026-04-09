@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import {
   Plus,
   Wrench,
+  Droplets,
   Filter,
   Pencil,
   Trash2,
@@ -48,12 +49,16 @@ import { createClient } from "@/lib/supabase";
 import {
   SERVICE_ENTRY_TYPES,
   getEntryTypeLabel,
+  getOilCategoryLabel,
   formatCentsToEur,
   getNextTuvDate,
   getNextServiceDate,
+  getNextOilChangeDate,
+  getAllOilChangeDueDates,
   getDueStatus,
   type ServiceEntry,
   type ServiceEntryType,
+  type OilChangeCategory,
 } from "@/lib/validations/service-entry";
 import {
   formatFileSize,
@@ -228,11 +233,14 @@ function ServiceSummary({
 
   const tuvOverride = overrides.find((o) => o.due_type === "tuv_hu")?.due_date;
   const serviceOverride = overrides.find((o) => o.due_type === "service")?.due_date;
+  const oilOverride = overrides.find((o) => o.due_type === "oil_change")?.due_date;
 
   const nextTuv = tuvOverride || getNextTuvDate(entries);
   const nextService = serviceOverride || getNextServiceDate(entries);
+  const nextOilChange = getNextOilChangeDate(entries);
+  const nextOilDate = oilOverride || nextOilChange?.date || null;
 
-  const handleSaveDueDate = async (dueType: "tuv_hu" | "service", date: string) => {
+  const handleSaveDueDate = async (dueType: "tuv_hu" | "service" | "oil_change", date: string) => {
     try {
       const res = await fetch(`/api/vehicles/${vehicleId}/due-dates`, {
         method: "PUT",
@@ -254,15 +262,13 @@ function ServiceSummary({
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-      <Card>
-        <CardContent className="p-4 flex items-center gap-3">
-          <Wrench className="h-5 w-5 text-muted-foreground" />
-          <div>
-            <p className="text-2xl font-bold">{entries.length}</p>
-            <p className="text-xs text-muted-foreground">Einträge</p>
-          </div>
-        </CardContent>
-      </Card>
+      <DueDateCard
+        label={nextOilChange && !oilOverride ? `Nächster Ölwechsel (${nextOilChange.label})` : "Nächster Ölwechsel"}
+        dateStr={nextOilDate}
+        icon={<Droplets className="h-5 w-5 text-muted-foreground" />}
+        canEdit={canEdit}
+        onSave={(date) => handleSaveDueDate("oil_change", date)}
+      />
       <DueDateCard
         label="Nächster TÜV/HU"
         dateStr={nextTuv}
@@ -297,7 +303,8 @@ function ServiceEntryCard({
   supabaseUrl: string;
 }) {
   const [detailOpen, setDetailOpen] = useState(false);
-  const hasDetails = entry.notes || entry.next_due_date || documents.length > 0;
+  const hasOilCategories = entry.oil_change_categories && entry.oil_change_categories.length > 0;
+  const hasDetails = entry.notes || entry.next_due_date || documents.length > 0 || hasOilCategories;
   const summaryText = entry.description.length > 120
     ? entry.description.slice(0, 120) + "…"
     : entry.description;
@@ -385,6 +392,28 @@ function ServiceEntryCard({
       {/* Detail panel — shown on click */}
       {detailOpen && (
         <div className="mt-3 ml-0 rounded-lg bg-muted/40 p-4 space-y-3">
+          {hasOilCategories && (
+            <div>
+              <p className="text-xs font-medium text-muted-foreground mb-1">Ölkategorien</p>
+              <div className="space-y-1">
+                {entry.oil_change_categories!.map((cat) => (
+                  <div key={cat.category} className="flex items-center gap-2 text-sm">
+                    <Droplets className="h-3 w-3 text-amber-600" />
+                    <span>
+                      {cat.category === "other_oil" && cat.custom_label
+                        ? cat.custom_label
+                        : getOilCategoryLabel(cat.category)}
+                    </span>
+                    {cat.next_due_date && (
+                      <span className="text-xs text-muted-foreground">
+                        — fällig {new Date(cat.next_due_date).toLocaleDateString("de-DE")}
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           {entry.notes && (
             <div>
               <p className="text-xs font-medium text-muted-foreground mb-1">Notizen</p>

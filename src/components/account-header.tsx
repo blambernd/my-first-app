@@ -31,10 +31,12 @@ export function AccountHeader({ email }: AccountHeaderProps) {
           <BrandLogoWithText />
         </Link>
         <div className="flex items-center gap-2">
-          <NotificationBell />
+          <div className="hidden md:block">
+            <NotificationBell />
+          </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="text-sm text-muted-foreground gap-2">
+              <Button variant="ghost" size="sm" className="hidden md:inline-flex text-sm text-muted-foreground gap-2">
                 {isPremium && (
                   <Badge
                     variant="secondary"

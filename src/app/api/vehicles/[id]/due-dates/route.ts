@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase-server";
 import { z } from "zod";
 
 const upsertSchema = z.object({
-  due_type: z.enum(["tuv_hu", "service"]),
+  due_type: z.enum(["tuv_hu", "service", "oil_change"]),
   due_date: z.string().min(1, "Datum ist erforderlich"),
 });
 

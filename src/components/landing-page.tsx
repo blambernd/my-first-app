@@ -158,12 +158,12 @@ export function LandingPage() {
       )}
 
       {/* Hero */}
-      <section className="px-4 py-20 sm:py-28">
+      <section className="px-4 py-12 sm:py-20 md:py-28">
         <div className="container mx-auto max-w-4xl text-center space-y-6">
           <Badge variant="secondary" className="text-sm px-4 py-1">
             {"Die digitale Fahrzeugakte f\u00fcr Oldtimer"}
           </Badge>
-          <h1 className="text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
+          <h1 className="text-3xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
             {"Jede Wartung. Jedes Dokument."}
             <br />
             <span className="text-primary">{"Jedes Detail."}</span>
@@ -182,7 +182,7 @@ export function LandingPage() {
         </div>
 
         {/* Hero visual */}
-        <div className="container mx-auto max-w-4xl mt-16 px-4">
+        <div className="container mx-auto max-w-4xl mt-10 sm:mt-16 px-4">
           <div className="rounded-xl border shadow-2xl overflow-hidden">
             <Image
               src="/images/dashboard-preview.png"
@@ -200,10 +200,10 @@ export function LandingPage() {
       <section className="px-4 py-20 bg-muted/30" id="features">
         <div className="container mx-auto max-w-6xl">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold mb-4">
+            <h2 className="text-2xl sm:text-3xl font-bold mb-4">
               {"Alles, was Ihr Oldtimer braucht"}
             </h2>
-            <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+            <p className="text-muted-foreground text-base sm:text-lg max-w-2xl mx-auto">
               {"Von der ersten Wartung bis zum Verkauf \u2014 Oldtimer Docs begleitet Sie und Ihr Fahrzeug."}
             </p>
           </div>
@@ -231,10 +231,10 @@ export function LandingPage() {
       <section className="px-4 py-20" id="preise">
         <div className="container mx-auto max-w-4xl">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold mb-4">
+            <h2 className="text-2xl sm:text-3xl font-bold mb-4">
               {"Einfache, transparente Preise"}
             </h2>
-            <p className="text-muted-foreground text-lg max-w-xl mx-auto mb-8">
+            <p className="text-muted-foreground text-base sm:text-lg max-w-xl mx-auto mb-8">
               {"Starten Sie kostenlos und upgraden Sie, wenn Sie mehr brauchen."}
             </p>
 
@@ -357,7 +357,7 @@ export function LandingPage() {
 
             {/* Testimonials */}
             <div className="text-center mb-12">
-              <h2 className="text-3xl font-bold mb-4">
+              <h2 className="text-2xl sm:text-3xl font-bold mb-4">
                 {"Das sagen unsere Nutzer"}
               </h2>
             </div>
@@ -397,7 +397,7 @@ export function LandingPage() {
       <section className="px-4 py-20" id="faq">
         <div className="container mx-auto max-w-3xl">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold mb-4">
+            <h2 className="text-2xl sm:text-3xl font-bold mb-4">
               {"H\u00e4ufig gestellte Fragen"}
             </h2>
           </div>
@@ -423,7 +423,7 @@ export function LandingPage() {
       <section className="px-4 py-20 bg-primary text-primary-foreground">
         <div className="container mx-auto max-w-3xl text-center space-y-6">
           <Shield className="h-12 w-12 mx-auto opacity-90" />
-          <h2 className="text-3xl font-bold">
+          <h2 className="text-2xl sm:text-3xl font-bold">
             {"Bereit, Ihren Oldtimer zu dokumentieren?"}
           </h2>
           <p className="text-lg opacity-90 max-w-xl mx-auto">

@@ -27,7 +27,7 @@ export default function FaqPage() {
       </header>
 
       <main className="flex-1 container mx-auto px-4 py-12 max-w-3xl">
-        <h1 className="text-3xl font-bold mb-4">
+        <h1 className="text-2xl sm:text-3xl font-bold mb-4">
           {"H\u00e4ufig gestellte Fragen"}
         </h1>
         <p className="text-muted-foreground mb-8">

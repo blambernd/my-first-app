@@ -1,6 +1,6 @@
 # PROJ-20: Mobile Responsive Optimierung
 
-## Status: Architected
+## Status: In Progress
 **Created:** 2026-04-09
 **Last Updated:** 2026-04-09
 

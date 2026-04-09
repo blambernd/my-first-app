@@ -33,7 +33,7 @@
 | PROJ-17 | Landing Page | In Review | [PROJ-17-landing-page.md](PROJ-17-landing-page.md) | 2026-04-08 |
 | PROJ-18 | Empfehlungsprogramm (Referral) | Deployed | [PROJ-18-empfehlungsprogramm.md](PROJ-18-empfehlungsprogramm.md) | 2026-04-09 |
 | PROJ-19 | Veranstaltungsübersicht | Deployed | [PROJ-19-veranstaltungsuebersicht.md](PROJ-19-veranstaltungsuebersicht.md) | 2026-04-09 |
-| PROJ-20 | Mobile Responsive Optimierung | Architected | [PROJ-20-mobile-responsive.md](PROJ-20-mobile-responsive.md) | 2026-04-09 |
+| PROJ-20 | Mobile Responsive Optimierung | In Progress | [PROJ-20-mobile-responsive.md](PROJ-20-mobile-responsive.md) | 2026-04-09 |
 | PROJ-21 | Capacitor App Setup | Planned | [PROJ-21-capacitor-app.md](PROJ-21-capacitor-app.md) | 2026-04-09 |
 | PROJ-22 | Kamera-Integration | Planned | [PROJ-22-kamera-integration.md](PROJ-22-kamera-integration.md) | 2026-04-09 |
 | PROJ-23 | Push-Notifications (Termine) | Planned | [PROJ-23-push-notifications.md](PROJ-23-push-notifications.md) | 2026-04-09 |

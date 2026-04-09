@@ -125,7 +125,7 @@ export function ImageUpload({
       )}
 
       {(existingImageUrls.length > 0 || images.length > 0) && (
-        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
           {existingImageUrls.map((url) => (
             <div key={url} className="relative aspect-square rounded-lg overflow-hidden bg-muted">
               <img

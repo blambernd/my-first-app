@@ -21,7 +21,7 @@ export default function KontaktPage() {
       </header>
 
       <main className="flex-1 container mx-auto px-4 py-12 max-w-2xl">
-        <h1 className="text-3xl font-bold mb-4">Kontakt</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold mb-4">Kontakt</h1>
         <p className="text-muted-foreground mb-8">
           Haben Sie eine Frage, einen Verbesserungsvorschlag oder möchten Sie
           einen Fehler melden? Füllen Sie einfach das Formular aus und wir

@@ -32,7 +32,7 @@ export default function RootLayout({
   return (
     <html lang="de">
       <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
       </head>
       <body className="antialiased flex flex-col min-h-screen">
         <div className="flex-1">{children}</div>

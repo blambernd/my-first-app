@@ -3,6 +3,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase-server";
 import { Button } from "@/components/ui/button";
 import { AccountHeader } from "@/components/account-header";
+import { MobileBottomNav } from "@/components/mobile-bottom-nav";
 import { DeleteVehicleButton } from "@/components/delete-vehicle-button";
 import { LeaveVehicleButton } from "@/components/leave-vehicle-button";
 import { VehicleProfileNav } from "@/components/vehicle-profile-nav";
@@ -70,7 +71,7 @@ export default async function VehicleLayout({
 
       {/* Vehicle identity + actions + nav */}
       <div className="border-b border-border/30">
-        <div className="container mx-auto px-6 lg:px-8 max-w-5xl">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-5xl">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pt-5 pb-1">
             <h1 className="text-xl font-medium tracking-tight">
               {typedVehicle.make} {typedVehicle.model}
@@ -132,9 +133,10 @@ export default async function VehicleLayout({
         </div>
       </div>
 
-      <main className="container mx-auto px-6 lg:px-8 max-w-5xl">
-        <div className="py-8 sm:py-10">{children}</div>
+      <main className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-5xl">
+        <div className="py-6 sm:py-10 pb-20 md:pb-10">{children}</div>
       </main>
+      <MobileBottomNav />
       <Toaster />
     </div>
   );

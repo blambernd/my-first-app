@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { BookOpen, Clock, FileText, Car, Workflow, Lock } from "lucide-react";
@@ -50,12 +51,16 @@ export function VehicleProfileNav({ vehicleId }: VehicleProfileNavProps) {
   const pathname = usePathname();
   const basePath = `/vehicles/${vehicleId}`;
   const { isPremium, loading } = useSubscription();
+  const activeRef = useRef<HTMLAnchorElement>(null);
 
-  const allItems = navItems;
+  // Auto-scroll active tab into view on mobile
+  useEffect(() => {
+    activeRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+  }, [pathname]);
 
   return (
-    <nav className="flex gap-1 py-2 -mx-2 overflow-x-auto">
-      {allItems.map((item) => {
+    <nav className="flex gap-1 py-2 -mx-2 overflow-x-auto scrollbar-hide">
+      {navItems.map((item) => {
         const fullPath = `${basePath}${item.href}`;
         const isActive =
           item.href === ""
@@ -67,8 +72,9 @@ export function VehicleProfileNav({ vehicleId }: VehicleProfileNavProps) {
         return (
           <Link
             key={item.href}
+            ref={isActive ? activeRef : undefined}
             href={fullPath}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${
+            className={`flex items-center gap-2 px-4 py-3 min-h-[44px] rounded-md text-sm font-medium transition-colors whitespace-nowrap ${
               isActive
                 ? "bg-primary/8 text-primary"
                 : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
