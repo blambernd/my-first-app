@@ -10,7 +10,7 @@ function createServiceClient() {
   return createClient(url, serviceKey);
 }
 
-export async function POST(request: Request) {
+export async function GET(request: Request) {
   const authHeader = request.headers.get("authorization");
   const cronSecret = process.env.CRON_SECRET;
 
@@ -95,7 +95,7 @@ export async function POST(request: Request) {
       if (userEmail) {
         try {
           await resend.emails.send({
-            from: "Oldtimer-Scheckheft <noreply@resend.dev>",
+            from: "Oldtimer Docs <noreply@oldtimer-docs.com>",
             to: userEmail,
             subject: `${typeLabel} für ${vehicleName} ${is1Day ? "morgen" : "in 7 Tagen"} fällig`,
             react: ServiceReminderEmail({
