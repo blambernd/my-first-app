@@ -36,67 +36,59 @@ export function BrandLogo({
         strokeWidth="1.5"
         strokeLinejoin="round"
       />
-      {/* Oldtimer car body */}
+      {/* Oldtimer — classic 1930s sedan silhouette */}
+      {/* Main body: long hood, cabin, rounded trunk */}
       <path
-        d="M8 20h16M9 20v-2.5h14V20"
+        d="M6.5 21 L7 18.5 C7 18 7.3 17.5 8 17.5 L11 17.5 L12.5 14 C12.8 13.3 13.3 13 14 13 L19 13 C19.7 13 20.2 13.3 20.5 14 L21.5 17.5 L24 17.5 C24.7 17.5 25 18 25 18.5 L25.5 21"
         stroke={fillColor}
-        strokeWidth="1.2"
+        strokeWidth="1.3"
         strokeLinecap="round"
         strokeLinejoin="round"
         fill="none"
       />
-      {/* Oldtimer roof/cabin */}
+      {/* Cabin windows */}
       <path
-        d="M12.5 17.5l1-2.5h5l1 2.5"
+        d="M13.2 17.5 L14 14.5 L16 14.5 L16 17.5"
         stroke={fillColor}
-        strokeWidth="1.2"
-        strokeLinecap="round"
+        strokeWidth="0.9"
         strokeLinejoin="round"
         fill="none"
+        opacity="0.6"
       />
-      {/* Hood (long front) */}
       <path
-        d="M9 17.5h3.5M19.5 17.5H23"
+        d="M16 14.5 L18.5 14.5 L19.8 17.5"
         stroke={fillColor}
-        strokeWidth="1.2"
-        strokeLinecap="round"
+        strokeWidth="0.9"
+        strokeLinejoin="round"
+        fill="none"
+        opacity="0.6"
+      />
+      {/* Front fender arch */}
+      <path
+        d="M7.5 21 C7.5 19.2 8.5 18.2 10 18.2 C11.5 18.2 12.5 19.2 12.5 21"
+        stroke={fillColor}
+        strokeWidth="1.3"
         fill="none"
       />
-      {/* Front fender curve */}
+      {/* Rear fender arch */}
       <path
-        d="M23 17.5c0.8 0 1 0.8 1 1.5"
+        d="M19.5 21 C19.5 19.2 20.5 18.2 22 18.2 C23.5 18.2 24.5 19.2 24.5 21"
         stroke={fillColor}
-        strokeWidth="1.2"
-        strokeLinecap="round"
+        strokeWidth="1.3"
         fill="none"
       />
-      {/* Rear fender curve */}
-      <path
-        d="M9 17.5c-0.8 0-1 0.8-1 1.5"
-        stroke={fillColor}
-        strokeWidth="1.2"
-        strokeLinecap="round"
-        fill="none"
-      />
-      {/* Wheels */}
-      <circle cx="11" cy="20" r="1.4" stroke={fillColor} strokeWidth="1.1" fill="none" />
-      <circle cx="11" cy="20" r="0.5" fill={fillColor} />
-      <circle cx="21" cy="20" r="1.4" stroke={fillColor} strokeWidth="1.1" fill="none" />
-      <circle cx="21" cy="20" r="0.5" fill={fillColor} />
+      {/* Running board between fenders */}
+      <line x1="12.5" y1="21" x2="19.5" y2="21" stroke={fillColor} strokeWidth="1.3" strokeLinecap="round" />
+      {/* Front wheel */}
+      <circle cx="10" cy="21" r="2" stroke={fillColor} strokeWidth="1.1" fill="none" />
+      <circle cx="10" cy="21" r="0.7" fill={fillColor} />
+      {/* Rear wheel */}
+      <circle cx="22" cy="21" r="2" stroke={fillColor} strokeWidth="1.1" fill="none" />
+      <circle cx="22" cy="21" r="0.7" fill={fillColor} />
       {/* Headlight */}
-      <circle cx="23.5" cy="18.2" r="0.6" fill={fillColor} opacity="0.7" />
-      {/* Running board */}
-      <line x1="12.5" y1="19.8" x2="19.5" y2="19.8" stroke={fillColor} strokeWidth="0.5" opacity="0.4" />
-      {/* Shield top accent */}
-      <path
-        d="M13 11l3-2 3 2"
-        stroke={fillColor}
-        strokeWidth="0.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill="none"
-        opacity="0.4"
-      />
+      <circle cx="7" cy="18" r="0.7" fill={fillColor} opacity="0.6" />
+      {/* Radiator grille lines */}
+      <line x1="7" y1="18.8" x2="7" y2="20.5" stroke={fillColor} strokeWidth="0.7" opacity="0.5" />
     </svg>
   );
 }
