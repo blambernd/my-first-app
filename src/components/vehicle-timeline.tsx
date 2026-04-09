@@ -84,6 +84,106 @@ const CATEGORY_ICONS: Record<MilestoneCategory, typeof FileCheck> = {
 
 const ITEMS_PER_PAGE = 50;
 
+function ImageLightbox({
+  images,
+  initialIndex,
+  onClose,
+}: {
+  images: string[];
+  initialIndex: number;
+  onClose: () => void;
+}) {
+  const [index, setIndex] = useState(initialIndex);
+  const touchStartX = useRef(0);
+  const touchDeltaX = useRef(0);
+
+  const goNext = useCallback(() => setIndex((i) => Math.min(i + 1, images.length - 1)), [images.length]);
+  const goPrev = useCallback(() => setIndex((i) => Math.max(i - 1, 0)), []);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+      if (e.key === "ArrowRight") goNext();
+      if (e.key === "ArrowLeft") goPrev();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose, goNext, goPrev]);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchDeltaX.current = 0;
+  };
+  const handleTouchMove = (e: React.TouchEvent) => {
+    touchDeltaX.current = e.touches[0].clientX - touchStartX.current;
+  };
+  const handleTouchEnd = () => {
+    if (touchDeltaX.current > 60) goPrev();
+    else if (touchDeltaX.current < -60) goNext();
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center"
+      onClick={onClose}
+    >
+      {/* Close button */}
+      <button
+        type="button"
+        className="absolute top-4 right-4 z-10 text-white/70 hover:text-white"
+        onClick={onClose}
+      >
+        <X className="h-6 w-6" />
+      </button>
+
+      {/* Previous */}
+      {images.length > 1 && index > 0 && (
+        <button
+          type="button"
+          className="absolute left-3 top-1/2 -translate-y-1/2 z-10 h-10 w-10 rounded-full bg-black/50 flex items-center justify-center text-white/70 hover:text-white hover:bg-black/70 transition-colors"
+          onClick={(e) => { e.stopPropagation(); goPrev(); }}
+        >
+          <ChevronLeft className="h-5 w-5" />
+        </button>
+      )}
+
+      {/* Image */}
+      <div
+        className="max-w-[90vw] max-h-[85vh] flex items-center justify-center"
+        onClick={(e) => e.stopPropagation()}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
+        <img
+          src={images[index]}
+          alt=""
+          className="max-w-full max-h-[85vh] object-contain rounded-lg select-none"
+          draggable={false}
+        />
+      </div>
+
+      {/* Next */}
+      {images.length > 1 && index < images.length - 1 && (
+        <button
+          type="button"
+          className="absolute right-3 top-1/2 -translate-y-1/2 z-10 h-10 w-10 rounded-full bg-black/50 flex items-center justify-center text-white/70 hover:text-white hover:bg-black/70 transition-colors"
+          onClick={(e) => { e.stopPropagation(); goNext(); }}
+        >
+          <ChevronRight className="h-5 w-5" />
+        </button>
+      )}
+
+      {/* Counter */}
+      {images.length > 1 && (
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white/70 text-sm bg-black/50 px-3 py-1 rounded-full">
+          {index + 1} / {images.length}
+        </div>
+      )}
+    </div>
+  );
+}
+
 interface VehicleTimelineProps {
   vehicleId: string;
   supabaseUrl: string;
@@ -403,6 +503,7 @@ function MilestoneDetail({
   onUpdateDocument: (docId: string, updates: { title?: string; category?: DocumentCategory }) => void;
   canEdit: boolean;
 }) {
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const config = CATEGORY_CONFIG[milestone.category];
   const Icon = CATEGORY_ICONS[milestone.category];
   const images = [...(milestone.vehicle_milestone_images ?? [])].sort(
@@ -446,9 +547,12 @@ function MilestoneDetail({
       {/* Photo gallery */}
       {images.length > 0 && (
         <div className="flex gap-3 mt-4 overflow-x-auto pb-1">
-          {images.map((img) => (
+          {images.map((img, imgIdx) => (
             <div key={img.id} className="shrink-0 w-28 space-y-1 group/img relative">
-              <div className="w-28 h-28 rounded-md overflow-hidden bg-muted relative">
+              <div
+                className="w-28 h-28 rounded-md overflow-hidden bg-muted relative cursor-pointer"
+                onClick={() => setLightboxIndex(imgIdx)}
+              >
                 <img
                   src={getImageUrl(img.storage_path, supabaseUrl)}
                   alt={img.caption ?? ""}
@@ -461,6 +565,7 @@ function MilestoneDetail({
                         variant="destructive"
                         size="icon"
                         className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover/img:opacity-100 transition-opacity"
+                        onClick={(e) => e.stopPropagation()}
                       >
                         <Trash2 className="h-3 w-3" />
                       </Button>
@@ -493,6 +598,14 @@ function MilestoneDetail({
             </div>
           ))}
         </div>
+      )}
+
+      {lightboxIndex !== null && (
+        <ImageLightbox
+          images={images.map((img) => getImageUrl(img.storage_path, supabaseUrl))}
+          initialIndex={lightboxIndex}
+          onClose={() => setLightboxIndex(null)}
+        />
       )}
 
       <DocumentList
@@ -533,7 +646,7 @@ function RestorationDetail({
   onSelectMilestone: (id: string) => void;
   canEdit: boolean;
 }) {
-  const [lightboxImg, setLightboxImg] = useState<string | null>(null);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [editingCaptionId, setEditingCaptionId] = useState<string | null>(null);
   const [editingCaptionText, setEditingCaptionText] = useState("");
   const images = [...(milestone.vehicle_milestone_images ?? [])].sort(
@@ -581,7 +694,7 @@ function RestorationDetail({
                 <div key={img.id} className="flex gap-5 items-stretch group/img rounded-lg border bg-background overflow-hidden">
                   <div
                     className="shrink-0 w-44 sm:w-56 aspect-[4/3] bg-muted cursor-pointer relative"
-                    onClick={() => setLightboxImg(getImageUrl(img.storage_path, supabaseUrl))}
+                    onClick={() => setLightboxIndex(imgIdx)}
                   >
                     <img
                       src={getImageUrl(img.storage_path, supabaseUrl)}
@@ -748,17 +861,12 @@ function RestorationDetail({
       )}
 
       {/* Lightbox */}
-      {lightboxImg && (
-        <div
-          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 cursor-pointer"
-          onClick={() => setLightboxImg(null)}
-        >
-          <img
-            src={lightboxImg}
-            alt=""
-            className="max-w-full max-h-full object-contain rounded-lg"
-          />
-        </div>
+      {lightboxIndex !== null && (
+        <ImageLightbox
+          images={images.map((img) => getImageUrl(img.storage_path, supabaseUrl))}
+          initialIndex={lightboxIndex}
+          onClose={() => setLightboxIndex(null)}
+        />
       )}
     </div>
   );
