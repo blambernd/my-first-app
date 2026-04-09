@@ -586,10 +586,10 @@ function ServiceEntryCard({
     <div className="py-4">
       {/* Summary row — always visible */}
       <div
-        className={`flex items-start justify-between gap-4 ${hasDetails ? "cursor-pointer" : ""}`}
+        className={`${hasDetails ? "cursor-pointer" : ""}`}
         onClick={() => hasDetails && setDetailOpen(!detailOpen)}
       >
-        <div className="flex-1 min-w-0">
+        <div className="flex items-start justify-between gap-4">
           <div className="flex items-center gap-2 flex-wrap">
             <Badge className={`${TYPE_COLORS[entry.entry_type]} border-0 text-xs`}>
               {getEntryTypeLabel(entry.entry_type)}
@@ -597,40 +597,16 @@ function ServiceEntryCard({
             <span className="text-sm text-muted-foreground">
               {new Date(entry.service_date).toLocaleDateString("de-DE")}
             </span>
-            <span className="text-sm font-semibold tabular-nums text-muted-foreground">
-              {entry.mileage_km.toLocaleString("de-DE")} km
-            </span>
             {entry.is_odometer_correction && (
               <Badge variant="outline" className="text-xs">Tacho-Korrektur</Badge>
             )}
           </div>
-          <p className="mt-1.5 text-sm">{detailOpen ? entry.description : summaryText}</p>
-          <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
-            {entry.cost_cents != null && entry.cost_cents > 0 && (
-              <span className="flex items-center gap-1">
-                <Banknote className="h-3 w-3" />
-                {formatCentsToEur(entry.cost_cents)}
-              </span>
-            )}
-            {documents.length > 0 && (
-              <span className="flex items-center gap-1">
-                <FileText className="h-3 w-3" />
-                {documents.length}
-              </span>
-            )}
-            {entry.workshop_name && (
-              <span className="truncate">{entry.workshop_name}</span>
-            )}
-            {hasDetails && (
-              <span className="flex items-center gap-0.5 text-primary ml-auto">
-                {detailOpen ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-              </span>
-            )}
-          </div>
-        </div>
-        <div className="flex items-center shrink-0">
-          {canEdit && (
-          <div className="flex gap-0.5" onClick={(e) => e.stopPropagation()}>
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="text-sm font-semibold tabular-nums text-muted-foreground">
+              {entry.mileage_km.toLocaleString("de-DE")} km
+            </span>
+            {canEdit && (
+            <div className="flex gap-0.5" onClick={(e) => e.stopPropagation()}>
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onEdit}>
               <Pencil className="h-3.5 w-3.5" />
             </Button>
@@ -659,6 +635,30 @@ function ServiceEntryCard({
               </AlertDialogContent>
             </AlertDialog>
           </div>
+          )}
+        </div>
+        </div>
+        <p className="mt-1.5 text-sm">{detailOpen ? entry.description : summaryText}</p>
+        <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
+          {entry.cost_cents != null && entry.cost_cents > 0 && (
+            <span className="flex items-center gap-1">
+              <Banknote className="h-3 w-3" />
+              {formatCentsToEur(entry.cost_cents)}
+            </span>
+          )}
+          {documents.length > 0 && (
+            <span className="flex items-center gap-1">
+              <FileText className="h-3 w-3" />
+              {documents.length}
+            </span>
+          )}
+          {entry.workshop_name && (
+            <span className="truncate">{entry.workshop_name}</span>
+          )}
+          {hasDetails && (
+            <span className="flex items-center gap-0.5 text-primary ml-auto">
+              {detailOpen ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+            </span>
           )}
         </div>
       </div>
