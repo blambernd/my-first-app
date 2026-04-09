@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useId } from "react";
 import { useRouter } from "next/navigation";
 import { Bell, Cog, ExternalLink, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,7 @@ interface Notification {
 
 export function NotificationBell() {
   const router = useRouter();
+  const instanceId = useId();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [open, setOpen] = useState(false);
@@ -64,7 +65,7 @@ export function NotificationBell() {
     // Subscribe to realtime notifications
     const supabase = createClient();
     const channel = supabase
-      .channel("notifications")
+      .channel(`notifications-${instanceId}`)
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "notifications" },
