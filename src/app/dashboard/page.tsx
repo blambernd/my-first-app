@@ -110,8 +110,6 @@ export default async function DashboardPage() {
           </>
         )}
 
-        {/* Events Overview */}
-        <EventsOverview />
         </div>
 
         {/* Sidebar: Plan overview + Referral */}
@@ -120,6 +118,9 @@ export default async function DashboardPage() {
           <ReferralCard />
         </div>
         </div>
+
+        {/* Events Overview - full width */}
+        <EventsOverview />
       </main>
     </div>
   );
