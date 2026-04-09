@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
-import { Gift, Check, Copy, Users, Clock, Mail } from "lucide-react";
+import { Gift, Check, Copy, Users, Clock, Mail, Share2 } from "lucide-react";
 
 interface ReferralData {
   referralCode: string;
@@ -17,6 +17,83 @@ interface ReferralData {
 const isBetaMode = process.env.NEXT_PUBLIC_BETA_MODE === "true";
 const isMvpMode = process.env.NEXT_PUBLIC_MVP_MODE === "true";
 
+function MvpReferralCard() {
+  const [copied, setCopied] = useState(false);
+  const [email, setEmail] = useState("");
+
+  const siteUrl = typeof window !== "undefined" ? window.location.origin : "";
+
+  async function handleCopy() {
+    try {
+      await navigator.clipboard.writeText(siteUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // fallback
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base flex items-center gap-2">
+          <Share2 className="h-4 w-4 text-primary" />
+          Weiterempfehlen
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <p className="text-sm text-muted-foreground">
+          Empfiehl Oldtimer Docs an andere Oldtimer-Fans weiter!
+        </p>
+
+        <div className="flex gap-2">
+          <div className="flex-1 rounded-md border bg-muted/50 px-3 py-2 text-sm font-mono truncate">
+            {siteUrl}
+          </div>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={handleCopy}
+            aria-label="Link kopieren"
+          >
+            {copied ? (
+              <Check className="h-4 w-4 text-green-500" />
+            ) : (
+              <Copy className="h-4 w-4" />
+            )}
+          </Button>
+        </div>
+
+        <div className="flex gap-2">
+          <Input
+            type="email"
+            placeholder="E-Mail-Adresse eingeben"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="text-sm"
+          />
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => {
+              const subject = encodeURIComponent("Empfehlung: Oldtimer Docs — Digitales Scheckheft für Oldtimer");
+              const body = encodeURIComponent(
+                `Hallo,\n\nich nutze Oldtimer Docs, um alle wichtigen Daten meiner Oldtimer digital zu dokumentieren — Scheckheft, Wartungen, Dokumente und mehr, alles an einem Ort.\n\nSchau es dir mal an:\n\n${siteUrl}\n\nViele Grüße`
+              );
+              window.open(`mailto:${encodeURIComponent(email)}?subject=${subject}&body=${body}`);
+              setEmail("");
+            }}
+            disabled={!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)}
+            aria-label="Per E-Mail einladen"
+          >
+            <Mail className="h-4 w-4" />
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export function ReferralCard() {
   const [data, setData] = useState<ReferralData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -24,6 +101,10 @@ export function ReferralCard() {
   const [email, setEmail] = useState("");
 
   useEffect(() => {
+    if (isBetaMode || isMvpMode) {
+      setLoading(false);
+      return;
+    }
     async function fetchReferral() {
       try {
         const res = await fetch("/api/referral");
@@ -39,7 +120,8 @@ export function ReferralCard() {
     fetchReferral();
   }, []);
 
-  if (isBetaMode || isMvpMode) return null;
+  if (isBetaMode) return null;
+  if (isMvpMode) return <MvpReferralCard />;
 
   if (loading) {
     return (
