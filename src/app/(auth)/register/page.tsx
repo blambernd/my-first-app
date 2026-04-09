@@ -2,7 +2,7 @@
 
 import { useState, Suspense } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { createClient } from "@/lib/supabase";
@@ -21,6 +21,7 @@ import {
 
 function RegisterForm() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{
     type: "success" | "error";
@@ -71,8 +72,11 @@ function RegisterForm() {
       }
       setMessage({
         type: "success",
-        text: "Registrierung erfolgreich! Bitte bestätige deine E-Mail-Adresse.",
+        text: "Registrierung erfolgreich! Du wirst zur Startseite weitergeleitet...",
       });
+      setTimeout(() => {
+        router.push("/?registered=true");
+      }, 2000);
     } catch {
       setMessage({ type: "error", text: "Ein Fehler ist aufgetreten" });
     } finally {

@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase-server";
 import { LandingPage } from "@/components/landing-page";
@@ -12,5 +13,9 @@ export default async function Home() {
     redirect("/dashboard");
   }
 
-  return <LandingPage />;
+  return (
+    <Suspense>
+      <LandingPage />
+    </Suspense>
+  );
 }

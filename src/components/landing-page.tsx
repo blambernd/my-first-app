@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
   BookOpen,
   FileText,
@@ -117,6 +118,8 @@ const premiumPlanFeatures = [
 ];
 
 export function LandingPage() {
+  const searchParams = useSearchParams();
+  const isRegistered = searchParams.get("registered") === "true";
   const [isYearly, setIsYearly] = useState(false);
 
   return (
@@ -129,12 +132,19 @@ export function LandingPage() {
             <Button variant="ghost" asChild>
               <Link href="/login">Anmelden</Link>
             </Button>
-            <Button asChild>
-              <Link href="/register">Registrieren</Link>
+            <Button asChild={!isRegistered} disabled={isRegistered}>
+              {isRegistered ? "Registriert ✓" : <Link href="/register">Registrieren</Link>}
             </Button>
           </div>
         </div>
       </header>
+
+      {/* Registration success banner */}
+      {isRegistered && (
+        <div className="bg-green-50 dark:bg-green-900/20 border-b border-green-200 dark:border-green-800 px-4 py-3 text-center text-sm text-green-700 dark:text-green-400">
+          Registrierung erfolgreich! Bitte überprüfe dein E-Mail-Postfach und bestätige deine E-Mail-Adresse.
+        </div>
+      )}
 
       {/* Hero */}
       <section className="px-4 py-20 sm:py-28">
@@ -151,8 +161,8 @@ export function LandingPage() {
             {"Dokumentieren Sie die komplette Historie Ihrer Oldtimer digital. Wartungen, Restaurierungen, Dokumente \u2014 alles an einem Ort, jederzeit abrufbar und teilbar."}
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
-            <Button size="lg" asChild className="text-base px-8">
-              <Link href="/register">Kostenlos starten</Link>
+            <Button size="lg" asChild={!isRegistered} disabled={isRegistered} className="text-base px-8">
+              {isRegistered ? "Registriert ✓" : <Link href="/register">Kostenlos starten</Link>}
             </Button>
             <Button size="lg" variant="outline" asChild className="text-base px-8">
               <Link href="/login">Anmelden</Link>
@@ -272,8 +282,8 @@ export function LandingPage() {
                     </li>
                   ))}
                 </ul>
-                <Button variant="outline" className="w-full" asChild>
-                  <Link href="/register">Kostenlos starten</Link>
+                <Button variant="outline" className="w-full" asChild={!isRegistered} disabled={isRegistered}>
+                  {isRegistered ? "Registriert ✓" : <Link href="/register">Kostenlos starten</Link>}
                 </Button>
               </CardContent>
             </Card>
@@ -306,8 +316,8 @@ export function LandingPage() {
                     </li>
                   ))}
                 </ul>
-                <Button className="w-full" asChild>
-                  <Link href="/register">14 Tage kostenlos testen</Link>
+                <Button className="w-full" asChild={!isRegistered} disabled={isRegistered}>
+                  {isRegistered ? "Registriert ✓" : <Link href="/register">14 Tage kostenlos testen</Link>}
                 </Button>
               </CardContent>
             </Card>
@@ -404,10 +414,11 @@ export function LandingPage() {
           <Button
             size="lg"
             variant="secondary"
-            asChild
+            asChild={!isRegistered}
+            disabled={isRegistered}
             className="text-base px-8"
           >
-            <Link href="/register">Jetzt kostenlos starten</Link>
+            {isRegistered ? "Registriert ✓" : <Link href="/register">Jetzt kostenlos starten</Link>}
           </Button>
         </div>
       </section>
