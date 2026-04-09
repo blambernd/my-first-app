@@ -499,6 +499,14 @@ export function DocumentArchive({
         .eq("id", doc.id);
       if (dbError) throw dbError;
 
+      // Clear linked milestone description (e.g. Datenkarte reference)
+      if (doc.milestone_id) {
+        await supabase
+          .from("vehicle_milestones")
+          .update({ description: null })
+          .eq("id", doc.milestone_id);
+      }
+
       toast.success("Dokument gelöscht");
       refreshDocuments();
     } catch {
