@@ -40,6 +40,10 @@ Eine SaaS-Plattform für Oldtimer-Besitzer, die es ermöglicht, die komplette Hi
 | P0 | PROJ-17: Landing Page | Planned |
 | P1 | PROJ-18: Empfehlungsprogramm (Referral) | Planned |
 | P1 | PROJ-19: Veranstaltungsübersicht | Planned |
+| P0 | PROJ-20: Mobile Responsive Optimierung | Planned |
+| P0 | PROJ-21: Capacitor App Setup (iOS + Android) | Planned |
+| P1 | PROJ-22: Kamera-Integration | Planned |
+| P1 | PROJ-23: Push-Notifications (Termine) | Planned |
 
 ## Success Metrics
 - **Registrierungen:** 500 Nutzer in den ersten 3 Monaten
