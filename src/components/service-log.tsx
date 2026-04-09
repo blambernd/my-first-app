@@ -550,7 +550,7 @@ function ServiceSummary({
         onSave={(date) => handleSaveDueDate("tuv_hu", date)}
       />
       <DueDateCard
-        label="Nächster Service"
+        label="Nächste Inspektion"
         dateStr={nextService}
         icon={<Gauge className="h-5 w-5 text-muted-foreground" />}
         canEdit={canEdit}
