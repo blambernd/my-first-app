@@ -10,9 +10,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Crown, Sparkles, ExternalLink } from "lucide-react";
 import { UpgradeDialog } from "@/components/upgrade-dialog";
 
+const isBetaMode = process.env.NEXT_PUBLIC_BETA_MODE === "true";
+
 export function PlanOverview() {
   const { data, loading, isPremium, isTrial, trialDaysLeft } = useSubscription();
   const [upgradeOpen, setUpgradeOpen] = useState(false);
+
+  if (isBetaMode) return null;
 
   if (loading) {
     return (

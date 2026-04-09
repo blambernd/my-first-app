@@ -23,12 +23,15 @@ export interface UsageInfo {
  */
 const GRACE_PERIOD_DAYS = 7;
 
+export const isBetaMode = process.env.NEXT_PUBLIC_BETA_MODE === "true";
+
 export function getEffectivePlan(subscription: {
   plan: string;
   status: string;
   trial_end: string | null;
   past_due_since?: string | null;
 }): PlanType {
+  if (isBetaMode) return "premium";
   if (subscription.plan === "trial") {
     if (
       subscription.trial_end &&
