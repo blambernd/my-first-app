@@ -701,42 +701,43 @@ function RestorationDetail({
                       alt={img.caption ?? ""}
                       className="w-full h-full object-cover"
                     />
-                    {canEdit && (
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button
-                            variant="destructive"
-                            size="icon"
-                            className="absolute top-1.5 right-1.5 h-6 w-6 opacity-0 group-hover/img:opacity-100 transition-opacity"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Bild löschen?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Dieses Bild wird unwiderruflich gelöscht.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => onDeleteImage(img.id, img.storage_path)}
-                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                            >
-                              Löschen
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    )}
                   </div>
                   <div className="flex-1 min-w-0 py-3 pr-4 flex flex-col justify-center">
-                    <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/60 mb-1">
-                      Foto {imgIdx + 1} von {images.length}
-                    </span>
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/60 flex-1">
+                        Foto {imgIdx + 1} von {images.length}
+                      </span>
+                      {canEdit && (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 shrink-0 text-destructive"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Bild löschen?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Dieses Bild wird unwiderruflich gelöscht.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => onDeleteImage(img.id, img.storage_path)}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                Löschen
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      )}
+                    </div>
                     {isEditingCaption ? (
                       <div className="flex items-center gap-1.5">
                         <Input

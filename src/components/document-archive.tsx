@@ -318,40 +318,41 @@ function ImageGallery({
                   className="w-full h-full object-contain"
                   loading="lazy"
                 />
-                {canEditThis && (
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button
-                        variant="destructive"
-                        size="icon"
-                        className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover/img:opacity-100 transition-opacity"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Bild löschen?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          &ldquo;{img.title}&rdquo; wird unwiderruflich gelöscht.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Abbrechen</AlertDialogCancel>
-                        <AlertDialogAction
-                          onClick={() => onDelete(img)}
-                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                        >
-                          Löschen
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                )}
               </div>
               <div className="flex-1 min-w-0 space-y-1">
-                <p className="text-sm font-medium truncate">{img.title}</p>
+                <div className="flex items-center gap-1.5">
+                  <p className="text-sm font-medium truncate flex-1 min-w-0">{img.title}</p>
+                  {canEditThis && (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 shrink-0 text-destructive"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Bild löschen?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            &ldquo;{img.title}&rdquo; wird unwiderruflich gelöscht.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => onDelete(img)}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          >
+                            Löschen
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  )}
+                </div>
                 <div className="flex items-center gap-2 flex-wrap">
                   <Badge className={`${CATEGORY_COLORS[img.category]} border-0 text-xs`}>
                     {getCategoryLabel(img.category)}
