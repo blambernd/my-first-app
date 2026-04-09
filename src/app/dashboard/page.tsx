@@ -7,6 +7,7 @@ import { AccountHeader } from "@/components/account-header";
 import { VehicleCard, AddVehicleCard } from "@/components/vehicle-card";
 import { PlanOverview } from "@/components/plan-overview";
 import { ReferralCard } from "@/components/referral-card";
+import { EventsOverview } from "@/components/events-overview";
 import { Car } from "lucide-react";
 import type { VehicleWithImages } from "@/lib/validations/vehicle";
 import { ROLE_LABELS, type MemberRole } from "@/lib/validations/member";
@@ -108,6 +109,9 @@ export default async function DashboardPage() {
             </div>
           </>
         )}
+
+        {/* Events Overview */}
+        <EventsOverview />
         </div>
 
         {/* Sidebar: Plan overview + Referral */}

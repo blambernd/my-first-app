@@ -39,6 +39,7 @@ Eine SaaS-Plattform für Oldtimer-Besitzer, die es ermöglicht, die komplette Hi
 | P1 | PROJ-16: Verkaufsassistent | Planned |
 | P0 | PROJ-17: Landing Page | Planned |
 | P1 | PROJ-18: Empfehlungsprogramm (Referral) | Planned |
+| P1 | PROJ-19: Veranstaltungsübersicht | Planned |
 
 ## Success Metrics
 - **Registrierungen:** 500 Nutzer in den ersten 3 Monaten
