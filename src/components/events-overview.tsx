@@ -96,20 +96,21 @@ function EventCard({ event }: { event: EventItem }) {
 
   return (
     <Card className="hover:shadow-md transition-shadow">
-      <CardContent className="p-4 space-y-3">
+      <CardContent className="p-4 space-y-2">
         <div className="flex items-start justify-between gap-2">
           <h4 className="font-semibold text-sm leading-tight">{event.name}</h4>
-          <div className="flex items-center gap-2 shrink-0">
-            <span className="text-xs text-muted-foreground">{formatDateRange(event.date_start, event.date_end)}</span>
-            <Badge variant="secondary" className={`text-xs ${config.color}`}>
-              <Icon className="h-3 w-3 mr-1" />
-              {config.label}
-            </Badge>
-          </div>
+          <Badge variant="secondary" className={`shrink-0 text-xs ${config.color}`}>
+            <Icon className="h-3 w-3 mr-1" />
+            {config.label}
+          </Badge>
         </div>
 
-        <div className="space-y-1.5 text-sm text-muted-foreground">
-          <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+          <div className="flex items-center gap-1.5">
+            <Calendar className="h-3.5 w-3.5 shrink-0" />
+            <span>{formatDateRange(event.date_start, event.date_end)}</span>
+          </div>
+          <div className="flex items-center gap-1.5">
             <MapPin className="h-3.5 w-3.5 shrink-0" />
             <span>
               {event.location}
@@ -121,7 +122,7 @@ function EventCard({ event }: { event: EventItem }) {
             </span>
           </div>
           {event.entry_price && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
               <Ticket className="h-3.5 w-3.5 shrink-0" />
               <span>{event.entry_price}</span>
             </div>
@@ -235,63 +236,59 @@ export function EventsOverview() {
 
       <CollapsibleContent>
         {/* Filters */}
-        <div className="flex flex-col gap-3 mb-6">
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="flex gap-2">
-              <Input
-                type="text"
-                inputMode="numeric"
-                placeholder="PLZ eingeben"
-                value={plz}
-                onChange={(e) => {
-                  const val = e.target.value.replace(/\D/g, "").slice(0, 5);
-                  setPlz(val);
-                }}
-                className="w-32 text-sm"
-              />
-              <Select value={radius} onValueChange={setRadius}>
-                <SelectTrigger className="w-28 text-sm">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {RADIUS_OPTIONS.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+        <div className="flex flex-wrap items-center gap-2 mb-6">
+          <Input
+            type="text"
+            inputMode="numeric"
+            placeholder="PLZ eingeben"
+            value={plz}
+            onChange={(e) => {
+              const val = e.target.value.replace(/\D/g, "").slice(0, 5);
+              setPlz(val);
+            }}
+            className="w-28 text-sm"
+          />
+          <Select value={radius} onValueChange={setRadius}>
+            <SelectTrigger className="w-24 text-sm">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {RADIUS_OPTIONS.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-            <div className="flex gap-2">
-              {(Object.entries(CATEGORY_CONFIG) as [EventCategory, typeof CATEGORY_CONFIG.rallye][]).map(
-                ([key, config]) => {
-                  const isActive = categories.includes(key);
-                  return (
-                    <Button
-                      key={key}
-                      variant={isActive ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => toggleCategory(key)}
-                      className="text-xs"
-                    >
-                      <config.icon className="h-3.5 w-3.5 mr-1" />
-                      {config.label}
-                    </Button>
-                  );
-                }
-              )}
-            </div>
-          </div>
+          <div className="h-6 w-px bg-border hidden sm:block" />
+
+          {(Object.entries(CATEGORY_CONFIG) as [EventCategory, typeof CATEGORY_CONFIG.rallye][]).map(
+            ([key, config]) => {
+              const isActive = categories.includes(key);
+              return (
+                <Button
+                  key={key}
+                  variant={isActive ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => toggleCategory(key)}
+                  className="text-xs"
+                >
+                  <config.icon className="h-3.5 w-3.5 mr-1" />
+                  {config.label}
+                </Button>
+              );
+            }
+          )}
+
+          <div className="h-6 w-px bg-border hidden sm:block" />
 
           <div className="flex items-center gap-2">
-            <Filter className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
             <Input
               type="date"
               value={dateFrom}
               onChange={(e) => setDateFrom(e.target.value)}
               className="w-36 text-sm"
-              placeholder="Von"
             />
             <span className="text-sm text-muted-foreground">–</span>
             <Input
@@ -299,19 +296,18 @@ export function EventsOverview() {
               value={dateTo}
               onChange={(e) => setDateTo(e.target.value)}
               className="w-36 text-sm"
-              placeholder="Bis"
             />
-            {(dateFrom || dateTo) && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => { setDateFrom(""); setDateTo(""); }}
-                className="text-xs text-muted-foreground"
-              >
-                Zurücksetzen
-              </Button>
-            )}
           </div>
+          {(dateFrom || dateTo) && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => { setDateFrom(""); setDateTo(""); }}
+              className="text-xs text-muted-foreground"
+            >
+              Zurücksetzen
+            </Button>
+          )}
         </div>
 
         {/* Content */}
@@ -343,8 +339,8 @@ export function EventsOverview() {
             <p className="text-xs text-muted-foreground mb-2">
               {filteredEvents.length} Veranstaltung{filteredEvents.length !== 1 ? "en" : ""}
             </p>
-            <ScrollArea className="h-[480px] [&>div>div[style]]:!block [&_[data-radix-scroll-area-scrollbar]]:w-2.5 [&_[data-radix-scroll-area-scrollbar]]:bg-muted/50 [&_[data-radix-scroll-area-thumb]]:bg-muted-foreground/30">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pr-4">
+            <ScrollArea className="h-[420px] [&_[data-radix-scroll-area-scrollbar]]:w-2 [&_[data-radix-scroll-area-scrollbar]]:bg-muted/60 [&_[data-radix-scroll-area-thumb]]:bg-muted-foreground/40">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 pr-4">
                 {filteredEvents.map((event) => (
                   <EventCard key={event.id} event={event} />
                 ))}
