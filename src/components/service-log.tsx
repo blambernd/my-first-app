@@ -200,6 +200,170 @@ function DueDateCard({
   );
 }
 
+function OilChangeDueDateCard({
+  entries,
+  overrideDate,
+  canEdit,
+  onSave,
+}: {
+  entries: ServiceEntry[];
+  overrideDate: string | null;
+  canEdit: boolean;
+  onSave: (date: string) => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editValue, setEditValue] = useState("");
+
+  const nextOilChange = getNextOilChangeDate(entries);
+  const nextOilDate = overrideDate || nextOilChange?.date || null;
+  const allDueDates = getAllOilChangeDueDates(entries);
+
+  const handleEdit = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditValue(nextOilDate || "");
+    setEditing(true);
+  };
+
+  const handleSave = () => {
+    if (editValue) {
+      onSave(editValue);
+    }
+    setEditing(false);
+  };
+
+  if (editing) {
+    return (
+      <Card>
+        <CardContent className="p-4">
+          <p className="text-xs text-muted-foreground mb-2">Nächster Ölwechsel</p>
+          <div className="flex items-center gap-1.5">
+            <Input
+              type="date"
+              value={editValue}
+              onChange={(e) => setEditValue(e.target.value)}
+              className="h-8 text-sm flex-1"
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleSave();
+                if (e.key === "Escape") setEditing(false);
+              }}
+            />
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-green-600" onClick={handleSave}>
+              <Check className="h-3.5 w-3.5" />
+            </Button>
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditing(false)}>
+              <X className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!nextOilDate) {
+    return (
+      <Card
+        className={canEdit ? "cursor-pointer hover:bg-muted/50 transition-colors" : ""}
+        onClick={canEdit ? handleEdit : undefined}
+      >
+        <CardContent className="p-4 flex items-center gap-3">
+          <Droplets className="h-5 w-5 text-muted-foreground" />
+          <div className="flex-1">
+            <p className="text-lg font-bold text-muted-foreground">–</p>
+            <p className="text-xs text-muted-foreground">Nächster Ölwechsel</p>
+          </div>
+          {canEdit && <Pencil className="h-3.5 w-3.5 text-muted-foreground" />}
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const status = getDueStatus(nextOilDate);
+  const formatted = new Date(nextOilDate).toLocaleDateString("de-DE");
+  const hasSubcategories = allDueDates.length > 0;
+  const mainLabel = nextOilChange && !overrideDate
+    ? `Nächster Ölwechsel (${nextOilChange.label})`
+    : "Nächster Ölwechsel";
+
+  return (
+    <Card className="transition-colors">
+      <CardContent className="p-4">
+        <div
+          className={`flex items-center gap-3 ${hasSubcategories ? "cursor-pointer" : canEdit ? "cursor-pointer" : ""}`}
+          onClick={() => {
+            if (hasSubcategories) setExpanded(!expanded);
+            else if (canEdit) { setEditValue(nextOilDate || ""); setEditing(true); }
+          }}
+        >
+          <Droplets className="h-5 w-5 text-muted-foreground" />
+          <div className="flex-1">
+            <p className={`text-lg font-bold ${DUE_STATUS_STYLES[status]}`}>
+              {formatted}
+            </p>
+            <div className="flex items-center gap-1.5">
+              <p className="text-xs text-muted-foreground">{mainLabel}</p>
+              {status === "overdue" && (
+                <Badge className={`${DUE_STATUS_BADGE.overdue} border-0 text-[10px] px-1.5 py-0`}>
+                  Überfällig
+                </Badge>
+              )}
+              {status === "soon" && (
+                <Badge className={`${DUE_STATUS_BADGE.soon} border-0 text-[10px] px-1.5 py-0`}>
+                  Bald fällig
+                </Badge>
+              )}
+            </div>
+          </div>
+          <div className="flex items-center gap-1">
+            {canEdit && (
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleEdit}>
+                <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+              </Button>
+            )}
+            {hasSubcategories && (
+              expanded
+                ? <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                : <ChevronDown className="h-4 w-4 text-muted-foreground" />
+            )}
+          </div>
+        </div>
+
+        {expanded && hasSubcategories && (
+          <div className="mt-3 pt-3 border-t space-y-2">
+            {allDueDates.map((item) => {
+              const itemStatus = getDueStatus(item.date);
+              return (
+                <div key={item.category} className="flex items-center justify-between text-sm">
+                  <div className="flex items-center gap-2">
+                    <Droplets className="h-3 w-3 text-amber-600" />
+                    <span>{item.label}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className={DUE_STATUS_STYLES[itemStatus]}>
+                      {new Date(item.date).toLocaleDateString("de-DE")}
+                    </span>
+                    {itemStatus === "overdue" && (
+                      <Badge className={`${DUE_STATUS_BADGE.overdue} border-0 text-[10px] px-1.5 py-0`}>
+                        Überfällig
+                      </Badge>
+                    )}
+                    {itemStatus === "soon" && (
+                      <Badge className={`${DUE_STATUS_BADGE.soon} border-0 text-[10px] px-1.5 py-0`}>
+                        Bald fällig
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 interface DueDateOverride {
   due_type: string;
   due_date: string;
@@ -262,10 +426,9 @@ function ServiceSummary({
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-      <DueDateCard
-        label={nextOilChange && !oilOverride ? `Nächster Ölwechsel (${nextOilChange.label})` : "Nächster Ölwechsel"}
-        dateStr={nextOilDate}
-        icon={<Droplets className="h-5 w-5 text-muted-foreground" />}
+      <OilChangeDueDateCard
+        entries={entries}
+        overrideDate={oilOverride || null}
         canEdit={canEdit}
         onSave={(date) => handleSaveDueDate("oil_change", date)}
       />
