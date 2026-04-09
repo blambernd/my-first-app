@@ -523,12 +523,12 @@ export function VehicleForm({ vehicle, vehicleImages = [], mode }: VehicleFormPr
                   <FormLabel>FIN (Fahrgestellnummer)</FormLabel>
                   <FormControl>
                     <Input
-                      placeholder="17-stellig, z.B. WDB1980361A123456"
-                      maxLength={17}
+                      placeholder="z.B. WDB1980361A123456"
+                      maxLength={50}
                       {...field}
                     />
                   </FormControl>
-                  <FormDescription>Alphanumerisch (z.B. WBA12345678901234)</FormDescription>
+                  <FormDescription>Alphanumerisch, ohne I, O, Q</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
