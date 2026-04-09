@@ -274,7 +274,7 @@ export function ServiceEntryForm({
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!isSubmitting) onOpenChange(v); }}>
-      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto sm:overflow-y-auto sm:max-h-[90vh]">
         <DialogHeader>
           <DialogTitle>
             {isEditing ? "Eintrag bearbeiten" : "Neuer Scheckheft-Eintrag"}
@@ -359,40 +359,39 @@ export function ServiceEntryForm({
                 <p className="text-xs text-muted-foreground">
                   Wähle die Ölarten aus und gib jeweils den nächsten fälligen Termin an.
                 </p>
-                {OIL_CHANGE_CATEGORIES.map((cat) => {
-                  const isSelected = oilCategories.some((c) => c.category === cat.value);
-                  const catEntry = oilCategories.find((c) => c.category === cat.value);
-                  return (
-                    <div key={cat.value} className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <Checkbox
-                          checked={isSelected}
-                          onCheckedChange={(checked) => {
-                            if (checked) {
-                              setOilCategories((prev) => [
-                                ...prev,
-                                { category: cat.value as OilChangeCategory, next_due_date: null },
-                              ]);
-                            } else {
-                              setOilCategories((prev) =>
-                                prev.filter((c) => c.category !== cat.value)
-                              );
-                            }
-                          }}
-                        />
-                        <span className="text-sm">{cat.label}</span>
-                      </div>
-                      {isSelected && cat.value === "other_oil" && (
-                        <Input
-                          placeholder="Bezeichnung eingeben..."
-                          value={otherOilLabel}
-                          onChange={(e) => setOtherOilLabel(e.target.value)}
-                          className="ml-6 h-8 text-sm max-w-xs"
-                        />
-                      )}
-                      {isSelected && (
-                        <div className="ml-6">
-                          <label className="text-xs text-muted-foreground">Nächster Ölwechsel</label>
+                <div className="grid grid-cols-2 gap-3">
+                  {OIL_CHANGE_CATEGORIES.map((cat) => {
+                    const isSelected = oilCategories.some((c) => c.category === cat.value);
+                    const catEntry = oilCategories.find((c) => c.category === cat.value);
+                    return (
+                      <div key={cat.value} className="space-y-1.5">
+                        <div className="flex items-center gap-2">
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setOilCategories((prev) => [
+                                  ...prev,
+                                  { category: cat.value as OilChangeCategory, next_due_date: null },
+                                ]);
+                              } else {
+                                setOilCategories((prev) =>
+                                  prev.filter((c) => c.category !== cat.value)
+                                );
+                              }
+                            }}
+                          />
+                          <span className="text-sm">{cat.label}</span>
+                        </div>
+                        {isSelected && cat.value === "other_oil" && (
+                          <Input
+                            placeholder="Bezeichnung..."
+                            value={otherOilLabel}
+                            onChange={(e) => setOtherOilLabel(e.target.value)}
+                            className="h-7 text-xs"
+                          />
+                        )}
+                        {isSelected && (
                           <Input
                             type="date"
                             value={catEntry?.next_due_date ?? ""}
@@ -405,13 +404,13 @@ export function ServiceEntryForm({
                                 )
                               );
                             }}
-                            className="h-8 text-sm max-w-xs mt-1"
+                            className="h-7 text-xs"
                           />
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             )}
 
