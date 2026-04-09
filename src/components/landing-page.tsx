@@ -338,51 +338,15 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* Social Proof */}
+      {/* Stats */}
       <section className="px-4 py-20 bg-muted/30">
         <div className="container mx-auto max-w-6xl">
-          {/* Stats */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 mb-16">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
             {stats.map((stat) => (
               <div key={stat.label} className="text-center">
                 <p className="text-4xl font-bold text-primary">{stat.value}</p>
                 <p className="text-muted-foreground mt-1">{stat.label}</p>
               </div>
-            ))}
-          </div>
-
-          {/* Testimonials */}
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold mb-4">
-              {"Das sagen unsere Nutzer"}
-            </h2>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {testimonials.map((t) => (
-              <Card key={t.name} className="border-0 shadow-sm">
-                <CardContent className="pt-6">
-                  <div className="flex gap-1 mb-4">
-                    {[...Array(5)].map((_, i) => (
-                      <Star
-                        key={i}
-                        className="h-4 w-4 fill-primary text-primary"
-                      />
-                    ))}
-                  </div>
-                  <p className="text-sm mb-4 italic">
-                    &ldquo;{t.quote}&rdquo;
-                  </p>
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                      <Users className="h-5 w-5 text-primary" />
-                    </div>
-                    <div>
-                      <p className="font-medium text-sm">{t.name}</p>
-                      <p className="text-xs text-muted-foreground">{t.role}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
             ))}
           </div>
         </div>
