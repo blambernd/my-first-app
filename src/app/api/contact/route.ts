@@ -74,7 +74,7 @@ export async function POST(request: Request) {
     }
 
     await resend.emails.send({
-      from: "Oldtimer Docs Kontakt <noreply@oldtimerdocs.de>",
+      from: "Oldtimer Docs Kontakt <noreply@oldtimer-docs.com>",
       to: contactEmail,
       replyTo: email,
       subject: `[${categoryLabel}] ${subject}`,
