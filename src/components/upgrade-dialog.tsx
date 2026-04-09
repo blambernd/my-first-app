@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -9,8 +9,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Check, Crown, Loader2 } from "lucide-react";
+import { Check, Crown, Loader2, Bell, BellRing } from "lucide-react";
 
 interface UpgradeDialogProps {
   open: boolean;
@@ -26,22 +25,30 @@ const features = [
 ];
 
 export function UpgradeDialog({ open, onOpenChange }: UpgradeDialogProps) {
-  const [interval, setInterval] = useState<"month" | "year">("year");
   const [loading, setLoading] = useState(false);
+  const [onWaitlist, setOnWaitlist] = useState(false);
+  const [justJoined, setJustJoined] = useState(false);
 
-  const handleUpgrade = async () => {
+  useEffect(() => {
+    if (open) {
+      fetch("/api/waitlist")
+        .then((res) => res.json())
+        .then((data) => setOnWaitlist(data.onWaitlist))
+        .catch(() => {});
+    }
+  }, [open]);
+
+  const handleJoinWaitlist = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/stripe/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ interval }),
-      });
-      const json = await res.json();
-      if (json.url) {
-        window.location.href = json.url;
+      const res = await fetch("/api/waitlist", { method: "POST" });
+      if (res.ok) {
+        setOnWaitlist(true);
+        setJustJoined(true);
       }
     } catch {
+      // silently fail
+    } finally {
       setLoading(false);
     }
   };
@@ -52,52 +59,12 @@ export function UpgradeDialog({ open, onOpenChange }: UpgradeDialogProps) {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Crown className="h-5 w-5 text-amber-500" />
-            Upgrade auf Premium
+            Premium — Coming Soon
           </DialogTitle>
           <DialogDescription>
-            Nutze alle Features von Oldtimer Docs ohne Einschränkungen.
+            Wir arbeiten an der Premium-Version. Trage dich in die Interessentenliste ein und wir benachrichtigen dich zum Launch.
           </DialogDescription>
         </DialogHeader>
-
-        {/* Interval selector */}
-        <div className="flex gap-2 p-1 bg-muted rounded-lg">
-          <button
-            onClick={() => setInterval("month")}
-            className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors ${
-              interval === "month"
-                ? "bg-background shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            Monatlich
-          </button>
-          <button
-            onClick={() => setInterval("year")}
-            className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors relative ${
-              interval === "year"
-                ? "bg-background shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            Jährlich
-            <Badge
-              variant="secondary"
-              className="absolute -top-2 -right-2 text-[10px] px-1 bg-green-100 text-green-700 border-green-200"
-            >
-              -17%
-            </Badge>
-          </button>
-        </div>
-
-        {/* Price */}
-        <div className="text-center py-2">
-          <div className="text-3xl font-bold">
-            {interval === "month" ? "4,99 €" : "49,99 €"}
-          </div>
-          <div className="text-sm text-muted-foreground">
-            {interval === "month" ? "pro Monat" : "pro Jahr (4,17 €/Monat)"}
-          </div>
-        </div>
 
         {/* Features */}
         <ul className="space-y-2">
@@ -110,22 +77,36 @@ export function UpgradeDialog({ open, onOpenChange }: UpgradeDialogProps) {
         </ul>
 
         {/* CTA */}
-        <Button
-          onClick={handleUpgrade}
-          disabled={loading}
-          className="w-full bg-amber-500 hover:bg-amber-600 mt-2"
-          size="lg"
-        >
-          {loading ? (
-            <Loader2 className="h-4 w-4 animate-spin mr-2" />
-          ) : (
-            <Crown className="h-4 w-4 mr-2" />
-          )}
-          Jetzt upgraden
-        </Button>
+        {onWaitlist ? (
+          <div className="rounded-lg bg-green-50 border border-green-200 px-4 py-3 text-center">
+            <BellRing className="h-5 w-5 text-green-600 mx-auto mb-2" />
+            <p className="text-sm font-medium text-green-800">
+              {justJoined
+                ? "Du wurdest zur Interessentenliste hinzugefügt!"
+                : "Du bist bereits auf der Interessentenliste."}
+            </p>
+            <p className="text-xs text-green-700 mt-1">
+              Wir benachrichtigen dich per E-Mail, sobald Premium verfügbar ist.
+            </p>
+          </div>
+        ) : (
+          <Button
+            onClick={handleJoinWaitlist}
+            disabled={loading}
+            className="w-full bg-amber-500 hover:bg-amber-600 mt-2"
+            size="lg"
+          >
+            {loading ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+            ) : (
+              <Bell className="h-4 w-4 mr-2" />
+            )}
+            Benachrichtigt werden
+          </Button>
+        )}
 
         <p className="text-xs text-center text-muted-foreground">
-          Sichere Zahlung über Stripe. Jederzeit kündbar.
+          Kostenlos und unverbindlich. Kein Spam.
         </p>
       </DialogContent>
     </Dialog>

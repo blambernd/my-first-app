@@ -11,6 +11,7 @@ import { Crown, Sparkles, ExternalLink } from "lucide-react";
 import { UpgradeDialog } from "@/components/upgrade-dialog";
 
 const isBetaMode = process.env.NEXT_PUBLIC_BETA_MODE === "true";
+const isMvpMode = process.env.NEXT_PUBLIC_MVP_MODE === "true";
 
 export function PlanOverview() {
   const { data, loading, isPremium, isTrial, trialDaysLeft } = useSubscription();
@@ -149,7 +150,7 @@ export function PlanOverview() {
                 className="bg-amber-500 hover:bg-amber-600"
               >
                 <Crown className="h-3.5 w-3.5 mr-1.5" />
-                Upgrade auf Premium
+                {isMvpMode ? "Premium — Coming Soon" : "Upgrade auf Premium"}
               </Button>
             ) : data.stripeCustomerId ? (
               <Button

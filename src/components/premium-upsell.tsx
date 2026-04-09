@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Crown, Check, Lock } from "lucide-react";
+import { Crown, Check, Clock, Bell } from "lucide-react";
 import { UpgradeDialog } from "@/components/upgrade-dialog";
 
 interface PremiumUpsellProps {
@@ -28,11 +28,14 @@ export function PremiumUpsell({ feature, description }: PremiumUpsellProps) {
         <Card className="max-w-lg w-full border-amber-200">
           <CardContent className="pt-8 pb-8 text-center">
             <div className="mx-auto w-16 h-16 rounded-full bg-amber-50 flex items-center justify-center mb-6">
-              <Lock className="h-8 w-8 text-amber-500" />
+              <Clock className="h-8 w-8 text-amber-500" />
             </div>
 
             <h2 className="text-xl font-bold mb-2">{feature}</h2>
-            <p className="text-muted-foreground mb-6">{description}</p>
+            <p className="text-muted-foreground mb-2">{description}</p>
+            <p className="text-sm text-amber-600 font-medium mb-6">
+              Dieses Feature ist Teil von Premium — Coming Soon!
+            </p>
 
             <div className="text-left mx-auto max-w-xs mb-6">
               <p className="text-sm font-medium mb-3">
@@ -56,8 +59,8 @@ export function PremiumUpsell({ feature, description }: PremiumUpsellProps) {
               className="bg-amber-500 hover:bg-amber-600"
               size="lg"
             >
-              <Crown className="h-4 w-4 mr-2" />
-              Upgrade auf Premium — ab 4,99 €/Monat
+              <Bell className="h-4 w-4 mr-2" />
+              Benachrichtigt werden
             </Button>
           </CardContent>
         </Card>

@@ -15,6 +15,7 @@ interface ReferralData {
 }
 
 const isBetaMode = process.env.NEXT_PUBLIC_BETA_MODE === "true";
+const isMvpMode = process.env.NEXT_PUBLIC_MVP_MODE === "true";
 
 export function ReferralCard() {
   const [data, setData] = useState<ReferralData | null>(null);
@@ -38,7 +39,7 @@ export function ReferralCard() {
     fetchReferral();
   }, []);
 
-  if (isBetaMode) return null;
+  if (isBetaMode || isMvpMode) return null;
 
   if (loading) {
     return (
