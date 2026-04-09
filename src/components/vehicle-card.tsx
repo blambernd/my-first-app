@@ -47,14 +47,6 @@ export function VehicleCard({ vehicle }: VehicleCardProps) {
               </Badge>
             </div>
           )}
-          {vehicle.year_estimated && !vehicle.is_locked && (
-            <Badge
-              variant="secondary"
-              className="absolute top-2 right-2 text-xs"
-            >
-              Baujahr geschätzt
-            </Badge>
-          )}
         </div>
         <CardContent className="p-4">
           <h3 className="font-semibold text-lg truncate">
@@ -62,7 +54,11 @@ export function VehicleCard({ vehicle }: VehicleCardProps) {
           </h3>
           <div className="flex items-center gap-1.5 text-sm text-muted-foreground mt-1">
             <Calendar className="h-3.5 w-3.5" />
-            <span>Baujahr {vehicle.year}</span>
+            <span>
+              EZ {vehicle.first_registration_date
+                ? new Date(vehicle.first_registration_date).toLocaleDateString("de-DE")
+                : vehicle.year}
+            </span>
           </div>
           {vehicle.license_plate && (
             <p className="text-sm text-muted-foreground mt-1 truncate">

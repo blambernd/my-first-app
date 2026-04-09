@@ -9,7 +9,6 @@ import { toast } from "sonner";
 import { Loader2, Upload, FileText, X, ChevronsUpDown, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Popover,
   PopoverContent,
@@ -119,8 +118,7 @@ export function VehicleForm({ vehicle, vehicleImages = [], mode }: VehicleFormPr
     defaultValues: {
       make: vehicle?.make ?? "",
       model: vehicle?.model ?? "",
-      year: vehicle?.year ?? ("" as unknown as number),
-      year_estimated: vehicle?.year_estimated ?? false,
+      first_registration_date: vehicle?.first_registration_date ?? "",
       vin: vehicle?.vin ?? "",
       license_plate: vehicle?.license_plate ?? "",
       body_type: vehicle?.body_type ?? "",
@@ -167,11 +165,12 @@ export function VehicleForm({ vehicle, vehicleImages = [], mode }: VehicleFormPr
         return;
       }
 
+      const yearFromDate = new Date(data.first_registration_date).getFullYear();
       const cleanData = {
         make: data.make,
         model: data.model,
-        year: data.year,
-        year_estimated: data.year_estimated,
+        year: yearFromDate,
+        first_registration_date: data.first_registration_date,
         vin: data.vin || null,
         license_plate: data.license_plate || null,
         body_type: data.body_type || null,
@@ -204,7 +203,7 @@ export function VehicleForm({ vehicle, vehicleImages = [], mode }: VehicleFormPr
           .eq("user_id", user.id)
           .eq("make", data.make)
           .eq("model", data.model)
-          .eq("year", data.year)
+          .eq("year", yearFromDate)
           .order("created_at", { ascending: false })
           .limit(1)
           .single();
@@ -275,8 +274,8 @@ export function VehicleForm({ vehicle, vehicleImages = [], mode }: VehicleFormPr
             });
           if (dkUploadError) throw dkUploadError;
 
-          // Create milestone with approximate delivery date (Jan 1 of build year)
-          const deliveryDate = `${data.year}-01-01`;
+          // Create milestone at first registration date
+          const deliveryDate = data.first_registration_date;
           const { data: milestone, error: msError } = await supabase
             .from("vehicle_milestones")
             .insert({
@@ -291,15 +290,7 @@ export function VehicleForm({ vehicle, vehicleImages = [], mode }: VehicleFormPr
             .single();
           if (msError) throw msError;
 
-          // Link Datenkarte as milestone image (referencing vehicle-documents bucket)
-          await supabase.from("vehicle_milestone_images").insert({
-            milestone_id: milestone.id,
-            storage_path: docPath,
-            position: 0,
-            file_size: datenkarte.size,
-          });
-
-          // Save as document with "datenkarte" category
+          // Save as document with "datenkarte" category (linked to milestone via milestone_id)
           await supabase.from("vehicle_documents").insert({
             vehicle_id: vehicleId,
             title: "Datenkarte",
@@ -468,34 +459,17 @@ export function VehicleForm({ vehicle, vehicleImages = [], mode }: VehicleFormPr
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FormField
               control={form.control}
-              name="year"
+              name="first_registration_date"
               render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Baujahr *</FormLabel>
+                <FormItem className="flex flex-col">
+                  <FormLabel>Erstzulassung *</FormLabel>
                   <FormControl>
                     <Input
-                      type="number"
-                      placeholder="z.B. 1955"
+                      type="date"
                       {...field}
-                      value={field.value ?? ""}
                     />
                   </FormControl>
                   <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="year_estimated"
-              render={({ field }) => (
-                <FormItem className="flex items-center gap-2 pt-8">
-                  <FormControl>
-                    <Checkbox
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  </FormControl>
-                  <FormLabel className="!mt-0">Baujahr geschätzt</FormLabel>
                 </FormItem>
               )}
             />

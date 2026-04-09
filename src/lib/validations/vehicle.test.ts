@@ -4,8 +4,7 @@ import { vehicleSchema } from "./vehicle";
 const validVehicle = {
   make: "Mercedes-Benz",
   model: "300 SL",
-  year: 1955,
-  year_estimated: false,
+  first_registration_date: "1955-03-15",
 };
 
 describe("vehicleSchema — required fields", () => {
@@ -24,9 +23,9 @@ describe("vehicleSchema — required fields", () => {
     expect(result.success).toBe(false);
   });
 
-  it("rejects missing year", () => {
-    const { year: _, ...noYear } = validVehicle;
-    const result = vehicleSchema.safeParse(noYear);
+  it("rejects missing first_registration_date", () => {
+    const { first_registration_date: _, ...noDate } = validVehicle;
+    const result = vehicleSchema.safeParse(noDate);
     expect(result.success).toBe(false);
   });
 
@@ -41,35 +40,20 @@ describe("vehicleSchema — required fields", () => {
   });
 });
 
-describe("vehicleSchema — year validation", () => {
-  it("accepts year 1886 (earliest valid)", () => {
-    const result = vehicleSchema.safeParse({ ...validVehicle, year: 1886 });
+describe("vehicleSchema — first_registration_date validation", () => {
+  it("accepts valid date", () => {
+    const result = vehicleSchema.safeParse({ ...validVehicle, first_registration_date: "1955-03-15" });
     expect(result.success).toBe(true);
   });
 
-  it("accepts current year", () => {
-    const result = vehicleSchema.safeParse({ ...validVehicle, year: new Date().getFullYear() });
-    expect(result.success).toBe(true);
-  });
-
-  it("rejects year before 1886", () => {
-    const result = vehicleSchema.safeParse({ ...validVehicle, year: 1885 });
+  it("rejects empty date", () => {
+    const result = vehicleSchema.safeParse({ ...validVehicle, first_registration_date: "" });
     expect(result.success).toBe(false);
   });
 
-  it("rejects year in the future", () => {
-    const result = vehicleSchema.safeParse({ ...validVehicle, year: new Date().getFullYear() + 1 });
+  it("rejects invalid date format", () => {
+    const result = vehicleSchema.safeParse({ ...validVehicle, first_registration_date: "15.03.1955" });
     expect(result.success).toBe(false);
-  });
-
-  it("rejects non-integer year", () => {
-    const result = vehicleSchema.safeParse({ ...validVehicle, year: 1955.5 });
-    expect(result.success).toBe(false);
-  });
-
-  it("coerces string year to number", () => {
-    const result = vehicleSchema.safeParse({ ...validVehicle, year: "1955" });
-    expect(result.success).toBe(true);
   });
 });
 
@@ -179,18 +163,3 @@ describe("vehicleSchema — optional numeric fields", () => {
   });
 });
 
-describe("vehicleSchema — year_estimated flag", () => {
-  it("defaults to false when not provided", () => {
-    const { year_estimated: _, ...withoutFlag } = validVehicle;
-    const result = vehicleSchema.safeParse(withoutFlag);
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data.year_estimated).toBe(false);
-    }
-  });
-
-  it("accepts true value", () => {
-    const result = vehicleSchema.safeParse({ ...validVehicle, year_estimated: true });
-    expect(result.success).toBe(true);
-  });
-});

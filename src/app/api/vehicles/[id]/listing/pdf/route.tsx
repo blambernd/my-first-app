@@ -116,7 +116,7 @@ function ListingPdfDocument({ data }: { data: ListingPdfData }) {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Fahrzeugdaten</Text>
           {[
-            { label: "Baujahr", value: String(data.vehicle.year) },
+            { label: "Erstzulassung", value: String(data.vehicle.year) },
             data.vehicle.color ? { label: "Farbe", value: data.vehicle.color } : null,
             data.vehicle.engine_type ? { label: "Motor", value: data.vehicle.engine_type } : null,
             data.vehicle.displacement_ccm

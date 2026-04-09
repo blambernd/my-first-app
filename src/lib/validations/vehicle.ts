@@ -111,10 +111,14 @@ export const vehicleSchema = z.object({
     .max(100, "Modell darf maximal 100 Zeichen lang sein"),
   year: z.coerce
     .number()
-    .int("Baujahr muss eine ganze Zahl sein")
-    .min(1886, "Baujahr muss mindestens 1886 sein")
-    .max(currentYear, `Baujahr darf maximal ${currentYear} sein`),
-  year_estimated: z.boolean().default(false),
+    .int()
+    .min(1886)
+    .max(currentYear)
+    .optional(),
+  first_registration_date: z
+    .string()
+    .min(1, "Datum der Erstzulassung ist erforderlich")
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Datum muss im Format TT.MM.JJJJ sein"),
   vin: z
     .string()
     .max(50, "FIN darf maximal 50 Zeichen lang sein")
@@ -165,8 +169,8 @@ export const vehicleSchema = z.object({
 export interface VehicleFormData {
   make: string;
   model: string;
-  year: number;
-  year_estimated: boolean;
+  year?: number;
+  first_registration_date: string;
   vin?: string;
   license_plate?: string;
   body_type?: string;
@@ -188,6 +192,7 @@ export interface Vehicle {
   model: string;
   year: number;
   year_estimated: boolean;
+  first_registration_date: string | null;
   vin: string | null;
   license_plate: string | null;
   body_type: string | null;

@@ -204,8 +204,7 @@ export function PublicProfile({ token }: PublicProfileProps) {
               )}
             </h1>
             <p className="text-muted-foreground">
-              Baujahr {vehicle.year}
-              {vehicle.year_estimated ? " (geschätzt)" : ""}
+              EZ {vehicle.year}
             </p>
           </div>
         </div>

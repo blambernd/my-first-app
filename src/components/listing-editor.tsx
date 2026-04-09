@@ -367,7 +367,7 @@ export function ListingEditor({
               <Input
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="z.B. Mercedes-Benz 230 E (W123) — Baujahr 1982"
+                placeholder="z.B. Mercedes-Benz 230 E (W123) — EZ 1982"
                 maxLength={TITLE_MAX_LENGTH}
               />
               <p

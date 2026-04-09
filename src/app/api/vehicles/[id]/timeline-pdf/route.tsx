@@ -83,7 +83,7 @@ function TimelinePdfDocument({
         <View style={styles.header}>
           <Text style={styles.title}>{vehicleName}</Text>
           <Text style={styles.subtitle}>
-            Baujahr {vehicleYear} — Fahrzeug-Historie
+            EZ {vehicleYear} — Fahrzeug-Historie
           </Text>
           <Text style={styles.meta}>
             {entries.length} Meilensteine{dateRange ? ` · ${dateRange}` : ""} ·

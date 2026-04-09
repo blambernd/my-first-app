@@ -75,7 +75,9 @@ export default async function VehicleLayout({
             <h1 className="text-xl font-medium tracking-tight">
               {typedVehicle.make} {typedVehicle.model}
               <span className="text-muted-foreground font-light ml-2">
-                {typedVehicle.year}
+                {typedVehicle.first_registration_date
+                  ? new Date(typedVehicle.first_registration_date).toLocaleDateString("de-DE")
+                  : typedVehicle.year}
               </span>
             </h1>
             {isOwner ? (

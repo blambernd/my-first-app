@@ -65,8 +65,10 @@ export default async function VehicleDetailPage({
     { label: "Marke", value: typedVehicle.make },
     { label: "Modell", value: typedVehicle.model },
     {
-      label: "Baujahr",
-      value: `${typedVehicle.year}${typedVehicle.year_estimated ? " (geschätzt)" : ""}`,
+      label: "Erstzulassung",
+      value: typedVehicle.first_registration_date
+        ? new Date(typedVehicle.first_registration_date).toLocaleDateString("de-DE")
+        : `${typedVehicle.year}`,
     },
     { label: "FIN", value: typedVehicle.vin },
     { label: "Werksbezeichnung", value: typedVehicle.factory_code },

@@ -7,7 +7,7 @@ export const faqs = [
   {
     question: "Wie erstelle ich ein Fahrzeugprofil?",
     answer:
-      "Nach der Registrierung legen Sie im Dashboard \u00fcber den Button \u201eFahrzeug hinzuf\u00fcgen\u201c ein neues Profil an. Tragen Sie die Basisdaten wie Marke, Modell, Baujahr und optional die Fahrgestellnummer ein. Danach k\u00f6nnen Sie Fotos hochladen und weitere Details erg\u00e4nzen.",
+      "Nach der Registrierung legen Sie im Dashboard \u00fcber den Button \u201eFahrzeug hinzuf\u00fcgen\u201c ein neues Profil an. Tragen Sie die Basisdaten wie Marke, Modell, Erstzulassung und optional die Fahrgestellnummer ein. Danach k\u00f6nnen Sie Fotos hochladen und weitere Details erg\u00e4nzen.",
   },
   {
     question: "Welche Dokumente kann ich hochladen?",

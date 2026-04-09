@@ -55,7 +55,7 @@ export async function POST(
   // Generate title
   const titleParts = [vehicle.make, vehicle.model];
   if (vehicle.factory_code) titleParts.push(`(${vehicle.factory_code})`);
-  titleParts.push("—", `Baujahr ${vehicle.year}`);
+  titleParts.push("—", `EZ ${vehicle.year}`);
   const title = titleParts.join(" ");
 
   // Generate description
@@ -63,7 +63,7 @@ export async function POST(
 
   // Vehicle overview
   lines.push(
-    `Zum Verkauf steht ein ${vehicle.make} ${vehicle.model}${vehicle.factory_code ? ` (${vehicle.factory_code})` : ""}, Baujahr ${vehicle.year}.`
+    `Zum Verkauf steht ein ${vehicle.make} ${vehicle.model}${vehicle.factory_code ? ` (${vehicle.factory_code})` : ""}, Erstzulassung ${vehicle.year}.`
   );
   lines.push("");
 
