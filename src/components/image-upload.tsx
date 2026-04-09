@@ -4,6 +4,7 @@ import { useCallback, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { X, Upload, ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { CameraCapture } from "@/components/camera-capture";
 import {
   MAX_IMAGE_SIZE_BYTES,
   MAX_IMAGE_SIZE_MB,
@@ -119,6 +120,18 @@ export function ImageUpload({
           )}
         </div>
       </div>
+
+      {/* Camera capture — mobile only */}
+      <CameraCapture
+        onCapture={(files) => {
+          const newImages = files.map((file) => ({
+            file,
+            preview: URL.createObjectURL(file),
+          }));
+          onImagesChange([...images, ...newImages]);
+        }}
+        disabled={remainingSlots <= 0}
+      />
 
       {error && (
         <p className="text-sm text-destructive">{error}</p>

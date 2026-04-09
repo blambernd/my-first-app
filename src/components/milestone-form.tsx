@@ -9,6 +9,7 @@ import { format, parse } from "date-fns";
 import { de } from "date-fns/locale";
 import { Loader2, CalendarIcon, Upload, X, ImageIcon, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { CameraCapture } from "@/components/camera-capture";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
@@ -548,27 +549,40 @@ export function MilestoneForm({
               )}
 
               {photos.length < MAX_PHOTOS && (
-                <div
-                  {...getRootProps()}
-                  className={`border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors ${
-                    isDragActive
-                      ? "border-primary bg-primary/5"
-                      : "border-muted-foreground/25 hover:border-primary/50"
-                  }`}
-                >
-                  <input {...getInputProps()} />
-                  <div className="flex flex-col items-center gap-1">
-                    {isDragActive ? (
-                      <Upload className="h-6 w-6 text-primary" />
-                    ) : (
-                      <ImageIcon className="h-6 w-6 text-muted-foreground" />
-                    )}
-                    <p className="text-xs text-muted-foreground">
-                      JPG, PNG oder WebP · Max. 5 MB pro Bild ·{" "}
-                      {photos.length}/{MAX_PHOTOS}
-                    </p>
+                <>
+                  <div
+                    {...getRootProps()}
+                    className={`border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors ${
+                      isDragActive
+                        ? "border-primary bg-primary/5"
+                        : "border-muted-foreground/25 hover:border-primary/50"
+                    }`}
+                  >
+                    <input {...getInputProps()} />
+                    <div className="flex flex-col items-center gap-1">
+                      {isDragActive ? (
+                        <Upload className="h-6 w-6 text-primary" />
+                      ) : (
+                        <ImageIcon className="h-6 w-6 text-muted-foreground" />
+                      )}
+                      <p className="text-xs text-muted-foreground">
+                        JPG, PNG oder WebP · Max. 5 MB pro Bild ·{" "}
+                        {photos.length}/{MAX_PHOTOS}
+                      </p>
+                    </div>
                   </div>
-                </div>
+                  <CameraCapture
+                    onCapture={(files) => {
+                      const newPhotos: PhotoItem[] = files.map((file) => ({
+                        id: crypto.randomUUID(),
+                        file,
+                        preview: URL.createObjectURL(file),
+                      }));
+                      setPhotos((prev) => [...prev, ...newPhotos]);
+                    }}
+                    disabled={photos.length >= MAX_PHOTOS}
+                  />
+                </>
               )}
             </div>
 

@@ -61,6 +61,7 @@
     "react-dom": "^19.0.0",
     "react-dropzone": "^15.0.0",
     "react-hook-form": "^7.71.1",
+    "react-image-crop": "^11.0.10",
     "resend": "^6.10.0",
     "serpapi": "^2.2.1",
     "sonner": "^2.0.7",

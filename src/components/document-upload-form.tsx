@@ -9,6 +9,7 @@ import { format, parse } from "date-fns";
 import { de } from "date-fns/locale";
 import { Loader2, Upload, CalendarIcon, FileText, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { CameraCapture } from "@/components/camera-capture";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
@@ -255,6 +256,22 @@ export function DocumentUploadForm({
                 </div>
               </div>
             )}
+            {/* Camera capture with crop — mobile only */}
+            {!selectedFile && (
+              <CameraCapture
+                enableCrop
+                onCapture={(files) => {
+                  const file = files[0];
+                  if (!file) return;
+                  setSelectedFile(file);
+                  setFileError(null);
+                  if (!form.getValues("title")) {
+                    form.setValue("title", "Foto-Dokument");
+                  }
+                }}
+              />
+            )}
+
             {fileError && <p className="text-sm text-destructive">{fileError}</p>}
 
             {/* Title */}
