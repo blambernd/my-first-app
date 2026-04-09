@@ -597,6 +597,9 @@ function ServiceEntryCard({
             <span className="text-sm text-muted-foreground">
               {new Date(entry.service_date).toLocaleDateString("de-DE")}
             </span>
+            <span className="text-sm font-semibold tabular-nums text-muted-foreground">
+              {entry.mileage_km.toLocaleString("de-DE")} km
+            </span>
             {entry.is_odometer_correction && (
               <Badge variant="outline" className="text-xs">Tacho-Korrektur</Badge>
             )}
@@ -625,10 +628,7 @@ function ServiceEntryCard({
             )}
           </div>
         </div>
-        <div className="flex items-center gap-1 shrink-0">
-          <span className="text-sm font-semibold tabular-nums text-muted-foreground mr-1">
-            {entry.mileage_km.toLocaleString("de-DE")} km
-          </span>
+        <div className="flex items-center shrink-0">
           {canEdit && (
           <div className="flex gap-0.5" onClick={(e) => e.stopPropagation()}>
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onEdit}>
