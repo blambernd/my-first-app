@@ -18,7 +18,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import {
   Calendar,
   MapPin,
@@ -29,6 +29,7 @@ import {
   Flag,
   Ticket,
   Loader2,
+  Filter,
 } from "lucide-react";
 
 type EventCategory = "rallye" | "messe" | "regional";
@@ -162,7 +163,8 @@ export function EventsOverview() {
   const [events, setEvents] = useState<EventItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
-  const [showAll, setShowAll] = useState(false);
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
 
   const isValidPlz = /^\d{5}$/.test(plz);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -174,7 +176,6 @@ export function EventsOverview() {
     debounceRef.current = setTimeout(async () => {
       setLoading(true);
       setHasSearched(true);
-      setShowAll(false);
       try {
         const params = new URLSearchParams({
           categories: categories.join(","),
@@ -211,7 +212,12 @@ export function EventsOverview() {
     });
   }
 
-  const displayEvents = showAll ? events : events.slice(0, 20);
+  // Client-side date filter
+  const filteredEvents = events.filter((event) => {
+    if (dateFrom && event.date_start < dateFrom) return false;
+    if (dateTo && event.date_start > dateTo) return false;
+    return true;
+  });
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen} className="mt-10">
@@ -230,50 +236,81 @@ export function EventsOverview() {
 
       <CollapsibleContent>
         {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-3 mb-6">
-          <div className="flex gap-2">
-            <Input
-              type="text"
-              inputMode="numeric"
-              placeholder="PLZ eingeben"
-              value={plz}
-              onChange={(e) => {
-                const val = e.target.value.replace(/\D/g, "").slice(0, 5);
-                setPlz(val);
-              }}
-              className="w-32 text-sm"
-            />
-            <Select value={radius} onValueChange={setRadius}>
-              <SelectTrigger className="w-28 text-sm">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {RADIUS_OPTIONS.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+        <div className="flex flex-col gap-3 mb-6">
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="flex gap-2">
+              <Input
+                type="text"
+                inputMode="numeric"
+                placeholder="PLZ eingeben"
+                value={plz}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, "").slice(0, 5);
+                  setPlz(val);
+                }}
+                className="w-32 text-sm"
+              />
+              <Select value={radius} onValueChange={setRadius}>
+                <SelectTrigger className="w-28 text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {RADIUS_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex gap-2">
+              {(Object.entries(CATEGORY_CONFIG) as [EventCategory, typeof CATEGORY_CONFIG.rallye][]).map(
+                ([key, config]) => {
+                  const isActive = categories.includes(key);
+                  return (
+                    <Button
+                      key={key}
+                      variant={isActive ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => toggleCategory(key)}
+                      className="text-xs"
+                    >
+                      <config.icon className="h-3.5 w-3.5 mr-1" />
+                      {config.label}
+                    </Button>
+                  );
+                }
+              )}
+            </div>
           </div>
 
-          <div className="flex gap-2">
-            {(Object.entries(CATEGORY_CONFIG) as [EventCategory, typeof CATEGORY_CONFIG.rallye][]).map(
-              ([key, config]) => {
-                const isActive = categories.includes(key);
-                return (
-                  <Button
-                    key={key}
-                    variant={isActive ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => toggleCategory(key)}
-                    className="text-xs"
-                  >
-                    <config.icon className="h-3.5 w-3.5 mr-1" />
-                    {config.label}
-                  </Button>
-                );
-              }
+          <div className="flex items-center gap-2">
+            <Filter className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+            <Input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              className="w-36 text-sm"
+              placeholder="Von"
+            />
+            <span className="text-sm text-muted-foreground">–</span>
+            <Input
+              type="date"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+              className="w-36 text-sm"
+              placeholder="Bis"
+            />
+            {(dateFrom || dateTo) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => { setDateFrom(""); setDateTo(""); }}
+                className="text-xs text-muted-foreground"
+              >
+                Zurücksetzen
+              </Button>
             )}
           </div>
         </div>
@@ -294,33 +331,28 @@ export function EventsOverview() {
           </div>
         )}
 
-        {!loading && hasSearched && events.length === 0 && (
+        {!loading && hasSearched && filteredEvents.length === 0 && (
           <div className="text-center py-12 text-muted-foreground">
             <MapPin className="h-10 w-10 mx-auto mb-3 text-muted-foreground/40" />
-            <p className="text-sm">Keine Veranstaltungen in diesem Umkreis gefunden.</p>
-            <p className="text-xs mt-1">Versuche einen größeren Umkreis.</p>
+            <p className="text-sm">Keine Veranstaltungen gefunden.</p>
+            <p className="text-xs mt-1">Versuche andere Filter oder einen größeren Umkreis.</p>
           </div>
         )}
 
-        {!loading && events.length > 0 && (
-          <ScrollArea className="max-h-[600px] pr-1">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {displayEvents.map((event) => (
-                <EventCard key={event.id} event={event} />
-              ))}
-            </div>
-            {events.length > 20 && !showAll && (
-              <div className="text-center mt-4 pb-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowAll(true)}
-                >
-                  Alle {events.length} Veranstaltungen anzeigen
-                </Button>
+        {!loading && filteredEvents.length > 0 && (
+          <>
+            <p className="text-xs text-muted-foreground mb-2">
+              {filteredEvents.length} Veranstaltung{filteredEvents.length !== 1 ? "en" : ""}
+            </p>
+            <ScrollArea className="h-[420px]">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pr-4">
+                {filteredEvents.map((event) => (
+                  <EventCard key={event.id} event={event} />
+                ))}
               </div>
-            )}
-          </ScrollArea>
+              <ScrollBar />
+            </ScrollArea>
+          </>
         )}
       </CollapsibleContent>
     </Collapsible>
