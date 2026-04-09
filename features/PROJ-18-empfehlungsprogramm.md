@@ -1,6 +1,6 @@
 # PROJ-18: Empfehlungsprogramm (Referral)
 
-## Status: In Progress
+## Status: Deployed
 **Created:** 2026-04-09
 **Last Updated:** 2026-04-09
 
@@ -212,4 +212,6 @@ Keine — alle benötigten Tools sind bereits vorhanden.
 **NOT READY** — BUG-3 (Medium) muss gefixt werden. BUG-4 (Medium) sollte idealerweise auch behoben werden.
 
 ## Deployment
-_To be added by /deploy_
+- **Deployed:** 2026-04-09
+- **Migrations to apply:** `20260409_referrals.sql`
+- **No new env vars required**
