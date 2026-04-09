@@ -121,13 +121,13 @@ export function LandingPage() {
   const searchParams = useSearchParams();
   const registeredParam = searchParams.get("registered") === "true";
   const [isRegistered, setIsRegistered] = useState(() => {
-    try { return localStorage.getItem("registered") === "true"; } catch { return false; }
+    try { return sessionStorage.getItem("registered") === "true"; } catch { return false; }
   });
   const [isYearly, setIsYearly] = useState(false);
 
   useEffect(() => {
     if (registeredParam && !isRegistered) {
-      localStorage.setItem("registered", "true");
+      sessionStorage.setItem("registered", "true");
       setIsRegistered(true);
     }
   }, [registeredParam, isRegistered]);
