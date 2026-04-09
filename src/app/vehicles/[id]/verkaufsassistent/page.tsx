@@ -38,7 +38,7 @@ export default async function VerkaufsassistentPage({
   // Check premium access
   const { data: subscription } = await supabase
     .from("subscriptions")
-    .select("plan, status, trial_end")
+    .select("plan, status, trial_end, referral_bonus_until")
     .eq("user_id", user.id)
     .single();
 

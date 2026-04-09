@@ -20,7 +20,7 @@ export default async function MarktpreisPage({ params }: MarktpreisPageProps) {
 
   const { data: subscription } = await supabase
     .from("subscriptions")
-    .select("plan, status, trial_end")
+    .select("plan, status, trial_end, referral_bonus_until")
     .eq("user_id", user.id)
     .single();
 

@@ -30,6 +30,7 @@ export function getEffectivePlan(subscription: {
   status: string;
   trial_end: string | null;
   past_due_since?: string | null;
+  referral_bonus_until?: string | null;
 }): PlanType {
   if (isBetaMode) return "premium";
   if (subscription.plan === "trial") {
@@ -37,11 +38,19 @@ export function getEffectivePlan(subscription: {
       subscription.trial_end &&
       new Date(subscription.trial_end) < new Date()
     ) {
-      return "free"; // Trial expired
+      // Trial expired — check referral bonus
+      if (hasReferralBonus(subscription.referral_bonus_until)) {
+        return "premium";
+      }
+      return "free";
     }
     return "trial";
   }
   if (subscription.status === "canceled") {
+    // Canceled — check referral bonus
+    if (hasReferralBonus(subscription.referral_bonus_until)) {
+      return "premium";
+    }
     return "free";
   }
   if (subscription.status === "past_due") {
@@ -53,9 +62,20 @@ export function getEffectivePlan(subscription: {
         return subscription.plan as PlanType; // Still within grace period
       }
     }
-    return "free"; // Grace period expired or no timestamp
+    // Grace period expired — check referral bonus
+    if (hasReferralBonus(subscription.referral_bonus_until)) {
+      return "premium";
+    }
+    return "free";
   }
   return subscription.plan as PlanType;
+}
+
+/**
+ * Check if a user has an active referral bonus.
+ */
+function hasReferralBonus(referralBonusUntil?: string | null): boolean {
+  return !!referralBonusUntil && new Date(referralBonusUntil) > new Date();
 }
 
 /**

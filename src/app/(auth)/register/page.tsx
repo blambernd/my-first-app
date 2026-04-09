@@ -25,6 +25,7 @@ function RegisterForm() {
   const [message, setMessage] = useState<{
     type: "success" | "error";
     text: string;
+    showLoginLink?: boolean;
   } | null>(null);
 
   const form = useForm<RegisterFormData>({
@@ -37,23 +38,35 @@ function RegisterForm() {
     setMessage(null);
     try {
       const supabase = createClient();
-      const { error } = await supabase.auth.signUp({
+      const referralCode = searchParams.get("ref");
+      const { data: signUpData, error } = await supabase.auth.signUp({
         email: data.email,
         password: data.password,
         options: {
           emailRedirectTo: `${window.location.origin}/auth/confirm${searchParams.get("redirect") ? `?redirect=${encodeURIComponent(searchParams.get("redirect")!)}` : ""}`,
+          data: referralCode ? { referral_code: referralCode } : undefined,
         },
       });
       if (error) {
         if (error.message.includes("already registered")) {
           setMessage({
             type: "error",
-            text: "Diese E-Mail-Adresse ist bereits registriert",
+            text: "Es existiert bereits ein Konto mit dieser E-Mail-Adresse.",
+            showLoginLink: true,
           });
         } else {
           console.error("Registration error:", error.message, error);
           setMessage({ type: "error", text: `Registrierung fehlgeschlagen: ${error.message}` });
         }
+        return;
+      }
+      // Supabase returns a user with empty identities array if email already exists
+      // (instead of an error, to prevent email enumeration)
+      if (signUpData.user && signUpData.user.identities?.length === 0) {
+        setMessage({
+          type: "error",
+          text: "Es existiert bereits ein Konto mit dieser E-Mail-Adresse. Bitte melde dich an oder setze dein Passwort zurück.",
+        });
         return;
       }
       setMessage({
@@ -85,6 +98,14 @@ function RegisterForm() {
             }`}
           >
             {message.text}
+            {message.showLoginLink && (
+              <>
+                {" "}
+                <Link href="/login" className="underline font-medium hover:opacity-80">
+                  Jetzt anmelden
+                </Link>
+              </>
+            )}
           </div>
         )}
 

@@ -148,6 +148,7 @@ export const vehicleSchema = z.object({
   displacement_ccm: z.coerce.number().int().positive("Hubraum muss positiv sein").optional().or(z.literal("")),
   horsepower: z.coerce.number().int().positive("Leistung muss positiv sein").optional().or(z.literal("")),
   mileage_km: z.coerce.number().int().min(0, "Laufleistung kann nicht negativ sein").optional().or(z.literal("")),
+  mileage_date: z.string().optional().or(z.literal("")),
   insurance_company: z
     .string()
     .max(100, "Versicherung darf maximal 100 Zeichen lang sein")
@@ -177,6 +178,7 @@ export interface VehicleFormData {
   displacement_ccm?: number;
   horsepower?: number;
   mileage_km?: number;
+  mileage_date?: string;
   insurance_company?: string;
   insurance_policy_number?: string;
 }
@@ -197,6 +199,7 @@ export interface Vehicle {
   displacement_ccm: number | null;
   horsepower: number | null;
   mileage_km: number | null;
+  mileage_date: string | null;
   insurance_company: string | null;
   insurance_policy_number: string | null;
   is_locked: boolean;

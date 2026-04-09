@@ -129,6 +129,7 @@ export function VehicleForm({ vehicle, vehicleImages = [], mode }: VehicleFormPr
       displacement_ccm: vehicle?.displacement_ccm ?? undefined,
       horsepower: vehicle?.horsepower ?? undefined,
       mileage_km: vehicle?.mileage_km ?? undefined,
+      mileage_date: vehicle?.mileage_date ?? "",
       insurance_company: vehicle?.insurance_company ?? "",
       insurance_policy_number: vehicle?.insurance_policy_number ?? "",
     },
@@ -179,6 +180,7 @@ export function VehicleForm({ vehicle, vehicleImages = [], mode }: VehicleFormPr
         displacement_ccm: data.displacement_ccm || null,
         horsepower: data.horsepower || null,
         mileage_km: data.mileage_km ?? null,
+        mileage_date: data.mileage_date || null,
         insurance_company: data.insurance_company || null,
         insurance_policy_number: data.insurance_policy_number || null,
       };
@@ -321,6 +323,11 @@ export function VehicleForm({ vehicle, vehicleImages = [], mode }: VehicleFormPr
           console.error("Datenkarte error:", dkError);
           toast.error("Datenkarte konnte nicht gespeichert werden.");
         }
+      }
+
+      // Trigger referral completion on first vehicle creation
+      if (mode === "create") {
+        fetch("/api/referral/complete", { method: "POST" }).catch(() => {});
       }
 
       toast.success(
@@ -602,6 +609,23 @@ export function VehicleForm({ vehicle, vehicleImages = [], mode }: VehicleFormPr
                     <Input
                       type="number"
                       placeholder="z.B. 85000"
+                      {...field}
+                      value={field.value ?? ""}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="mileage_date"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Abgelesen am</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="date"
                       {...field}
                       value={field.value ?? ""}
                     />

@@ -73,6 +73,51 @@ describe("getEffectivePlan", () => {
       getEffectivePlan({ plan: "free", status: "active", trial_end: null })
     ).toBe("free");
   });
+
+  // Referral bonus tests
+  it("returns 'premium' for expired trial with active referral bonus", () => {
+    const pastTrial = new Date(Date.now() - 1000).toISOString();
+    const futureBonus = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+    expect(
+      getEffectivePlan({ plan: "trial", status: "trialing", trial_end: pastTrial, referral_bonus_until: futureBonus })
+    ).toBe("premium");
+  });
+
+  it("returns 'free' for expired trial with expired referral bonus", () => {
+    const past = new Date(Date.now() - 1000).toISOString();
+    expect(
+      getEffectivePlan({ plan: "trial", status: "trialing", trial_end: past, referral_bonus_until: past })
+    ).toBe("free");
+  });
+
+  it("returns 'premium' for canceled subscription with active referral bonus", () => {
+    const futureBonus = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+    expect(
+      getEffectivePlan({ plan: "premium", status: "canceled", trial_end: null, referral_bonus_until: futureBonus })
+    ).toBe("premium");
+  });
+
+  it("returns 'free' for canceled subscription with no referral bonus", () => {
+    expect(
+      getEffectivePlan({ plan: "premium", status: "canceled", trial_end: null, referral_bonus_until: null })
+    ).toBe("free");
+  });
+
+  it("returns 'premium' for past_due after grace period with active referral bonus", () => {
+    const oldPastDue = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString();
+    const futureBonus = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+    expect(
+      getEffectivePlan({ plan: "premium", status: "past_due", trial_end: null, past_due_since: oldPastDue, referral_bonus_until: futureBonus })
+    ).toBe("premium");
+  });
+
+  it("returns 'trial' for active trial regardless of referral bonus", () => {
+    const future = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+    const futureBonus = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString();
+    expect(
+      getEffectivePlan({ plan: "trial", status: "trialing", trial_end: future, referral_bonus_until: futureBonus })
+    ).toBe("trial");
+  });
 });
 
 describe("canAddVehicle", () => {

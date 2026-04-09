@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { AccountHeader } from "@/components/account-header";
 import { VehicleCard, AddVehicleCard } from "@/components/vehicle-card";
 import { PlanOverview } from "@/components/plan-overview";
+import { ReferralCard } from "@/components/referral-card";
 import { Car } from "lucide-react";
 import type { VehicleWithImages } from "@/lib/validations/vehicle";
 import { ROLE_LABELS, type MemberRole } from "@/lib/validations/member";
@@ -48,7 +49,7 @@ export default async function DashboardPage() {
   // Get subscription for vehicle limit check
   const { data: subscription } = await supabase
     .from("subscriptions")
-    .select("plan, status, trial_end")
+    .select("plan, status, trial_end, referral_bonus_until")
     .eq("user_id", user.id)
     .single();
 
@@ -109,9 +110,10 @@ export default async function DashboardPage() {
         )}
         </div>
 
-        {/* Sidebar: Plan overview */}
+        {/* Sidebar: Plan overview + Referral */}
         <div className="space-y-4">
           <PlanOverview />
+          <ReferralCard />
         </div>
         </div>
       </main>
