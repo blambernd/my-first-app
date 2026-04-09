@@ -574,19 +574,19 @@ function RestorationDetail({
 
         {/* Photo gallery — vertical list with captions beside */}
         {images.length > 0 && (
-          <div className="mt-4 space-y-3 max-h-[500px] overflow-y-auto pr-1">
-            {images.map((img) => {
+          <div className="mt-5 space-y-4 max-h-[600px] overflow-y-auto pr-1">
+            {images.map((img, imgIdx) => {
               const isEditingCaption = editingCaptionId === img.id;
               return (
-                <div key={img.id} className="flex gap-4 items-start group/img">
+                <div key={img.id} className="flex gap-5 items-stretch group/img rounded-lg border bg-background overflow-hidden">
                   <div
-                    className="shrink-0 w-40 sm:w-52 aspect-[4/3] rounded-lg overflow-hidden bg-muted cursor-pointer relative"
+                    className="shrink-0 w-44 sm:w-56 aspect-[4/3] bg-muted cursor-pointer relative"
                     onClick={() => setLightboxImg(getImageUrl(img.storage_path, supabaseUrl))}
                   >
                     <img
                       src={getImageUrl(img.storage_path, supabaseUrl)}
                       alt={img.caption ?? ""}
-                      className="w-full h-full object-contain"
+                      className="w-full h-full object-cover"
                     />
                     {canEdit && (
                       <AlertDialog>
@@ -594,7 +594,7 @@ function RestorationDetail({
                           <Button
                             variant="destructive"
                             size="icon"
-                            className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover/img:opacity-100 transition-opacity"
+                            className="absolute top-1.5 right-1.5 h-6 w-6 opacity-0 group-hover/img:opacity-100 transition-opacity"
                             onClick={(e) => e.stopPropagation()}
                           >
                             <Trash2 className="h-3 w-3" />
@@ -620,7 +620,10 @@ function RestorationDetail({
                       </AlertDialog>
                     )}
                   </div>
-                  <div className="flex-1 min-w-0 pt-1">
+                  <div className="flex-1 min-w-0 py-3 pr-4 flex flex-col justify-center">
+                    <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/60 mb-1">
+                      Foto {imgIdx + 1} von {images.length}
+                    </span>
                     {isEditingCaption ? (
                       <div className="flex items-center gap-1.5">
                         <Input
@@ -660,8 +663,8 @@ function RestorationDetail({
                       </div>
                     ) : (
                       <div className="flex items-start gap-1.5">
-                        <p className="text-sm text-muted-foreground flex-1 min-w-0">
-                          {img.caption || (canEdit ? <span className="italic text-muted-foreground/50">Beschreibung hinzufügen...</span> : null)}
+                        <p className="text-sm text-foreground/80 flex-1 min-w-0 leading-relaxed">
+                          {img.caption || (canEdit ? <span className="italic text-muted-foreground/50">Beschreibung hinzufügen...</span> : <span className="text-muted-foreground/40 italic">Keine Beschreibung</span>)}
                         </p>
                         {canEdit && (
                           <Button
