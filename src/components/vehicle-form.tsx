@@ -270,7 +270,7 @@ export function VehicleForm({ vehicle, vehicleImages = [], existingDatekarte = n
         });
       }
 
-      // Remove old Datenkarte if user deleted it (including linked milestone)
+      // Remove old Datenkarte document (keep milestone, just update description)
       if (removedDatekarteId && currentDatekarte) {
         try {
           await supabase.storage
@@ -283,7 +283,7 @@ export function VehicleForm({ vehicle, vehicleImages = [], existingDatekarte = n
           if (currentDatekarte.milestone_id) {
             await supabase
               .from("vehicle_milestones")
-              .delete()
+              .update({ description: null })
               .eq("id", currentDatekarte.milestone_id);
           }
         } catch (rmError) {
@@ -291,7 +291,37 @@ export function VehicleForm({ vehicle, vehicleImages = [], existingDatekarte = n
         }
       }
 
-      // Upload Datenkarte and create Erstzulassung milestone
+      // Ensure Erstzulassung milestone exists
+      const deliveryDate = data.first_registration_date;
+      {
+        const { data: existingMs } = await supabase
+          .from("vehicle_milestones")
+          .select("id")
+          .eq("vehicle_id", vehicleId)
+          .eq("category", "erstzulassung")
+          .limit(1)
+          .maybeSingle();
+
+        if (!existingMs) {
+          // Create Erstzulassung milestone (without Datenkarte reference)
+          await supabase.from("vehicle_milestones").insert({
+            vehicle_id: vehicleId,
+            category: "erstzulassung",
+            milestone_date: deliveryDate,
+            title: "Auslieferung / Erstzulassung",
+            description: null,
+            created_by: user.id,
+          });
+        } else {
+          // Update date if first_registration_date changed
+          await supabase
+            .from("vehicle_milestones")
+            .update({ milestone_date: deliveryDate })
+            .eq("id", existingMs.id);
+        }
+      }
+
+      // Upload Datenkarte and link to Erstzulassung milestone
       if (datenkarte) {
         try {
           const datenkarteExt =
@@ -299,7 +329,7 @@ export function VehicleForm({ vehicle, vehicleImages = [], existingDatekarte = n
           const datenkarteId = crypto.randomUUID();
           const docPath = `${user.id}/${vehicleId}/documents/${datenkarteId}.${datenkarteExt}`;
 
-          // Upload once to vehicle-documents bucket
+          // Upload to vehicle-documents bucket
           const { error: dkUploadError } = await supabase.storage
             .from("vehicle-documents")
             .upload(docPath, datenkarte, {
@@ -308,35 +338,36 @@ export function VehicleForm({ vehicle, vehicleImages = [], existingDatekarte = n
             });
           if (dkUploadError) throw dkUploadError;
 
-          // Create milestone at first registration date
-          const deliveryDate = data.first_registration_date;
-          const { data: milestone, error: msError } = await supabase
+          // Find the Erstzulassung milestone to link
+          const { data: ezMs } = await supabase
             .from("vehicle_milestones")
-            .insert({
-              vehicle_id: vehicleId,
-              category: "erstzulassung",
-              milestone_date: deliveryDate,
-              title: "Auslieferung / Erstzulassung",
-              description: "Datenkarte zum Auslieferungszustand hinterlegt.",
-              created_by: user.id,
-            })
             .select("id")
+            .eq("vehicle_id", vehicleId)
+            .eq("category", "erstzulassung")
+            .limit(1)
             .single();
-          if (msError) throw msError;
 
-          // Save as document with "datenkarte" category (linked to milestone via milestone_id)
-          await supabase.from("vehicle_documents").insert({
-            vehicle_id: vehicleId,
-            title: "Datenkarte",
-            category: "datenkarte",
-            document_date: deliveryDate,
-            storage_path: docPath,
-            file_name: datenkarte.name,
-            file_size: datenkarte.size,
-            mime_type: datenkarte.type,
-            milestone_id: milestone.id,
-            created_by: user.id,
-          });
+          if (ezMs) {
+            // Update milestone description to reference Datenkarte
+            await supabase
+              .from("vehicle_milestones")
+              .update({ description: "Datenkarte zum Auslieferungszustand hinterlegt." })
+              .eq("id", ezMs.id);
+
+            // Save as document linked to milestone
+            await supabase.from("vehicle_documents").insert({
+              vehicle_id: vehicleId,
+              title: "Datenkarte",
+              category: "datenkarte",
+              document_date: deliveryDate,
+              storage_path: docPath,
+              file_name: datenkarte.name,
+              file_size: datenkarte.size,
+              mime_type: datenkarte.type,
+              milestone_id: ezMs.id,
+              created_by: user.id,
+            });
+          }
         } catch (dkError) {
           console.error("Datenkarte error:", dkError);
           toast.error("Datenkarte konnte nicht gespeichert werden.");
