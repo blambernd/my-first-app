@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
@@ -14,6 +14,8 @@ import {
   Pencil,
   Check,
   X,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -224,9 +226,25 @@ function ImageGallery({
   onDelete: (doc: VehicleDocument) => void;
   onUpdateDescription: (docId: string, description: string) => void;
 }) {
-  const [lightboxImg, setLightboxImg] = useState<string | null>(null);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState("");
+  const touchStartX = useRef(0);
+  const touchDeltaX = useRef(0);
+
+  const goNext = useCallback(() => setLightboxIndex((i) => i !== null ? Math.min(i + 1, images.length - 1) : null), [images.length]);
+  const goPrev = useCallback(() => setLightboxIndex((i) => i !== null ? Math.max(i - 1, 0) : null), []);
+
+  useEffect(() => {
+    if (lightboxIndex === null) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setLightboxIndex(null);
+      if (e.key === "ArrowRight") goNext();
+      if (e.key === "ArrowLeft") goPrev();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [lightboxIndex, goNext, goPrev]);
 
   if (images.length === 0) return null;
 
@@ -237,7 +255,7 @@ function ImageGallery({
         Bildergalerie ({images.length})
       </h3>
       <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
-        {images.map((img) => {
+        {images.map((img, imgIdx) => {
           const fileUrl = `${supabaseUrl}/storage/v1/object/public/vehicle-documents/${img.storage_path}`;
           const canEditThis = canEdit && (canEditAll || img.created_by === userId);
           const isEditing = editingId === img.id;
@@ -246,7 +264,7 @@ function ImageGallery({
             <div key={img.id} className="flex gap-4 items-start group/img rounded-lg border p-3">
               <div
                 className="shrink-0 w-36 sm:w-48 aspect-[4/3] rounded-lg overflow-hidden bg-muted cursor-pointer relative"
-                onClick={() => setLightboxImg(fileUrl)}
+                onClick={() => setLightboxIndex(imgIdx)}
               >
                 <img
                   src={fileUrl}
@@ -362,17 +380,60 @@ function ImageGallery({
         })}
       </div>
 
-      {/* Lightbox */}
-      {lightboxImg && (
+      {/* Lightbox with swipe navigation */}
+      {lightboxIndex !== null && (
         <div
-          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 cursor-pointer"
-          onClick={() => setLightboxImg(null)}
+          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center"
+          onClick={() => setLightboxIndex(null)}
         >
-          <img
-            src={lightboxImg}
-            alt=""
-            className="max-w-full max-h-full object-contain rounded-lg"
-          />
+          <button
+            type="button"
+            className="absolute top-4 right-4 z-10 text-white/70 hover:text-white"
+            onClick={() => setLightboxIndex(null)}
+          >
+            <X className="h-6 w-6" />
+          </button>
+
+          {images.length > 1 && lightboxIndex > 0 && (
+            <button
+              type="button"
+              className="absolute left-3 top-1/2 -translate-y-1/2 z-10 h-10 w-10 rounded-full bg-black/50 flex items-center justify-center text-white/70 hover:text-white hover:bg-black/70 transition-colors"
+              onClick={(e) => { e.stopPropagation(); goPrev(); }}
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+          )}
+
+          <div
+            className="max-w-[90vw] max-h-[85vh] flex items-center justify-center"
+            onClick={(e) => e.stopPropagation()}
+            onTouchStart={(e) => { touchStartX.current = e.touches[0].clientX; touchDeltaX.current = 0; }}
+            onTouchMove={(e) => { touchDeltaX.current = e.touches[0].clientX - touchStartX.current; }}
+            onTouchEnd={() => { if (touchDeltaX.current > 60) goPrev(); else if (touchDeltaX.current < -60) goNext(); }}
+          >
+            <img
+              src={`${supabaseUrl}/storage/v1/object/public/vehicle-documents/${images[lightboxIndex].storage_path}`}
+              alt={images[lightboxIndex].title}
+              className="max-w-full max-h-[85vh] object-contain rounded-lg select-none"
+              draggable={false}
+            />
+          </div>
+
+          {images.length > 1 && lightboxIndex < images.length - 1 && (
+            <button
+              type="button"
+              className="absolute right-3 top-1/2 -translate-y-1/2 z-10 h-10 w-10 rounded-full bg-black/50 flex items-center justify-center text-white/70 hover:text-white hover:bg-black/70 transition-colors"
+              onClick={(e) => { e.stopPropagation(); goNext(); }}
+            >
+              <ChevronRight className="h-5 w-5" />
+            </button>
+          )}
+
+          {images.length > 1 && (
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white/70 text-sm bg-black/50 px-3 py-1 rounded-full">
+              {lightboxIndex + 1} / {images.length}
+            </div>
+          )}
         </div>
       )}
     </div>
