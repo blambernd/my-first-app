@@ -901,7 +901,7 @@ export function DocumentArchive({
                 ) : (
                   <Archive className="h-4 w-4 mr-1.5" />
                 )}
-                Alle als ZIP
+                Alle herunterladen
               </Button>
               {(documents.length + milestoneImageEntries.length) > 1 && (
                 <Button
