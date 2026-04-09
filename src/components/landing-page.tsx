@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
@@ -119,8 +119,18 @@ const premiumPlanFeatures = [
 
 export function LandingPage() {
   const searchParams = useSearchParams();
-  const isRegistered = searchParams.get("registered") === "true";
+  const registeredParam = searchParams.get("registered") === "true";
+  const [isRegistered, setIsRegistered] = useState(false);
   const [isYearly, setIsYearly] = useState(false);
+
+  useEffect(() => {
+    if (registeredParam) {
+      localStorage.setItem("registered", "true");
+      setIsRegistered(true);
+    } else if (localStorage.getItem("registered") === "true") {
+      setIsRegistered(true);
+    }
+  }, [registeredParam]);
 
   return (
     <div className="flex flex-col">
