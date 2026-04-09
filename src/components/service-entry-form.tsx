@@ -169,6 +169,18 @@ export function ServiceEntryForm({
     }
   }, [watchMileage, lastMileage, watchOdometerCorrection]);
 
+  // Sync earliest oil category due date into next_due_date field
+  useEffect(() => {
+    if (watchEntryType !== "oil_change") return;
+    const dates = oilCategories
+      .map((c) => c.next_due_date)
+      .filter((d): d is string => !!d)
+      .sort();
+    if (dates.length > 0) {
+      form.setValue("next_due_date", dates[0]);
+    }
+  }, [oilCategories, watchEntryType, form]);
+
   async function onSubmit(data: ServiceEntryFormData) {
     if (isSubmitting) return;
     if (showOdometerWarning && !data.is_odometer_correction) {
@@ -573,7 +585,7 @@ export function ServiceEntryForm({
                       </PopoverContent>
                     </Popover>
                     <FormDescription>
-                      Wann steht der nächste Service oder TÜV an?
+                      Wann steht der nächste Termin an?
                     </FormDescription>
                     <FormMessage />
                   </FormItem>

@@ -625,12 +625,12 @@ function ServiceEntryCard({
             )}
           </div>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <span className="text-sm font-semibold tabular-nums text-muted-foreground">
+        <div className="flex items-center gap-1 shrink-0">
+          <span className="text-sm font-semibold tabular-nums text-muted-foreground mr-1">
             {entry.mileage_km.toLocaleString("de-DE")} km
           </span>
           {canEdit && (
-          <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+          <div className="flex gap-0.5" onClick={(e) => e.stopPropagation()}>
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onEdit}>
               <Pencil className="h-3.5 w-3.5" />
             </Button>
