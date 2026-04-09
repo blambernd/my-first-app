@@ -230,8 +230,8 @@ function AnalysisResultView({ analysis }: { analysis: MarketAnalysis }) {
             <div>
               <p className="font-medium text-sm">Zu wenige Daten für eine Preisschätzung</p>
               <p className="text-sm text-muted-foreground mt-1">
-                Es wurden weniger als 3 vergleichbare Inserate gefunden. Versuchen Sie es
-                später erneut, wenn mehr Angebote verfügbar sind.
+                Es wurden weniger als 2 vergleichbare Inserate mit Preisangabe gefunden.
+                Versuchen Sie es später erneut, wenn mehr Angebote verfügbar sind.
               </p>
               {analysis.listings.length > 0 && (
                 <p className="text-sm text-muted-foreground mt-1">

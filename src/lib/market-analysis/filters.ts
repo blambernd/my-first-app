@@ -13,23 +13,15 @@ const SPARE_PARTS_KEYWORDS = [
   "kotflügel", "kotfluegel",
   "scheinwerfer", "rücklicht", "ruecklicht",
   "türgriff", "tuergriff",
-  "spiegel", "außenspiegel", "aussenspiegel",
-  "felge", "felgen",
-  "auspuff", "endschalldämpfer",
   "bremsscheibe", "bremsbelag", "bremssattel",
-  "kühler", "kuehler", "kühlergrill",
-  "anlasser", "lichtmaschine", "generator",
-  "vergaser", "einspritzpumpe",
-  "getriebe", "schaltgetriebe", "automatikgetriebe",
+  "anlasser", "lichtmaschine",
+  "einspritzpumpe",
   "zylinderkopf", "kurbelwelle", "nockenwelle",
-  "dichtung", "dichtungssatz",
+  "dichtungssatz",
   "zündkerze", "zuendkerze", "zündverteiler",
   "ölfilter", "oelfilter", "luftfilter",
-  "kupplung", "kupplungsscheibe",
+  "kupplungsscheibe",
   "radlager", "traggelenk", "spurstange",
-  "windschutzscheibe", "heckscheibe", "seitenscheibe",
-  "innenausstattung", "sitzbezug", "lenkrad",
-  "tacho", "instrument", "kombiinstrument",
   "teilekatalog", "werkstatthandbuch", "reparaturanleitung",
   "modell 1:18", "modellauto", "modell 1:43",
   "schlüsselanhänger", "poster", "prospekt",
@@ -117,18 +109,19 @@ export function matchesFactoryCode(
  * Returns null if no price found or price is implausible.
  */
 export function parsePrice(text: string): number | null {
-  const patterns = [
-    /(\d{1,3}(?:\.\d{3})+)\s*€/,
+  // Patterns with dot as thousands separator (German: "25.900")
+  const dotThousands = [
+    /(\d{1,3}(?:\.\d{3})+)\s*[,\-]*\s*€/,
     /€\s*(\d{1,3}(?:\.\d{3})+)/,
     /EUR\s*(\d{1,3}(?:\.\d{3})+)/,
-    /(\d{4,7})\s*€/,
-    /€\s*(\d{4,7})/,
-    /EUR\s*(\d{4,7})/,
     /Preis[:\s]*(\d{1,3}(?:\.\d{3})+)/i,
     /VB\s*(\d{1,3}(?:\.\d{3})+)/i,
+    /VHB\s*(\d{1,3}(?:\.\d{3})+)/i,
+    /(\d{1,3}(?:\.\d{3})+)\s*(?:VB|VHB)/i,
+    /(\d{1,3}(?:\.\d{3})+)\s*,-/,
   ];
 
-  for (const pattern of patterns) {
+  for (const pattern of dotThousands) {
     const match = text.match(pattern);
     if (match) {
       const priceStr = match[1].replace(/\./g, "");
@@ -138,6 +131,36 @@ export function parsePrice(text: string): number | null {
       }
     }
   }
+
+  // Plain number patterns (no thousands separator: "25900")
+  const plainPatterns = [
+    /(\d{4,7})\s*[,\-]*\s*€/,
+    /€\s*(\d{4,7})/,
+    /EUR\s*(\d{4,7})/,
+    /Preis[:\s]*(\d{4,7})(?!\s*km)/i,
+    /(\d{4,7})\s*(?:VB|VHB)/i,
+  ];
+
+  for (const pattern of plainPatterns) {
+    const match = text.match(pattern);
+    if (match) {
+      const price = parseInt(match[1], 10);
+      if (!isNaN(price) && price >= 1000 && price <= 5_000_000) {
+        return price;
+      }
+    }
+  }
+
+  // Space as thousands separator ("25 900 €")
+  const spacePattern = /(\d{1,3}(?:\s\d{3})+)\s*€/;
+  const spaceMatch = text.match(spacePattern);
+  if (spaceMatch) {
+    const price = parseInt(spaceMatch[1].replace(/\s/g, ""), 10);
+    if (!isNaN(price) && price >= 1000 && price <= 5_000_000) {
+      return price;
+    }
+  }
+
   return null;
 }
 

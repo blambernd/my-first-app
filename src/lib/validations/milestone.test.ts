@@ -122,8 +122,8 @@ describe("milestoneSchema", () => {
 });
 
 describe("MILESTONE_CATEGORIES", () => {
-  it("has 8 categories", () => {
-    expect(MILESTONE_CATEGORIES).toHaveLength(8);
+  it("has 9 categories", () => {
+    expect(MILESTONE_CATEGORIES).toHaveLength(9);
   });
 
   it("every category has a config entry", () => {

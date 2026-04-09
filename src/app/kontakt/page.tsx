@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { BrandLogoWithText } from "@/components/brand-logo";
-import { SiteFooter } from "@/components/site-footer";
 import { ContactForm } from "@/components/contact-form";
 
 export const metadata: Metadata = {
@@ -32,7 +31,6 @@ export default function KontaktPage() {
         <ContactForm />
       </main>
 
-      <SiteFooter />
     </div>
   );
 }

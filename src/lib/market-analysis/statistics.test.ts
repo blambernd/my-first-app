@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { describe, it, expect } from "vitest";
 import { calculatePriceStatistics } from "./statistics";
 import type { MarketListing } from "./types";
@@ -13,19 +12,23 @@ function makeListing(price: number | null, platform = "mobile.de"): MarketListin
 }
 
 describe("calculatePriceStatistics", () => {
-  it("returns null when fewer than 3 priced listings", () => {
+  it("returns null when fewer than 2 priced listings", () => {
     expect(calculatePriceStatistics([])).toBeNull();
     expect(calculatePriceStatistics([makeListing(10000)])).toBeNull();
-    expect(
-      calculatePriceStatistics([makeListing(10000), makeListing(20000)])
-    ).toBeNull();
   });
 
-  it("returns null when fewer than 3 listings have valid prices (rest are null)", () => {
+  it("returns valid statistics for exactly 2 priced listings", () => {
+    const listings = [makeListing(10000), makeListing(20000)];
+    const stats = calculatePriceStatistics(listings)!;
+    expect(stats).not.toBeNull();
+    expect(stats.count).toBe(2);
+    expect(stats.median).toBe(15000);
+  });
+
+  it("returns null when fewer than 2 listings have valid prices (rest are null)", () => {
     const listings = [
       makeListing(10000),
       makeListing(null),
-      makeListing(20000),
       makeListing(null),
     ];
     expect(calculatePriceStatistics(listings)).toBeNull();

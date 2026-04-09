@@ -14,7 +14,7 @@ export function calculatePriceStatistics(
     (l): l is MarketListing & { price: number } => l.price !== null
   );
 
-  if (priced.length < 3) return null;
+  if (priced.length < 2) return null;
 
   // Sort by price
   const sorted = [...priced].sort((a, b) => a.price - b.price);

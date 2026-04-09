@@ -153,8 +153,8 @@ describe("isImageMimeType", () => {
 });
 
 describe("DOCUMENT_CATEGORIES constant", () => {
-  it("has 7 categories", () => {
-    expect(DOCUMENT_CATEGORIES).toHaveLength(7);
+  it("has 8 categories", () => {
+    expect(DOCUMENT_CATEGORIES).toHaveLength(8);
   });
 
   it("each category has value and label", () => {
