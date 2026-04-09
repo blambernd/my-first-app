@@ -128,7 +128,7 @@ export const vehicleSchema = z.object({
     .or(z.literal("")),
   body_type: z
     .string()
-    .max(50, "Fahrzeugform darf maximal 50 Zeichen lang sein")
+    .max(50, "Art der Karosserie darf maximal 50 Zeichen lang sein")
     .optional()
     .or(z.literal("")),
   factory_code: z

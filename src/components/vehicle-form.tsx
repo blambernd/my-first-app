@@ -429,7 +429,7 @@ export function VehicleForm({ vehicle, vehicleImages = [], mode }: VehicleFormPr
               name="body_type"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Fahrzeugform</FormLabel>
+                  <FormLabel>Art der Karosserie</FormLabel>
                   <Select
                     onValueChange={field.onChange}
                     value={field.value || ""}
