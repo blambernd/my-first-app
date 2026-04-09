@@ -595,16 +595,19 @@ function ServiceEntryCard({
           </Badge>
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-2">
-              <div className="text-sm">
-                <span className="text-muted-foreground">{new Date(entry.service_date).toLocaleDateString("de-DE")}</span>
-                {" "}
-                {detailOpen ? entry.description : summaryText}
-                {entry.cost_cents != null && entry.cost_cents > 0 && (
-                  <span className="text-muted-foreground">{" · "}{formatCentsToEur(entry.cost_cents)}</span>
-                )}
-                {entry.is_odometer_correction && (
-                  <Badge variant="outline" className="text-xs ml-1 align-middle">Tacho-Korrektur</Badge>
-                )}
+              <div>
+                <p className="text-sm text-muted-foreground">
+                  {new Date(entry.service_date).toLocaleDateString("de-DE")}
+                  {entry.is_odometer_correction && (
+                    <Badge variant="outline" className="text-xs ml-1.5 align-middle">Tacho-Korrektur</Badge>
+                  )}
+                </p>
+                <p className="text-base mt-0.5">
+                  {detailOpen ? entry.description : summaryText}
+                  {entry.cost_cents != null && entry.cost_cents > 0 && (
+                    <span className="text-muted-foreground">{" · "}{formatCentsToEur(entry.cost_cents)}</span>
+                  )}
+                </p>
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 <span className="text-sm font-semibold tabular-nums text-muted-foreground">
