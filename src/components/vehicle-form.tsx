@@ -421,7 +421,7 @@ export function VehicleForm({ vehicle, vehicleImages = [], mode }: VehicleFormPr
               control={form.control}
               name="model"
               render={({ field }) => (
-                <FormItem>
+                <FormItem className="flex flex-col">
                   <FormLabel>Modell *</FormLabel>
                   <FormControl>
                     <Input placeholder="z.B. 300 SL" {...field} />

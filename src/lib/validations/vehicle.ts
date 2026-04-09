@@ -93,6 +93,7 @@ export const BODY_TYPES = [
   "Van/Kleinbus",
   "Pickup",
   "Kastenwagen",
+  "LKW",
   "Speedster",
   "Targa",
   "Shooting Brake",
