@@ -589,22 +589,24 @@ function ServiceEntryCard({
         className={`${hasDetails ? "cursor-pointer" : ""}`}
         onClick={() => hasDetails && setDetailOpen(!detailOpen)}
       >
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex items-center gap-2 flex-wrap">
-            <Badge className={`${TYPE_COLORS[entry.entry_type]} border-0 text-xs`}>
-              {getEntryTypeLabel(entry.entry_type)}
-            </Badge>
-            <span className="text-sm text-muted-foreground">
-              {new Date(entry.service_date).toLocaleDateString("de-DE")}
-            </span>
-            {entry.is_odometer_correction && (
-              <Badge variant="outline" className="text-xs">Tacho-Korrektur</Badge>
-            )}
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <span className="text-sm font-semibold tabular-nums text-muted-foreground">
-              {entry.mileage_km.toLocaleString("de-DE")} km
-            </span>
+        <div className="flex items-start gap-2">
+          <Badge className={`${TYPE_COLORS[entry.entry_type]} border-0 text-xs shrink-0 mt-0.5`}>
+            {getEntryTypeLabel(entry.entry_type)}
+          </Badge>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-sm text-muted-foreground">
+                  {new Date(entry.service_date).toLocaleDateString("de-DE")}
+                </span>
+                {entry.is_odometer_correction && (
+                  <Badge variant="outline" className="text-xs">Tacho-Korrektur</Badge>
+                )}
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="text-sm font-semibold tabular-nums text-muted-foreground">
+                  {entry.mileage_km.toLocaleString("de-DE")} km
+                </span>
             {canEdit && (
             <div className="flex gap-0.5" onClick={(e) => e.stopPropagation()}>
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onEdit}>
@@ -636,30 +638,32 @@ function ServiceEntryCard({
             </AlertDialog>
           </div>
           )}
-        </div>
-        </div>
-        <p className="mt-1.5 text-sm">{detailOpen ? entry.description : summaryText}</p>
-        <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
-          {entry.cost_cents != null && entry.cost_cents > 0 && (
-            <span className="flex items-center gap-1">
-              <Banknote className="h-3 w-3" />
-              {formatCentsToEur(entry.cost_cents)}
-            </span>
-          )}
-          {documents.length > 0 && (
-            <span className="flex items-center gap-1">
-              <FileText className="h-3 w-3" />
-              {documents.length}
-            </span>
-          )}
-          {entry.workshop_name && (
-            <span className="truncate">{entry.workshop_name}</span>
-          )}
-          {hasDetails && (
-            <span className="flex items-center gap-0.5 text-primary ml-auto">
-              {detailOpen ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-            </span>
-          )}
+              </div>
+            </div>
+            <p className="mt-1 text-sm">{detailOpen ? entry.description : summaryText}</p>
+            <div className="flex items-center gap-4 mt-1.5 text-xs text-muted-foreground">
+              {entry.cost_cents != null && entry.cost_cents > 0 && (
+                <span className="flex items-center gap-1">
+                  <Banknote className="h-3 w-3" />
+                  {formatCentsToEur(entry.cost_cents)}
+                </span>
+              )}
+              {documents.length > 0 && (
+                <span className="flex items-center gap-1">
+                  <FileText className="h-3 w-3" />
+                  {documents.length}
+                </span>
+              )}
+              {entry.workshop_name && (
+                <span className="truncate">{entry.workshop_name}</span>
+              )}
+              {hasDetails && (
+                <span className="flex items-center gap-0.5 text-primary ml-auto">
+                  {detailOpen ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                </span>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
