@@ -50,17 +50,29 @@ import {
   type VehicleImage,
 } from "@/lib/validations/vehicle";
 
+export interface ExistingDatekarte {
+  id: string;
+  storage_path: string;
+  file_name: string;
+  file_size: number;
+  mime_type: string;
+  url: string;
+}
+
 interface VehicleFormProps {
   vehicle?: Vehicle;
   vehicleImages?: VehicleImage[];
+  existingDatekarte?: ExistingDatekarte | null;
   mode: "create" | "edit";
 }
 
-export function VehicleForm({ vehicle, vehicleImages = [], mode }: VehicleFormProps) {
+export function VehicleForm({ vehicle, vehicleImages = [], existingDatekarte = null, mode }: VehicleFormProps) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [makeOpen, setMakeOpen] = useState(false);
   const [newImages, setNewImages] = useState<ImageFile[]>([]);
+  const [currentDatekarte, setCurrentDatekarte] = useState<ExistingDatekarte | null>(existingDatekarte);
+  const [removedDatekarteId, setRemovedDatekarteId] = useState<string | null>(null);
   const [datenkarte, setDatekarte] = useState<File | null>(null);
   const [datenkartePreview, setDatenkartePreview] = useState<string | null>(null);
 
@@ -255,6 +267,21 @@ export function VehicleForm({ vehicle, vehicleImages = [], mode }: VehicleFormPr
           is_primary: startPosition === 0 && i === 0,
           file_size: image.file.size,
         });
+      }
+
+      // Remove old Datenkarte if user deleted it
+      if (removedDatekarteId && currentDatekarte) {
+        try {
+          await supabase.storage
+            .from("vehicle-documents")
+            .remove([currentDatekarte.storage_path]);
+          await supabase
+            .from("vehicle_documents")
+            .delete()
+            .eq("id", removedDatekarteId);
+        } catch (rmError) {
+          console.error("Datenkarte remove error:", rmError);
+        }
       }
 
       // Upload Datenkarte and create Erstzulassung milestone
@@ -703,7 +730,38 @@ export function VehicleForm({ vehicle, vehicleImages = [], mode }: VehicleFormPr
               Bei Upload wird automatisch ein Meilenstein in der Historie erstellt.
             </p>
 
-            {datenkarte ? (
+            {currentDatekarte && !removedDatekarteId ? (
+              <div className="flex items-center gap-3 rounded-lg border p-3">
+                {currentDatekarte.mime_type.startsWith("image/") ? (
+                  <img
+                    src={currentDatekarte.url}
+                    alt="Datenkarte"
+                    className="h-16 w-16 rounded object-contain bg-muted"
+                  />
+                ) : (
+                  <div className="flex h-16 w-16 items-center justify-center rounded bg-muted">
+                    <FileText className="h-6 w-6 text-muted-foreground" />
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">
+                    {currentDatekarte.file_name}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {(currentDatekarte.file_size / 1024 / 1024).toFixed(1)} MB
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="shrink-0"
+                  onClick={() => setRemovedDatekarteId(currentDatekarte.id)}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ) : datenkarte ? (
               <div className="flex items-center gap-3 rounded-lg border p-3">
                 {datenkartePreview ? (
                   <img

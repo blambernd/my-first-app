@@ -1,7 +1,7 @@
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase-server";
-import { VehicleForm } from "@/components/vehicle-form";
+import { VehicleForm, type ExistingDatekarte } from "@/components/vehicle-form";
 import { ChevronLeft } from "lucide-react";
 import { Toaster } from "@/components/ui/sonner";
 import type { VehicleWithImages } from "@/lib/validations/vehicle";
@@ -37,6 +37,24 @@ export default async function EditVehiclePage({ params }: EditVehiclePageProps) 
     (a, b) => a.position - b.position
   );
 
+  // Fetch existing Datenkarte
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const { data: datenkarteDoc } = await supabase
+    .from("vehicle_documents")
+    .select("id, storage_path, file_name, file_size, mime_type")
+    .eq("vehicle_id", id)
+    .eq("category", "datenkarte")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const existingDatekarte: ExistingDatekarte | null = datenkarteDoc
+    ? {
+        ...datenkarteDoc,
+        url: `${supabaseUrl}/storage/v1/object/public/vehicle-documents/${datenkarteDoc.storage_path}`,
+      }
+    : null;
+
   return (
     <div className="min-h-screen bg-muted/40">
       <header className="border-b bg-background">
@@ -59,6 +77,7 @@ export default async function EditVehiclePage({ params }: EditVehiclePageProps) 
           mode="edit"
           vehicle={typedVehicle}
           vehicleImages={sortedImages}
+          existingDatekarte={existingDatekarte}
         />
       </main>
       <Toaster />
