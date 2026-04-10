@@ -1,6 +1,6 @@
 # PROJ-23: Push-Notifications (Termine)
 
-## Status: Planned
+## Status: Approved
 **Created:** 2026-04-09
 **Last Updated:** 2026-04-09
 
@@ -227,7 +227,120 @@ Gespeichert in: Supabase-Datenbank mit RLS
 - Capacitor-App: Web Push funktioniert im WebView; native Push (APNs/FCM) als Phase 2
 
 ## QA Test Results
-_To be added by /qa_
+
+**Tested:** 2026-04-10
+**App URL:** http://localhost:3000
+**Tester:** QA Engineer (AI)
+
+### Automated Tests
+
+- **Unit Tests (Vitest):** 306/306 passed (9 new for `use-push-notifications` hook, 9 existing for push API routes)
+- **E2E Tests (Playwright):** 11/11 passed (PROJ-23 specific), 354/364 total (10 pre-existing failures in PROJ-1/PROJ-17, unrelated)
+
+### Acceptance Criteria Status
+
+#### AC-1: Nutzer wird beim ersten App-Start um Push-Berechtigung gebeten
+- [x] `PushOptInBanner` renders on dashboard when `status === "prompt"`
+- [x] Banner is dismissible with "Nein danke" (persisted in localStorage)
+- [x] Non-aggressive opt-in pattern (banner, not popup)
+
+#### AC-2: Push-Token wird serverseitig gespeichert
+- [x] `POST /api/push/subscribe` stores endpoint, p256dh, auth in `push_subscriptions`
+- [x] Upsert with `(user_id, endpoint)` constraint prevents duplicates
+- [x] Auth check prevents unauthenticated storage
+
+#### AC-3: TÜV-Termin-Erinnerung wird X Tage vor Ablauf gesendet (konfigurierbar)
+- [x] Preferences UI offers 1/7/14/30 day options
+- [x] Preferences stored via `PUT /api/push/preferences`
+- [x] Cron checks all 4 windows (1, 7, 14, 30 days) and respects user's `reminder_days` preference (BUG-1 fixed)
+
+#### AC-4: Benachrichtigung enthält Fahrzeugname, Terminart, Fälligkeitsdatum
+- [x] Push payload: `${typeLabel} für ${vehicleName} ... fällig (${dueDateFormatted})`
+- [x] Title includes type label (TÜV/HU or Service)
+
+#### AC-5: Tippen auf Benachrichtigung öffnet relevante Fahrzeugseite
+- [x] `notificationclick` handler navigates to `data.url` (`/vehicles/${id}/scheckheft`)
+- [x] Focuses existing tab or opens new one
+
+#### AC-6: Nutzer kann Benachrichtigungen ein-/ausschalten
+- [x] `NotificationSettings` has Switch toggle for push on/off
+- [x] Subscribe/unsubscribe calls work correctly
+- [x] DELETE endpoint removes subscription from DB
+
+#### AC-7: Nutzer kann Erinnerungszeitraum wählen
+- [x] Select component with 1/7/14/30 days
+- [x] Auto-saves on change via PUT endpoint
+- [x] Cron now uses stored value (BUG-1 fixed)
+
+#### AC-8: Bei mehreren Fahrzeugen separate Erinnerungen
+- [x] Cron iterates all `vehicle_due_dates` with vehicle join
+- [x] Each vehicle gets its own notification with vehicle name
+
+#### AC-9: Wenn Berechtigung verweigert, Hinweis in Einstellungen
+- [x] `NotificationSettings` shows "Push-Berechtigung wurde verweigert. Bitte erlaube Benachrichtigungen in den Browser-Einstellungen."
+- [x] Switch is disabled when denied
+
+#### AC-10: Benachrichtigungen werden nicht doppelt gesendet (Dedup)
+- [x] `reminder_sent_7d` and `reminder_sent_1d` flags updated after sending
+- [x] Cron query filters on these flags
+
+### Edge Cases Status
+
+#### EC-1: Push-Berechtigung verweigert
+- [x] Status updates to "denied", no re-prompt on next visit
+- [x] Banner does not show again after dismissal
+
+#### EC-2: TÜV-Termin bereits abgelaufen
+- [ ] **BUG-2:** No overdue notification logic exists. Cron only checks tomorrow and +7 days — past-due dates are ignored.
+
+#### EC-3: App deinstalliert / Token ungültig
+- [x] Cron handles 410/404 push errors by deleting invalid subscriptions from DB
+
+#### EC-4: Geräte ohne Push-Support
+- [x] Hook returns "unsupported", banner and settings hidden
+- [x] E-Mail-Erinnerung exists as fallback via Resend
+
+#### EC-5: TÜV-Termin ändert sich nach Erinnerung geplant
+- [x] Due date changes reset `reminder_sent_*` flags (new due_date = new row or update triggers new check)
+
+### Security Audit Results
+
+- [x] **Authentication:** All push API endpoints (subscribe, preferences) check `supabase.auth.getUser()` and return 401 if not authenticated
+- [x] **Authorization:** RLS on `push_subscriptions` and `notification_preferences` — users can only see/modify own data. Policies: SELECT, INSERT, DELETE (subscriptions), SELECT, INSERT, UPDATE (preferences)
+- [x] **Input Validation:** Zod schemas validate all POST/PUT inputs. `endpoint` must be valid URL, `keys` must be non-empty strings, `reminder_days` must be in [1, 7, 14, 30]
+- [x] **Cron Security:** Protected by `CRON_SECRET` bearer token check
+- [x] **VAPID Key Exposure:** Only public key exposed via `/api/push/vapid-key` (private key stays server-side)
+- [x] **No SQL Injection:** All queries go through Supabase client (parameterized)
+- [x] **Cascade Delete:** `ON DELETE CASCADE` on user_id FK — user deletion cleans up subscriptions and preferences
+- [x] **Rate Limiting:** Subscribe (10/min), preferences (20/min) rate limits per user (BUG-3 fixed)
+
+### Bugs Found
+
+#### ~~BUG-1: Cron ignores user's `reminder_days` preference~~ FIXED
+- **Severity:** Medium
+- **Fix:** Added `reminder_sent_14d` and `reminder_sent_30d` columns. Cron now checks all 4 windows (1, 7, 14, 30 days) and only sends the advance reminder matching the user's `reminder_days` preference. 1-day reminders are always sent as final warning.
+
+#### BUG-2: No overdue notification for past-due dates
+- **Severity:** Low
+- **Steps to Reproduce:**
+  1. Have a TÜV due date that has passed
+  2. Expected: Receive an "overdue" notification
+  3. Actual: No notification — cron only checks future dates
+- **Priority:** Nice to have (spec mentions "Überfällig-Hinweis" in edge cases)
+
+#### ~~BUG-3: No rate limiting on push API endpoints~~ FIXED
+- **Severity:** Low
+- **Fix:** Added in-memory rate limiting per user: subscribe 10 req/min, preferences 20 req/min. Returns 429 when exceeded.
+
+### Vitest Config Fix
+- **Note:** Fixed a systemic `vitest` concurrency issue on Windows (all 16 test suites failing with "Cannot read properties of undefined (reading 'config')"). Added `pool: 'forks'` to `vitest.config.ts`. This was a pre-existing issue unrelated to PROJ-23.
+
+### Summary
+- **Acceptance Criteria:** 10/10 passed (BUG-1 and BUG-3 fixed)
+- **Bugs Found:** 3 total — 2 fixed (BUG-1 medium, BUG-3 low), 1 remaining (BUG-2 low)
+- **Security:** Pass (auth, RLS, input validation, VAPID, rate limiting all correct)
+- **Production Ready:** YES — no critical/high bugs remaining
+- **Recommendation:** Deploy. BUG-2 (overdue notifications) is a nice-to-have for a future iteration.
 
 ## Deployment
 _To be added by /deploy_
