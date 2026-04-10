@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Car, Bell, Menu, LogOut, Crown, Trash2 } from "lucide-react";
+import { LayoutDashboard, Car, Bell, Menu, LogOut, Crown, Trash2, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -85,6 +85,15 @@ export function MobileBottomNav() {
                   </Badge>
                 </div>
               )}
+              <div className="px-1">
+                <Link
+                  href="/settings"
+                  className="flex items-center gap-2 w-full rounded-md px-3 py-2 text-sm hover:bg-accent transition-colors"
+                >
+                  <Settings className="h-4 w-4" />
+                  Einstellungen
+                </Link>
+              </div>
               <div className="px-1">
                 <LogoutButton />
               </div>

@@ -15,7 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useSubscription } from "@/hooks/use-subscription";
-import { Crown } from "lucide-react";
+import { Crown, Settings } from "lucide-react";
 
 interface AccountHeaderProps {
   email: string;
@@ -62,6 +62,13 @@ export function AccountHeader({ email }: AccountHeaderProps) {
                   <DropdownMenuSeparator />
                 </>
               )}
+              <DropdownMenuItem asChild>
+                <Link href="/settings" className="flex items-center gap-2">
+                  <Settings className="h-4 w-4" />
+                  Einstellungen
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
                 <LogoutButton />
               </DropdownMenuItem>

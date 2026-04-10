@@ -10,7 +10,6 @@ import { PlanOverview } from "@/components/plan-overview";
 import { ReferralCard } from "@/components/referral-card";
 import { EventsOverview } from "@/components/events-overview";
 import { PushOptInBanner } from "@/components/push-opt-in-banner";
-import { NotificationSettings } from "@/components/notification-settings";
 import { Car } from "lucide-react";
 import type { VehicleWithImages } from "@/lib/validations/vehicle";
 import { ROLE_LABELS, type MemberRole } from "@/lib/validations/member";
@@ -123,7 +122,6 @@ export default async function DashboardPage() {
         {/* Sidebar: Plan overview + Referral */}
         <div className="space-y-4">
           <PlanOverview />
-          <NotificationSettings />
           <ReferralCard />
         </div>
         </div>
