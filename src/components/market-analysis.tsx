@@ -185,6 +185,9 @@ function RecommendationCard({ analysis }: { analysis: MarketAnalysis }) {
             {analysis.recommendation_reasoning}
           </p>
         )}
+        <p className="text-xs text-muted-foreground mt-4 pt-3 border-t leading-relaxed">
+          Hinweis: Diese Preisindikation basiert auf öffentlich verfügbaren Inseraten und dient nur zur Orientierung. Der tatsächliche Marktwert hängt von vielen Faktoren ab, u.a. Zustand, Laufleistung, Matching Numbers, Seltenheit, Ausstattung und Dokumentation.
+        </p>
       </CardContent>
     </Card>
   );
