@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Car, Bell, Menu, LogOut, Crown, Trash2, Settings } from "lucide-react";
+import { LayoutDashboard, Bell, Menu, LogOut, Crown, Trash2, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -23,6 +23,7 @@ export function MobileBottomNav() {
 
   const isDashboard = pathname === "/dashboard";
   const isVehicle = pathname.startsWith("/vehicles");
+  const isSettings = pathname === "/settings";
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-border/40 bg-background md:hidden">
@@ -38,15 +39,15 @@ export function MobileBottomNav() {
           Dashboard
         </Link>
 
-        {/* Fahrzeug */}
+        {/* Einstellungen */}
         <Link
-          href="/dashboard"
+          href="/settings"
           className={`flex flex-col items-center justify-center gap-0.5 min-w-[64px] h-full px-2 text-[10px] font-medium transition-colors ${
-            isVehicle ? "text-primary" : "text-muted-foreground"
+            isSettings ? "text-primary" : "text-muted-foreground"
           }`}
         >
-          <Car className="h-5 w-5" />
-          Fahrzeug
+          <Settings className="h-5 w-5" />
+          Einstellungen
         </Link>
 
         {/* Notifications */}
@@ -85,15 +86,6 @@ export function MobileBottomNav() {
                   </Badge>
                 </div>
               )}
-              <div className="px-1">
-                <Link
-                  href="/settings"
-                  className="flex items-center gap-2 w-full rounded-md px-3 py-2 text-sm hover:bg-accent transition-colors"
-                >
-                  <Settings className="h-4 w-4" />
-                  Einstellungen
-                </Link>
-              </div>
               <div className="px-1">
                 <LogoutButton />
               </div>
