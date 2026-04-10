@@ -1,6 +1,6 @@
 # PROJ-23: Push-Notifications (Termine)
 
-## Status: Approved
+## Status: Deployed
 **Created:** 2026-04-09
 **Last Updated:** 2026-04-09
 
@@ -343,4 +343,8 @@ Gespeichert in: Supabase-Datenbank mit RLS
 - **Recommendation:** Deploy. BUG-2 (overdue notifications) is a nice-to-have for a future iteration.
 
 ## Deployment
-_To be added by /deploy_
+- **Production URL:** https://www.oldtimer-docs.com
+- **Deployed:** 2026-04-10
+- **Environment Variables:** NEXT_PUBLIC_VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY configured in Vercel
+- **Database Migrations:** push_subscriptions, notification_preferences, reminder flags applied in Supabase
+- **Settings Page:** /settings (notification preferences + account actions)
