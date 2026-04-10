@@ -15,9 +15,6 @@ export function SiteFooter() {
           <Link href="/agb" className="hover:text-foreground transition-colors">
             AGB
           </Link>
-          <Link href="/agb#widerruf" className="hover:text-foreground transition-colors">
-            Widerruf
-          </Link>
           <Link href="/haftung" className="hover:text-foreground transition-colors">
             Haftung
           </Link>
