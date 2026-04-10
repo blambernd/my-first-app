@@ -8,6 +8,7 @@ import {
   BookOpen,
   FileText,
   Clock,
+  Newspaper,
   Share2,
   ShoppingBag,
   ArrowRightLeft,
@@ -392,6 +393,52 @@ export function LandingPage() {
           </div>
         </section>
       )}
+
+      {/* Blog Teaser */}
+      <section className="px-4 py-20 bg-muted/30" id="blog">
+        <div className="container mx-auto max-w-4xl">
+          <div className="text-center mb-12">
+            <h2 className="text-2xl sm:text-3xl font-bold mb-4">
+              Aus unserem Blog
+            </h2>
+            <p className="text-muted-foreground text-base sm:text-lg max-w-2xl mx-auto">
+              Tipps und Ratgeber rund um Oldtimer, Dokumentation und Werterhaltung.
+            </p>
+          </div>
+          <Card className="hover:bg-muted/50 transition-colors">
+            <Link href="/blog/oldtimer-richtig-dokumentieren">
+              <CardContent className="p-6 sm:p-8">
+                <div className="flex items-start gap-4">
+                  <div className="hidden sm:flex h-12 w-12 rounded-lg bg-primary/10 items-center justify-center flex-shrink-0 mt-1">
+                    <Newspaper className="h-6 w-6 text-primary" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-lg font-semibold mb-2">
+                      Oldtimer richtig dokumentieren — warum sich eine lückenlose Fahrzeughistorie lohnt
+                    </h3>
+                    <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
+                      Eine vollständige Dokumentation steigert den Wert Ihres Oldtimers, vereinfacht den Verkauf und schützt vor bösen Überraschungen. Erfahren Sie, was in eine gute Fahrzeugakte gehört.
+                    </p>
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                      <span className="flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        8 Min. Lesezeit
+                      </span>
+                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Dokumentation</Badge>
+                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Ratgeber</Badge>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Link>
+          </Card>
+          <div className="text-center mt-8">
+            <Button variant="outline" asChild>
+              <Link href="/blog">Alle Beiträge ansehen</Link>
+            </Button>
+          </div>
+        </div>
+      </section>
 
       {/* FAQ Teaser */}
       <section className="px-4 py-20" id="faq">
