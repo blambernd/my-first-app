@@ -65,13 +65,16 @@ export default async function DashboardPage() {
   // We filter to only those NOT for vehicles the user already owns
   const ownedVehicleIds = new Set(typedVehicles.map((v) => v.id));
 
-  const { data: rawInvitations } = await supabase
+  const { data: rawInvitations, error: invError } = await supabase
     .from("vehicle_invitations")
     .select("id, token, role, expires_at, vehicle_id, vehicles(make, model)")
     .eq("status", "offen")
     .gt("expires_at", new Date().toISOString())
     .order("created_at", { ascending: false })
     .limit(20);
+
+  console.log("[Dashboard] user email:", user.email, "ownedVehicleIds:", [...ownedVehicleIds]);
+  console.log("[Dashboard] rawInvitations:", rawInvitations?.length ?? 0, "error:", invError?.message);
 
   const pendingInvitations: DashboardInvitation[] = (rawInvitations ?? [])
     .filter((inv) => !ownedVehicleIds.has(inv.vehicle_id))
@@ -88,13 +91,18 @@ export default async function DashboardPage() {
 
   // Pending transfers addressed to this user
   // RLS returns: transfers from owned vehicles + transfers matching user email
-  const { data: rawTransfers } = await supabase
+  const { data: rawTransfers, error: trError } = await supabase
     .from("vehicle_transfers")
     .select("id, token, expires_at, keep_as_viewer, vehicle_id, vehicles(make, model)")
     .eq("status", "offen")
     .gt("expires_at", new Date().toISOString())
     .order("created_at", { ascending: false })
     .limit(10);
+
+  console.log("[Dashboard] rawTransfers:", rawTransfers?.length ?? 0, "error:", trError?.message);
+  if (rawTransfers?.length) {
+    console.log("[Dashboard] transfers detail:", rawTransfers.map(t => ({ id: t.id, vehicle_id: t.vehicle_id, owned: ownedVehicleIds.has(t.vehicle_id) })));
+  }
 
   const pendingTransfers: DashboardTransfer[] = (rawTransfers ?? [])
     .filter((t) => !ownedVehicleIds.has(t.vehicle_id))
