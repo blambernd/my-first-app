@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import { Analytics } from "@vercel/analytics/next";
 import { SiteFooter } from "@/components/site-footer";
 import { OfflineBanner } from "@/components/offline-banner";
 import { CookieConsentBanner } from "@/components/cookie-consent-banner";
+import { ConditionalAnalytics } from "@/components/conditional-analytics";
 import { ServiceWorkerRegister } from "@/components/service-worker-register";
 import "./globals.css";
 
@@ -42,7 +42,7 @@ export default function RootLayout({
         <OfflineBanner />
         <CookieConsentBanner />
         <ServiceWorkerRegister />
-        <Analytics />
+        <ConditionalAnalytics />
       </body>
     </html>
   );

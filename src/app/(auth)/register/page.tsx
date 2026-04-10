@@ -10,6 +10,7 @@ import { registerSchema, type RegisterFormData } from "@/lib/validations/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Card,
   CardContent,
@@ -31,7 +32,7 @@ function RegisterForm() {
 
   const form = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
-    defaultValues: { email: "", password: "", confirmPassword: "" },
+    defaultValues: { email: "", password: "", confirmPassword: "", acceptTerms: false as unknown as true },
   });
 
   async function onSubmit(data: RegisterFormData) {
@@ -153,6 +154,33 @@ function RegisterForm() {
                 {form.formState.errors.confirmPassword.message}
               </p>
             )}
+          </div>
+          <div className="flex items-start space-x-2">
+            <Checkbox
+              id="acceptTerms"
+              checked={form.watch("acceptTerms") === true}
+              onCheckedChange={(checked) =>
+                form.setValue("acceptTerms", checked === true ? true : (false as unknown as true), { shouldValidate: true })
+              }
+            />
+            <div className="grid gap-1.5 leading-none">
+              <Label htmlFor="acceptTerms" className="text-sm font-normal leading-snug">
+                Ich stimme den{" "}
+                <Link href="/agb" target="_blank" className="underline underline-offset-4 hover:text-foreground">
+                  AGB
+                </Link>{" "}
+                und der{" "}
+                <Link href="/datenschutz" target="_blank" className="underline underline-offset-4 hover:text-foreground">
+                  Datenschutzerklärung
+                </Link>{" "}
+                zu.
+              </Label>
+              {form.formState.errors.acceptTerms && (
+                <p className="text-sm text-destructive">
+                  {form.formState.errors.acceptTerms.message}
+                </p>
+              )}
+            </div>
           </div>
           <Button type="submit" className="w-full" disabled={loading}>
             {loading ? "Wird registriert..." : "Registrieren"}

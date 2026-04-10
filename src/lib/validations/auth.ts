@@ -22,6 +22,10 @@ export const registerSchema = z
     confirmPassword: z
       .string()
       .min(1, "Passwort-Bestätigung ist erforderlich"),
+    acceptTerms: z
+      .literal(true, {
+        message: "Du musst den AGB und der Datenschutzerklärung zustimmen",
+      }),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwörter stimmen nicht überein",

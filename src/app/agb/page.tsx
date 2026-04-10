@@ -268,6 +268,17 @@ export default function AGBPage() {
               Zahlungen unverzüglich, spätestens innerhalb von 14 Tagen,
               erstattet.
             </p>
+            <p>
+              (5) Die vollständige Widerrufsbelehrung einschließlich des
+              Muster-Widerrufsformulars finden Sie auf unserer{" "}
+              <Link
+                href="/widerruf"
+                className="text-primary underline"
+              >
+                Widerrufsbelehrungsseite
+              </Link>
+              .
+            </p>
           </section>
 
           <section>
@@ -295,14 +306,15 @@ export default function AGBPage() {
               Wochen vor Inkrafttreten per E-Mail informiert.
             </p>
             <p>
-              (2) Widerspricht der Nutzer den geänderten AGB nicht innerhalb von
-              4 Wochen nach Zugang der Änderungsmitteilung, gelten die
-              geänderten AGB als akzeptiert. Der Nutzer wird in der
-              Änderungsmitteilung auf diese Rechtsfolge hingewiesen.
+              (2) Die geänderten AGB werden dem Nutzer bei der nächsten
+              Anmeldung zur aktiven Zustimmung vorgelegt. Die Nutzung der
+              Plattform nach Inkrafttreten der Änderungen setzt die Zustimmung
+              zu den geänderten AGB voraus.
             </p>
             <p>
-              (3) Im Falle eines Widerspruchs steht beiden Seiten ein
-              Sonderkündigungsrecht zu.
+              (3) Stimmt der Nutzer den geänderten AGB nicht zu, kann er den
+              Vertrag jederzeit kündigen. Das Recht zur außerordentlichen
+              Kündigung bleibt unberührt.
             </p>
           </section>
 

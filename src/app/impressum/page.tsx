@@ -29,7 +29,23 @@ export default function ImpressumPage() {
           <section>
             <h2 className="text-xl font-semibold mb-3">Kontakt</h2>
             <p>
-              E-Mail: b.lambernd@gmail.com
+              E-Mail:{" "}
+              <a
+                href="mailto:b.lambernd@gmail.com"
+                className="text-primary underline"
+              >
+                b.lambernd@gmail.com
+              </a>
+            </p>
+            <p>
+              Alternativ können Sie uns über unser{" "}
+              <Link
+                href="/kontakt"
+                className="text-primary underline"
+              >
+                Kontaktformular
+              </Link>{" "}
+              erreichen.
             </p>
           </section>
 
