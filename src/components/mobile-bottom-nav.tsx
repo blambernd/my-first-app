@@ -13,6 +13,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { NotificationBell } from "@/components/notification-bell";
+import { PendingRequestsBell } from "@/components/pending-requests-bell";
 import { LogoutButton } from "@/components/logout-button";
 import { DeleteAccountButton } from "@/components/delete-account-button";
 import { useSubscription } from "@/hooks/use-subscription";
@@ -49,6 +50,12 @@ export function MobileBottomNav() {
           <Settings className="h-5 w-5" />
           Einstellungen
         </Link>
+
+        {/* Pending Requests */}
+        <div className="flex flex-col items-center justify-center gap-0.5 min-w-[64px] h-full px-2 text-[10px] font-medium text-muted-foreground">
+          <PendingRequestsBell />
+          <span className="-mt-0.5">Anfragen</span>
+        </div>
 
         {/* Notifications */}
         <div className="flex flex-col items-center justify-center gap-0.5 min-w-[64px] h-full px-2 text-[10px] font-medium text-muted-foreground">

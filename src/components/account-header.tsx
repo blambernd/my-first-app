@@ -5,6 +5,7 @@ import { BrandLogoWithText } from "@/components/brand-logo";
 import { LogoutButton } from "@/components/logout-button";
 import { DeleteAccountButton } from "@/components/delete-account-button";
 import { NotificationBell } from "@/components/notification-bell";
+import { PendingRequestsBell } from "@/components/pending-requests-bell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -31,7 +32,8 @@ export function AccountHeader({ email }: AccountHeaderProps) {
           <BrandLogoWithText />
         </Link>
         <div className="flex items-center gap-2">
-          <div className="hidden md:block">
+          <div className="hidden md:flex items-center gap-1">
+            <PendingRequestsBell />
             <NotificationBell />
           </div>
           <DropdownMenu>

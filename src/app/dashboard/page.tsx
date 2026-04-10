@@ -10,7 +10,6 @@ import { PlanOverview } from "@/components/plan-overview";
 import { ReferralCard } from "@/components/referral-card";
 import { EventsOverview } from "@/components/events-overview";
 import { PushOptInBanner } from "@/components/push-opt-in-banner";
-import { DashboardInvitations, type DashboardInvitation, type DashboardTransfer } from "@/components/dashboard-invitations";
 import { Car } from "lucide-react";
 import type { VehicleWithImages } from "@/lib/validations/vehicle";
 import { ROLE_LABELS, type MemberRole } from "@/lib/validations/member";
@@ -60,63 +59,6 @@ export default async function DashboardPage() {
   const effectivePlan = subscription ? getEffectivePlan(subscription) : isBetaMode ? "premium" : "free";
   const canAdd = canAddVehicle(effectivePlan, typedVehicles.length);
 
-  // Pending invitations addressed to this user
-  // RLS returns: invitations for owned vehicles + invitations matching user email
-  // We filter to only those NOT for vehicles the user already owns
-  const ownedVehicleIds = new Set(typedVehicles.map((v) => v.id));
-
-  const { data: rawInvitations, error: invError } = await supabase
-    .from("vehicle_invitations")
-    .select("id, token, role, expires_at, vehicle_id, vehicles(make, model)")
-    .eq("status", "offen")
-    .gt("expires_at", new Date().toISOString())
-    .order("created_at", { ascending: false })
-    .limit(20);
-
-  console.log("[Dashboard] user email:", user.email, "ownedVehicleIds:", [...ownedVehicleIds]);
-  console.log("[Dashboard] rawInvitations:", rawInvitations?.length ?? 0, "error:", invError?.message);
-
-  const pendingInvitations: DashboardInvitation[] = (rawInvitations ?? [])
-    .filter((inv) => !ownedVehicleIds.has(inv.vehicle_id))
-    .map((inv) => {
-      const v = inv.vehicles as unknown as { make: string; model: string } | null;
-      return {
-        id: inv.id,
-        token: inv.token,
-        vehicle_name: v ? `${v.make} ${v.model}` : "Fahrzeug",
-        role: inv.role as DashboardInvitation["role"],
-        expires_at: inv.expires_at,
-      };
-    });
-
-  // Pending transfers addressed to this user
-  // RLS returns: transfers from owned vehicles + transfers matching user email
-  const { data: rawTransfers, error: trError } = await supabase
-    .from("vehicle_transfers")
-    .select("id, token, expires_at, keep_as_viewer, vehicle_id, vehicles(make, model)")
-    .eq("status", "offen")
-    .gt("expires_at", new Date().toISOString())
-    .order("created_at", { ascending: false })
-    .limit(10);
-
-  console.log("[Dashboard] rawTransfers:", rawTransfers?.length ?? 0, "error:", trError?.message);
-  if (rawTransfers?.length) {
-    console.log("[Dashboard] transfers detail:", rawTransfers.map(t => ({ id: t.id, vehicle_id: t.vehicle_id, owned: ownedVehicleIds.has(t.vehicle_id) })));
-  }
-
-  const pendingTransfers: DashboardTransfer[] = (rawTransfers ?? [])
-    .filter((t) => !ownedVehicleIds.has(t.vehicle_id))
-    .map((t) => {
-      const v = t.vehicles as unknown as { make: string; model: string } | null;
-      return {
-        id: t.id,
-        token: t.token,
-        vehicle_name: v ? `${v.make} ${v.model}` : "Fahrzeug",
-        expires_at: t.expires_at,
-        keep_as_viewer: t.keep_as_viewer,
-      };
-    });
-
   return (
     <div className="bg-muted/40">
       <AccountHeader email={user.email || ""} />
@@ -124,13 +66,6 @@ export default async function DashboardPage() {
       <main className="container mx-auto px-4 py-8 pb-20 md:pb-8">
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-8">
         <div>
-        {/* Pending invitations & transfers */}
-        {(pendingInvitations.length > 0 || pendingTransfers.length > 0) && (
-          <div className="mb-6">
-            <DashboardInvitations invitations={pendingInvitations} transfers={pendingTransfers} />
-          </div>
-        )}
-
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold">Meine Fahrzeuge</h2>
         </div>
