@@ -22,7 +22,7 @@ export type OilChangeCategory = (typeof OIL_CHANGE_CATEGORIES)[number]["value"];
 
 export interface OilChangeCategoryEntry {
   category: OilChangeCategory;
-  next_due_date: string | null;
+  next_due_km: number | null;
   custom_label?: string; // For "other_oil" category
 }
 
@@ -63,7 +63,7 @@ export const serviceEntrySchema = z.object({
     .array(
       z.object({
         category: z.enum(["motor_oil", "transmission_oil", "rear_axle_oil", "other_oil"]),
-        next_due_date: z.string().nullable().optional(),
+        next_due_km: z.coerce.number().int().min(0).nullable().optional(),
         custom_label: z.string().max(100).optional(),
       })
     )
@@ -156,23 +156,22 @@ export function getOilCategoryLabel(category: OilChangeCategory): string {
   return OIL_CHANGE_CATEGORIES.find((c) => c.value === category)?.label ?? category;
 }
 
-/** Get the next oil change due date across all entries and all oil subcategories */
-export function getNextOilChangeDate(entries: ServiceEntry[]): { date: string; category: OilChangeCategory; label: string } | null {
+/** Get the next oil change due km across all entries and all oil subcategories (smallest km) */
+export function getNextOilChangeKm(entries: ServiceEntry[]): { km: number; category: OilChangeCategory; label: string } | null {
   const oilEntries = entries.filter((e) => e.entry_type === "oil_change");
   if (oilEntries.length === 0) return null;
 
-  let earliest: { date: string; category: OilChangeCategory; label: string } | null = null;
-  const now = new Date().toISOString().split("T")[0];
+  let lowest: { km: number; category: OilChangeCategory; label: string } | null = null;
 
   for (const entry of oilEntries) {
     const categories = entry.oil_change_categories;
     if (categories && categories.length > 0) {
       for (const cat of categories) {
-        const dueDate = cat.next_due_date;
-        if (dueDate) {
-          if (!earliest || dueDate < earliest.date) {
-            earliest = {
-              date: dueDate,
+        const dueKm = cat.next_due_km;
+        if (dueKm != null && dueKm > 0) {
+          if (!lowest || dueKm < lowest.km) {
+            lowest = {
+              km: dueKm,
               category: cat.category,
               label: cat.category === "other_oil" && cat.custom_label
                 ? cat.custom_label
@@ -181,32 +180,23 @@ export function getNextOilChangeDate(entries: ServiceEntry[]): { date: string; c
           }
         }
       }
-    } else if (entry.next_due_date) {
-      // Fallback for legacy entries without subcategories
-      if (!earliest || entry.next_due_date < earliest.date) {
-        earliest = {
-          date: entry.next_due_date,
-          category: "motor_oil",
-          label: "Ölwechsel",
-        };
-      }
     }
   }
 
-  return earliest;
+  return lowest;
 }
 
-/** Get all oil change subcategory due dates (latest per category across all entries) */
-export function getAllOilChangeDueDates(entries: ServiceEntry[]): { category: OilChangeCategory; label: string; date: string }[] {
+/** Get all oil change subcategory due kms (latest per category across all entries) */
+export function getAllOilChangeDueKms(entries: ServiceEntry[]): { category: OilChangeCategory; label: string; km: number }[] {
   const oilEntries = entries.filter((e) => e.entry_type === "oil_change");
-  // Track the most recent due date per category
-  const latestByCategory = new Map<OilChangeCategory, { label: string; date: string; serviceDate: string }>();
+  // Track the most recent due km per category
+  const latestByCategory = new Map<OilChangeCategory, { label: string; km: number; serviceDate: string }>();
 
   for (const entry of oilEntries) {
     const categories = entry.oil_change_categories;
     if (categories && categories.length > 0) {
       for (const cat of categories) {
-        if (cat.next_due_date) {
+        if (cat.next_due_km != null && cat.next_due_km > 0) {
           const existing = latestByCategory.get(cat.category);
           // Keep the one from the most recent service entry
           if (!existing || entry.service_date > existing.serviceDate) {
@@ -214,7 +204,7 @@ export function getAllOilChangeDueDates(entries: ServiceEntry[]): { category: Oi
               label: cat.category === "other_oil" && cat.custom_label
                 ? cat.custom_label
                 : getOilCategoryLabel(cat.category),
-              date: cat.next_due_date,
+              km: cat.next_due_km,
               serviceDate: entry.service_date,
             });
           }
@@ -224,8 +214,8 @@ export function getAllOilChangeDueDates(entries: ServiceEntry[]): { category: Oi
   }
 
   return Array.from(latestByCategory.entries())
-    .map(([category, { label, date }]) => ({ category, label, date }))
-    .sort((a, b) => a.date.localeCompare(b.date));
+    .map(([category, { label, km }]) => ({ category, label, km }))
+    .sort((a, b) => a.km - b.km);
 }
 
 /** Check if a date is overdue or due within 30 days */

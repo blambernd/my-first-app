@@ -169,17 +169,12 @@ export function ServiceEntryForm({
     }
   }, [watchMileage, lastMileage, watchOdometerCorrection]);
 
-  // Sync earliest oil category due date into next_due_date field
+  // Clear next_due_date for oil_change entries (km is stored per subcategory now)
   useEffect(() => {
-    if (watchEntryType !== "oil_change") return;
-    const dates = oilCategories
-      .map((c) => c.next_due_date)
-      .filter((d): d is string => !!d)
-      .sort();
-    if (dates.length > 0) {
-      form.setValue("next_due_date", dates[0]);
+    if (watchEntryType === "oil_change") {
+      form.setValue("next_due_date", "");
     }
-  }, [oilCategories, watchEntryType, form]);
+  }, [watchEntryType, form]);
 
   async function onSubmit(data: ServiceEntryFormData) {
     if (isSubmitting) return;
@@ -369,7 +364,7 @@ export function ServiceEntryForm({
               <div className="rounded-lg border p-4 space-y-3">
                 <p className="text-sm font-medium">Ölkategorien</p>
                 <p className="text-xs text-muted-foreground">
-                  Wähle die Ölarten aus und gib jeweils den nächsten fälligen Termin an.
+                  Wähle die Ölarten aus und gib jeweils den Kilometerstand für den nächsten Wechsel an.
                 </p>
                 <div className="grid grid-cols-2 gap-3">
                   {OIL_CHANGE_CATEGORIES.map((cat) => {
@@ -384,7 +379,7 @@ export function ServiceEntryForm({
                               if (checked) {
                                 setOilCategories((prev) => [
                                   ...prev,
-                                  { category: cat.value as OilChangeCategory, next_due_date: null },
+                                  { category: cat.value as OilChangeCategory, next_due_km: null },
                                 ]);
                               } else {
                                 setOilCategories((prev) =>
@@ -405,13 +400,15 @@ export function ServiceEntryForm({
                         )}
                         {isSelected && (
                           <Input
-                            type="date"
-                            value={catEntry?.next_due_date ?? ""}
+                            type="number"
+                            placeholder="km z.B. 95000"
+                            value={catEntry?.next_due_km ?? ""}
                             onChange={(e) => {
+                              const val = e.target.value ? parseInt(e.target.value, 10) : null;
                               setOilCategories((prev) =>
                                 prev.map((c) =>
                                   c.category === cat.value
-                                    ? { ...c, next_due_date: e.target.value || null }
+                                    ? { ...c, next_due_km: val }
                                     : c
                                 )
                               );
@@ -546,52 +543,55 @@ export function ServiceEntryForm({
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="next_due_date"
-              render={({ field }) => {
-                const dateValue = field.value
-                  ? parse(field.value, "yyyy-MM-dd", new Date())
-                  : undefined;
-                return (
-                  <FormItem>
-                    <FormLabel>Nächster Termin</FormLabel>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <FormControl>
-                          <Button
-                            variant="outline"
-                            className="w-full justify-start text-left font-normal"
-                          >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {dateValue && !isNaN(dateValue.getTime())
-                              ? format(dateValue, "dd.MM.yyyy")
-                              : "Termin wählen (optional)"}
-                          </Button>
-                        </FormControl>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={dateValue && !isNaN(dateValue.getTime()) ? dateValue : undefined}
-                          onSelect={(date) => {
-                            if (date) {
-                              field.onChange(format(date, "yyyy-MM-dd"));
-                            }
-                          }}
-                          locale={de}
-                          initialFocus
-                        />
-                      </PopoverContent>
-                    </Popover>
-                    <FormDescription>
-                      Wann steht der nächste Termin an?
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                );
-              }}
-            />
+            {/* Hide "Nächster Termin" for oil_change — km is stored per subcategory */}
+            {watchEntryType !== "oil_change" && (
+              <FormField
+                control={form.control}
+                name="next_due_date"
+                render={({ field }) => {
+                  const dateValue = field.value
+                    ? parse(field.value, "yyyy-MM-dd", new Date())
+                    : undefined;
+                  return (
+                    <FormItem>
+                      <FormLabel>Nächster Termin</FormLabel>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant="outline"
+                              className="w-full justify-start text-left font-normal"
+                            >
+                              <CalendarIcon className="mr-2 h-4 w-4" />
+                              {dateValue && !isNaN(dateValue.getTime())
+                                ? format(dateValue, "dd.MM.yyyy")
+                                : "Termin wählen (optional)"}
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={dateValue && !isNaN(dateValue.getTime()) ? dateValue : undefined}
+                            onSelect={(date) => {
+                              if (date) {
+                                field.onChange(format(date, "yyyy-MM-dd"));
+                              }
+                            }}
+                            locale={de}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      <FormDescription>
+                        Wann steht der nächste Termin an?
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
+              />
+            )}
 
             {/* Dokument anhängen */}
             <div className="space-y-2">

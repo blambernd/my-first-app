@@ -54,8 +54,8 @@ import {
   formatCentsToEur,
   getNextTuvDate,
   getNextServiceDate,
-  getNextOilChangeDate,
-  getAllOilChangeDueDates,
+  getNextOilChangeKm,
+  getAllOilChangeDueKms,
   getDueStatus,
   type ServiceEntry,
   type ServiceEntryType,
@@ -223,37 +223,36 @@ function OilChangeDueDateCard({
   const [editingCategory, setEditingCategory] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
 
-  const entryDueDates = getAllOilChangeDueDates(entries);
+  const entryDueKms = getAllOilChangeDueKms(entries);
 
-  // Merge entry-based dates with overrides per category
+  // Merge entry-based kms with overrides per category
   const allCategories = OIL_CHANGE_CATEGORIES.map((cat) => {
     const dueType = OIL_DUE_TYPE_MAP[cat.value as OilChangeCategory];
-    const override = overrides.find((o) => o.due_type === dueType)?.due_date;
-    const fromEntry = entryDueDates.find((d) => d.category === cat.value);
-    const date = override || fromEntry?.date || null;
+    const overrideStr = overrides.find((o) => o.due_type === dueType)?.due_date;
+    const overrideKm = overrideStr ? parseInt(overrideStr, 10) : null;
+    const fromEntry = entryDueKms.find((d) => d.category === cat.value);
+    const km = (overrideKm && !isNaN(overrideKm)) ? overrideKm : fromEntry?.km ?? null;
     return {
       category: cat.value as OilChangeCategory,
       label: fromEntry?.label || cat.label,
-      date,
+      km,
       dueType,
-      isOverride: !!override,
     };
   });
 
-  const categoriesWithDates = allCategories.filter((c) => c.date);
-  const categoriesWithoutDates = allCategories.filter((c) => !c.date);
+  const categoriesWithKm = allCategories.filter((c) => c.km != null);
 
-  // Find the earliest due date for the main display
-  const earliest = categoriesWithDates.length > 0
-    ? categoriesWithDates.reduce((a, b) => (a.date! < b.date! ? a : b))
+  // Find the smallest km for the main display
+  const earliest = categoriesWithKm.length > 0
+    ? categoriesWithKm.reduce((a, b) => (a.km! < b.km! ? a : b))
     : null;
 
-  const nextOilDate = earliest?.date || null;
+  const nextOilKm = earliest?.km ?? null;
 
-  const handleStartEdit = (category: string, currentDate: string | null, e?: React.MouseEvent) => {
+  const handleStartEdit = (category: string, currentKm: number | null, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     setEditingCategory(category);
-    setEditValue(currentDate || "");
+    setEditValue(currentKm != null ? String(currentKm) : "");
   };
 
   const handleSave = (dueType: string) => {
@@ -269,7 +268,7 @@ function OilChangeDueDateCard({
     setEditValue("");
   };
 
-  if (!nextOilDate && !canEdit) {
+  if (nextOilKm == null && !canEdit) {
     return (
       <Card>
         <CardContent className="p-4 flex items-center gap-3">
@@ -283,7 +282,7 @@ function OilChangeDueDateCard({
     );
   }
 
-  if (!nextOilDate && canEdit) {
+  if (nextOilKm == null && canEdit) {
     return (
       <Card className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => setExpanded(!expanded)}>
         <CardContent className="p-4">
@@ -319,8 +318,7 @@ function OilChangeDueDateCard({
     );
   }
 
-  const status = getDueStatus(nextOilDate!);
-  const formatted = new Date(nextOilDate!).toLocaleDateString("de-DE");
+  const formattedKm = nextOilKm!.toLocaleString("de-DE") + " km";
   const mainLabel = earliest
     ? `Nächster Ölwechsel (${earliest.label})`
     : "Nächster Ölwechsel";
@@ -334,22 +332,10 @@ function OilChangeDueDateCard({
         >
           <Droplets className="h-5 w-5 text-muted-foreground" />
           <div className="flex-1">
-            <p className={`text-lg font-bold ${DUE_STATUS_STYLES[status]}`}>
-              {formatted}
+            <p className="text-lg font-bold">
+              {formattedKm}
             </p>
-            <div className="flex items-center gap-1.5">
-              <p className="text-xs text-muted-foreground">{mainLabel}</p>
-              {status === "overdue" && (
-                <Badge className={`${DUE_STATUS_BADGE.overdue} border-0 text-[10px] px-1.5 py-0`}>
-                  Überfällig
-                </Badge>
-              )}
-              {status === "soon" && (
-                <Badge className={`${DUE_STATUS_BADGE.soon} border-0 text-[10px] px-1.5 py-0`}>
-                  Bald fällig
-                </Badge>
-              )}
-            </div>
+            <p className="text-xs text-muted-foreground">{mainLabel}</p>
           </div>
           {expanded
             ? <ChevronUp className="h-4 w-4 text-muted-foreground" />
@@ -388,12 +374,12 @@ function OilSubcategoryRow({
   onSave,
   onCancel,
 }: {
-  item: { category: string; label: string; date: string | null; dueType: string };
+  item: { category: string; label: string; km: number | null; dueType: string };
   canEdit: boolean;
   editingCategory: string | null;
   editValue: string;
   setEditValue: (v: string) => void;
-  onStartEdit: (category: string, date: string | null, e?: React.MouseEvent) => void;
+  onStartEdit: (category: string, km: number | null, e?: React.MouseEvent) => void;
   onSave: (dueType: string) => void;
   onCancel: () => void;
 }) {
@@ -403,7 +389,8 @@ function OilSubcategoryRow({
         <Droplets className="h-3 w-3 text-amber-600 shrink-0" />
         <span className="text-sm shrink-0">{item.label}</span>
         <Input
-          type="date"
+          type="number"
+          placeholder="km"
           value={editValue}
           onChange={(e) => setEditValue(e.target.value)}
           className="h-7 text-xs flex-1"
@@ -423,38 +410,25 @@ function OilSubcategoryRow({
     );
   }
 
-  if (item.date) {
-    const itemStatus = getDueStatus(item.date);
+  if (item.km != null) {
     return (
       <div
         className={`flex items-center justify-between text-sm ${canEdit ? "cursor-pointer hover:bg-muted/50 rounded px-1 -mx-1 py-0.5" : ""}`}
-        onClick={canEdit ? (e) => onStartEdit(item.category, item.date, e) : undefined}
+        onClick={canEdit ? (e) => onStartEdit(item.category, item.km, e) : undefined}
       >
         <div className="flex items-center gap-2">
           <Droplets className="h-3 w-3 text-amber-600" />
           <span>{item.label}</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <span className={DUE_STATUS_STYLES[itemStatus]}>
-            {new Date(item.date).toLocaleDateString("de-DE")}
-          </span>
-          {itemStatus === "overdue" && (
-            <Badge className={`${DUE_STATUS_BADGE.overdue} border-0 text-[10px] px-1.5 py-0`}>
-              Überfällig
-            </Badge>
-          )}
-          {itemStatus === "soon" && (
-            <Badge className={`${DUE_STATUS_BADGE.soon} border-0 text-[10px] px-1.5 py-0`}>
-              Bald fällig
-            </Badge>
-          )}
+          <span>{item.km.toLocaleString("de-DE")} km</span>
           {canEdit && <Pencil className="h-3 w-3 text-muted-foreground" />}
         </div>
       </div>
     );
   }
 
-  // No date — show "add" option
+  // No km — show "add" option
   if (canEdit) {
     return (
       <div
@@ -466,7 +440,7 @@ function OilSubcategoryRow({
           <span>{item.label}</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <span className="text-xs">Termin hinzufügen</span>
+          <span className="text-xs">km hinzufügen</span>
           <Plus className="h-3 w-3" />
         </div>
       </div>
@@ -681,9 +655,9 @@ function ServiceEntryCard({
                         ? cat.custom_label
                         : getOilCategoryLabel(cat.category)}
                     </span>
-                    {cat.next_due_date && (
+                    {cat.next_due_km != null && cat.next_due_km > 0 && (
                       <span className="text-xs text-muted-foreground">
-                        — fällig {new Date(cat.next_due_date).toLocaleDateString("de-DE")}
+                        — nächster Wechsel bei {cat.next_due_km.toLocaleString("de-DE")} km
                       </span>
                     )}
                   </div>
