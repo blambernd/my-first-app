@@ -982,6 +982,33 @@ export function VehicleTimeline({
   const handleDeleteMilestone = async (msId: string) => {
     try {
       const supabase = createClient();
+
+      // Fetch associated images and documents before deleting the milestone
+      const [{ data: images }, { data: documents }] = await Promise.all([
+        supabase
+          .from("vehicle_milestone_images")
+          .select("id, storage_path")
+          .eq("milestone_id", msId),
+        supabase
+          .from("vehicle_documents")
+          .select("id, storage_path")
+          .eq("milestone_id", msId),
+      ]);
+
+      // Delete files from storage
+      const imagePaths = (images ?? []).map((img) => img.storage_path).filter(Boolean);
+      const docPaths = (documents ?? []).map((doc) => doc.storage_path).filter(Boolean);
+
+      await Promise.all([
+        imagePaths.length > 0
+          ? supabase.storage.from("vehicle-images").remove(imagePaths)
+          : Promise.resolve(),
+        docPaths.length > 0
+          ? supabase.storage.from("vehicle-documents").remove(docPaths)
+          : Promise.resolve(),
+      ]);
+
+      // Delete milestone (cascade should handle DB rows, but clean up explicitly)
       const { error } = await supabase
         .from("vehicle_milestones")
         .delete()
