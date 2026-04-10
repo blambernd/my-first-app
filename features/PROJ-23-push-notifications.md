@@ -47,7 +47,184 @@
 <!-- Sections below are added by subsequent skills -->
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture_
+
+### Überblick
+Web Push Notifications für Termin-Erinnerungen (TÜV, Service, Ölwechsel). Der Nutzer wird im Browser gefragt ob er Push-Benachrichtigungen erlauben möchte. Wird erlaubt, speichert der Server das Push-Abonnement und sendet bei fälligen Terminen automatisch Push-Nachrichten — auch wenn die App/Website geschlossen ist.
+
+**Warum Web Push statt nativ (APNs/FCM)?**
+Die App wird primär im Browser genutzt. Web Push funktioniert sofort für alle Nutzer ohne App-Store-Installation. Native Push über Capacitor kann in Phase 2 ergänzt werden — die Server-Logik bleibt identisch.
+
+### Architektur
+
+```
+Nutzer öffnet App im Browser
+|
+v
++------------------------------------------+
+|  Benachrichtigungs-Banner (einmalig)     |
+|  "Möchtest du Push-Benachrichtigungen    |
+|   für Termine erhalten?"                 |
+|  [Ja, aktivieren]    [Nein danke]        |
++------------------------------------------+
+          |
+          v (Ja)
++------------------------------------------+
+|  Browser fragt: "Benachrichtigungen      |
+|  erlauben?" (System-Dialog)              |
++------------------------------------------+
+          |
+          v (Erlaubt)
++------------------------------------------+
+|  Push-Abo wird gespeichert               |
+|  → API: POST /api/push/subscribe         |
+|  → Tabelle: push_subscriptions           |
++------------------------------------------+
+
+--- Jeden Tag um 08:00 UTC (Cron) ---
+
++------------------------------------------+
+|  /api/cron/check-reminders               |
+|  (existiert bereits!)                    |
+|                                          |
+|  1. Fällige Termine suchen               |
+|  2. In-App-Notification erstellen (✓)    |
+|  3. E-Mail senden (✓, existiert)         |
+|  4. NEU: Web Push senden                 |
+|     → Push-Abos des Nutzers laden        |
+|     → web-push Library nutzen            |
+|     → Push an jeden Browser senden       |
++------------------------------------------+
+          |
+          v
++------------------------------------------+
+|  Push-Nachricht erscheint                |
+|  +------------------------------------+  |
+|  | 🔔 Oldtimer Docs                   |  |
+|  | TÜV/HU für BMW 2002 (1974)         |  |
+|  | in 7 Tagen fällig (17.04.2026)     |  |
+|  +------------------------------------+  |
+|  Klick → öffnet Fahrzeugseite            |
++------------------------------------------+
+```
+
+### Betroffene Bereiche
+
+#### 1. Push-Berechtigung einholen (Frontend)
+```
+Profil-Seite / Dashboard
++-- Push-Benachrichtigungs-Karte
+|   +-- Status: Aktiviert / Deaktiviert
+|   +-- [Aktivieren] Button (wenn noch nicht erlaubt)
+|   +-- Einstellungs-Optionen:
+|       +-- Erinnerungszeitraum: 1 Tag / 7 Tage / 14 Tage / 30 Tage
+|       +-- TÜV-Erinnerungen: An/Aus
+|       +-- Service-Erinnerungen: An/Aus
+```
+
+- Beim ersten Besuch: Dezenter Hinweis-Banner am Seitenende
+- Kein aggressives Popup beim Seitenaufruf — Nutzer entscheidet selbst
+- Wenn System-Berechtigung verweigert: Hinweis mit Anleitung zur Reaktivierung
+
+#### 2. Push-Abo speichern (Backend)
+```
+Neuer API-Endpunkt: POST /api/push/subscribe
+- Empfängt: Push-Subscription-Objekt vom Browser
+- Speichert: Endpoint, Keys (p256dh, auth) in push_subscriptions
+
+Neuer API-Endpunkt: DELETE /api/push/subscribe
+- Entfernt das Push-Abo wenn Nutzer deaktiviert
+```
+
+#### 3. Bestehenden Cron erweitern (Backend)
+```
+Bestehend (/api/cron/check-reminders):
+  ✓ Fällige Termine finden
+  ✓ In-App-Notification erstellen
+  ✓ E-Mail senden via Resend
+
+Neu hinzufügen:
+  → Push-Abos des Nutzers laden
+  → Nutzer-Präferenzen prüfen (Typ aktiviert? Zeitraum passend?)
+  → Web Push senden via web-push Library
+  → Bei ungültigem Abo: Eintrag löschen (Deinstallation/Widerruf)
+```
+
+#### 4. Benachrichtigungs-Einstellungen (Frontend + Backend)
+```
+Profil-Seite (/profil)
++-- Bereich "Benachrichtigungen"
+    +-- Push-Status (Aktiviert/Deaktiviert mit Toggle)
+    +-- Erinnerungszeitraum (Dropdown: 1/7/14/30 Tage)
+    +-- Typ-Filter:
+        +-- TÜV/HU-Erinnerungen (Toggle)
+        +-- Service-Erinnerungen (Toggle)
+        +-- Ölwechsel-Erinnerungen (Toggle)
+```
+
+#### 5. Service Worker erweitern
+```
+Bestehender Service Worker (sw.js):
+  ✓ Asset-Caching
+
+Neu hinzufügen:
+  → push Event-Handler: Notification anzeigen
+  → notificationclick Event-Handler: App öffnen auf Fahrzeugseite
+```
+
+### Datenmodell
+
+```
+Push-Abonnement (push_subscriptions):
+- Eindeutige ID
+- Nutzer-ID (Verknüpfung zum Account)
+- Push-Endpoint (URL des Browser-Push-Dienstes)
+- Verschlüsselungs-Keys (p256dh + auth — für Ende-zu-Ende-Verschlüsselung)
+- Plattform (web / ios / android — für Phase 2)
+- Erstellungsdatum
+
+Gespeichert in: Supabase-Datenbank mit RLS (Nutzer sieht nur eigene Abos)
+
+Benachrichtigungs-Einstellungen (notification_preferences):
+- Eindeutige ID
+- Nutzer-ID
+- Erinnerungs-Vorlauf in Tagen (Standard: 7)
+- TÜV-Erinnerungen aktiv (Standard: Ja)
+- Service-Erinnerungen aktiv (Standard: Ja)
+- Ölwechsel-Erinnerungen aktiv (Standard: Ja)
+
+Gespeichert in: Supabase-Datenbank mit RLS
+```
+
+### Technische Entscheidungen
+
+| Entscheidung | Gewählt | Warum |
+|---|---|---|
+| Push-Technologie | Web Push API | Funktioniert in allen modernen Browsern (Chrome, Firefox, Edge, Safari 16+) ohne App-Installation. Nutzer können sofort profitieren. |
+| Push-Versand | web-push (npm) | Bewährte Open-Source-Library für serverseitigen Web Push. Handhabt Verschlüsselung und Protokoll automatisch. |
+| Zeitpunkt | Bestehender Cron (08:00 UTC) | Cron existiert bereits, Push wird als dritter Kanal neben In-App und E-Mail ergänzt. Kein neuer Cron nötig. |
+| VAPID-Keys | Einmalig generiert, als Env-Var | Standard-Authentifizierung für Web Push. Einmal generieren, in Vercel-Env speichern. |
+| Opt-In-Strategie | Nutzer-initiiert, kein Auto-Popup | Aggressive Push-Dialoge führen zu hoher Ablehnungsrate. Dezenter Hinweis + Einstellungsseite ist nutzerfreundlicher. |
+| Einstellungen | Pro Nutzer, nicht pro Gerät | Ein Nutzer kann mehrere Geräte haben. Einstellungen gelten global, Push wird an alle registrierten Geräte gesendet. |
+
+### Dependencies
+- **web-push** — Serverseitige Web Push Notification Library (VAPID-Verschlüsselung + Versand)
+
+### Implementierungs-Reihenfolge
+1. **VAPID-Keys generieren** — Einmalig, als Env-Var in Vercel speichern
+2. **Datenbank-Tabellen** — push_subscriptions + notification_preferences
+3. **Service Worker erweitern** — push + notificationclick Events
+4. **Subscribe-API** — POST/DELETE /api/push/subscribe
+5. **Push-Banner-Komponente** — Dezenter Opt-In im Dashboard
+6. **Einstellungsseite** — Push-Präferenzen auf der Profil-Seite
+7. **Cron erweitern** — Web Push als dritten Kanal neben E-Mail + In-App
+8. **Preferences-API** — GET/PUT /api/push/preferences
+
+### Browser-Kompatibilität
+- Chrome/Edge: Vollständig unterstützt
+- Firefox: Vollständig unterstützt
+- Safari 16+: Unterstützt (seit 2023)
+- Mobile Safari (iOS 16.4+): Unterstützt wenn als PWA installiert
+- Capacitor-App: Web Push funktioniert im WebView; native Push (APNs/FCM) als Phase 2
 
 ## QA Test Results
 _To be added by /qa_
