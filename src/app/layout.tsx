@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { SiteFooter } from "@/components/site-footer";
 import { OfflineBanner } from "@/components/offline-banner";
 import { CookieConsentBanner } from "@/components/cookie-consent-banner";
@@ -23,6 +23,9 @@ export const metadata: Metadata = {
     ],
     apple: "/apple-touch-icon.png",
   },
+};
+
+export const viewport: Viewport = {
   themeColor: "hsl(220, 60%, 22%)",
 };
 
