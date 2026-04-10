@@ -48,7 +48,8 @@ export function DeleteAccountButton() {
   return (
     <AlertDialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setConfirmInput(""); }}>
       <AlertDialogTrigger asChild>
-        <button className="w-full text-left px-2 py-1.5 text-sm text-destructive">
+        <button className="w-full text-left px-2 py-1.5 text-sm text-destructive flex items-center gap-2">
+          <Trash2 className="h-4 w-4" />
           Account löschen
         </button>
       </AlertDialogTrigger>
