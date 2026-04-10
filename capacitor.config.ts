@@ -6,7 +6,7 @@ const config: CapacitorConfig = {
   webDir: "out",
   server: {
     // In production: load the live Vercel URL
-    url: "https://my-first-app-blambernd.vercel.app",
+    url: "https://www.oldtimer-docs.com",
     cleartext: false,
   },
   plugins: {
