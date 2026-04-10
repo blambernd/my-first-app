@@ -16,7 +16,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { createClient } from "@/lib/supabase";
 import {
   TRANSFER_STATUS_LABELS,
   type VehicleTransfer,
@@ -57,18 +56,19 @@ export function TransferStatus({ transfer, vehicleName, onUpdate }: TransferStat
   const cancelTransfer = async () => {
     setCancelling(true);
     try {
-      const supabase = createClient();
-      const { error } = await supabase
-        .from("vehicle_transfers")
-        .update({ status: "abgebrochen" })
-        .eq("id", transfer.id);
-
-      if (error) throw error;
-
+      const res = await fetch(`/api/transfers/${transfer.token}/cancel`, {
+        method: "POST",
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Fehler beim Abbrechen");
+      }
       toast.success("Transfer abgebrochen");
       onUpdate();
-    } catch {
-      toast.error("Fehler beim Abbrechen des Transfers");
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Fehler beim Abbrechen des Transfers"
+      );
     } finally {
       setCancelling(false);
     }
