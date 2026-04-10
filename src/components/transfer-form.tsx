@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
@@ -41,6 +42,7 @@ interface TransferFormProps {
 }
 
 export function TransferForm({ vehicleId, vehicleName, onSuccess }: TransferFormProps) {
+  const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [transferLink, setTransferLink] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -101,9 +103,12 @@ export function TransferForm({ vehicleId, vehicleName, onSuccess }: TransferForm
         // Email sending is best-effort; the link is the primary mechanism
       }
 
-      toast.success("Transfer gestartet — teile den Link mit dem neuen Besitzer");
+      toast.success("Transfer gestartet — der neue Besitzer wurde per E-Mail benachrichtigt.");
       form.reset();
       onSuccess();
+      setTimeout(() => {
+        router.push(`/vehicles/${vehicleId}`);
+      }, 2000);
     } catch {
       toast.error("Fehler beim Starten des Transfers");
     } finally {
