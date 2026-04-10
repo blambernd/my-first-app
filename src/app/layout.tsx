@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Analytics } from "@vercel/analytics/next";
 import { SiteFooter } from "@/components/site-footer";
 import { OfflineBanner } from "@/components/offline-banner";
+import { CookieConsentBanner } from "@/components/cookie-consent-banner";
 import { ServiceWorkerRegister } from "@/components/service-worker-register";
 import "./globals.css";
 
@@ -39,6 +40,7 @@ export default function RootLayout({
         <div className="flex-1">{children}</div>
         <SiteFooter />
         <OfflineBanner />
+        <CookieConsentBanner />
         <ServiceWorkerRegister />
         <Analytics />
       </body>
