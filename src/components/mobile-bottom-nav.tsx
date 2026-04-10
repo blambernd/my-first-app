@@ -55,9 +55,9 @@ export function MobileBottomNav() {
         <PendingRequestsBell mobileLabel="Anfragen" />
 
         {/* Notifications */}
-        <div className="flex-1 flex flex-col items-center justify-center gap-0.5 h-full text-[10px] font-medium text-muted-foreground">
+        <div className="flex-1 flex flex-col items-center justify-center gap-0.5 h-full text-[10px] font-medium text-muted-foreground [&_button]:h-5 [&_button]:w-5">
           <NotificationBell />
-          <span className="-mt-0.5">Meldungen</span>
+          <span>Meldungen</span>
         </div>
 
         {/* Menu */}
