@@ -51,6 +51,7 @@ import { MilestoneForm } from "@/components/milestone-form";
 import { createClient } from "@/lib/supabase";
 import {
   CATEGORY_CONFIG,
+  normalizeCategory,
   type MilestoneCategory,
   type VehicleMilestoneWithImages,
 } from "@/lib/validations/milestone";
@@ -209,8 +210,9 @@ function MilestoneCard({
   docCount: number;
   onClick: () => void;
 }) {
-  const config = CATEGORY_CONFIG[milestone.category];
-  const Icon = CATEGORY_ICONS[milestone.category];
+  const normalizedCat = normalizeCategory(milestone.category);
+  const config = CATEGORY_CONFIG[normalizedCat];
+  const Icon = CATEGORY_ICONS[normalizedCat];
   const imageCount = milestone.vehicle_milestone_images?.length ?? 0;
   const firstImage = milestone.vehicle_milestone_images?.[0];
 
@@ -502,8 +504,9 @@ function MilestoneDetail({
   canEdit: boolean;
 }) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
-  const config = CATEGORY_CONFIG[milestone.category];
-  const Icon = CATEGORY_ICONS[milestone.category];
+  const normalizedCat = normalizeCategory(milestone.category);
+  const config = CATEGORY_CONFIG[normalizedCat];
+  const Icon = CATEGORY_ICONS[normalizedCat];
   const images = [...(milestone.vehicle_milestone_images ?? [])].sort(
     (a, b) => a.position - b.position
   );

@@ -91,6 +91,8 @@ export default async function VehicleDetailPage({
         ? `${typedVehicle.mileage_km.toLocaleString("de-DE")} km`
         : null,
     },
+    { label: "Versicherung", value: typedVehicle.insurance_company },
+    { label: "Versicherungsnummer", value: typedVehicle.insurance_policy_number },
   ];
 
   return (

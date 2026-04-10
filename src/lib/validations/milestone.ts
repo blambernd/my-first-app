@@ -28,8 +28,15 @@ export const CATEGORY_CONFIG: Record<
   sonstiges: { label: "Sonstiges", color: "text-gray-600 bg-gray-100" },
 };
 
+/** Map legacy DB categories to current ones (e.g. "besitzerwechsel" → "kauf") */
+export function normalizeCategory(category: string): MilestoneCategory {
+  if (category === "besitzerwechsel") return "kauf";
+  if (MILESTONE_CATEGORIES.includes(category as MilestoneCategory)) return category as MilestoneCategory;
+  return "sonstiges";
+}
+
 export function getCategoryLabel(category: string): string {
-  return CATEGORY_CONFIG[category as MilestoneCategory]?.label ?? category;
+  return CATEGORY_CONFIG[normalizeCategory(category)]?.label ?? category;
 }
 
 export const milestoneSchema = z.object({
