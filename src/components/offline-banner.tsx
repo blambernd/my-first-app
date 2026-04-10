@@ -5,13 +5,15 @@ import { WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export function OfflineBanner() {
-  const [isOffline, setIsOffline] = useState(
-    () => typeof navigator !== "undefined" && !navigator.onLine
-  );
+  const [isOffline, setIsOffline] = useState(false);
 
   useEffect(() => {
     const goOffline = () => setIsOffline(true);
     const goOnline = () => setIsOffline(false);
+
+    // Check initial state after mount (safe on client only)
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (!navigator.onLine) setIsOffline(true);
 
     window.addEventListener("offline", goOffline);
     window.addEventListener("online", goOnline);
