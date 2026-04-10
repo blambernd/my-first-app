@@ -543,8 +543,8 @@ export function ServiceEntryForm({
               )}
             />
 
-            {/* Hide "Nächster Termin" for oil_change — km is stored per subcategory */}
-            {watchEntryType !== "oil_change" && (
+            {/* Show "Nächster Termin" only for inspection, tuv_hu, other */}
+            {!["oil_change", "repair", "restoration"].includes(watchEntryType) && (
               <FormField
                 control={form.control}
                 name="next_due_date"
