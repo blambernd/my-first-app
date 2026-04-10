@@ -111,7 +111,16 @@ export function PublicProfile({ token }: PublicProfileProps) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const touchStartX = useRef<number | null>(null);
 
-  const allImages = data?.fotos ?? [];
+  // Combine vehicle photos + milestone images into one gallery
+  const allImages: { storage_path: string; alt: string }[] = [
+    ...(data?.fotos ?? []).map((f) => ({ storage_path: f.storage_path, alt: "Fahrzeugbild" })),
+    ...(data?.meilensteine ?? []).flatMap((m) =>
+      m.vehicle_milestone_images.map((img) => ({
+        storage_path: img.storage_path,
+        alt: img.caption || m.title,
+      }))
+    ),
+  ];
 
   const closeLightbox = useCallback(() => setLightboxIndex(null), []);
   const prevImage = useCallback(() => {
@@ -218,7 +227,7 @@ export function PublicProfile({ token }: PublicProfileProps) {
               type="button"
               className="rounded-lg overflow-hidden bg-muted/30 aspect-[21/9] max-h-[300px] w-full cursor-pointer"
               onClick={() => {
-                const idx = allImages.findIndex((f) => f.id === primaryImage.id);
+                const idx = allImages.findIndex((f) => f.storage_path === primaryImage.storage_path);
                 setLightboxIndex(idx >= 0 ? idx : 0);
               }}
             >
@@ -250,7 +259,7 @@ export function PublicProfile({ token }: PublicProfileProps) {
             {data.fotos
               .filter((f) => f.id !== primaryImage?.id)
               .map((foto) => {
-                const idx = allImages.findIndex((f) => f.id === foto.id);
+                const idx = allImages.findIndex((f) => f.storage_path === foto.storage_path);
                 return (
                   <button
                     type="button"
@@ -455,18 +464,23 @@ export function PublicProfile({ token }: PublicProfileProps) {
                           )}
                           {milestone.vehicle_milestone_images.length > 0 && (
                             <div className="flex gap-2 mt-2 overflow-x-auto pb-1">
-                              {milestone.vehicle_milestone_images.map((img) => (
-                                <div
-                                  key={img.id}
-                                  className="shrink-0 w-28 h-20 rounded-md overflow-hidden bg-muted/30"
-                                >
-                                  <img
-                                    src={getImageUrl(img.storage_path)}
-                                    alt={img.caption || "Bild"}
-                                    className="w-full h-full object-cover"
-                                  />
-                                </div>
-                              ))}
+                              {milestone.vehicle_milestone_images.map((img) => {
+                                const idx = allImages.findIndex((f) => f.storage_path === img.storage_path);
+                                return (
+                                  <button
+                                    type="button"
+                                    key={img.id}
+                                    className="shrink-0 w-28 h-20 rounded-md overflow-hidden bg-muted/30 cursor-pointer"
+                                    onClick={() => setLightboxIndex(idx >= 0 ? idx : 0)}
+                                  >
+                                    <img
+                                      src={getImageUrl(img.storage_path)}
+                                      alt={img.caption || "Bild"}
+                                      className="w-full h-full object-cover"
+                                    />
+                                  </button>
+                                );
+                              })}
                             </div>
                           )}
                         </div>
@@ -581,7 +595,7 @@ export function PublicProfile({ token }: PublicProfileProps) {
             {/* Image */}
             <img
               src={getImageUrl(allImages[lightboxIndex].storage_path)}
-              alt={`Bild ${lightboxIndex + 1}`}
+              alt={allImages[lightboxIndex].alt}
               className="max-w-[90vw] max-h-[85vh] object-contain select-none"
               onClick={(e) => e.stopPropagation()}
               draggable={false}
