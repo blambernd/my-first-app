@@ -60,12 +60,13 @@ export default async function DashboardPage() {
   const effectivePlan = subscription ? getEffectivePlan(subscription) : isBetaMode ? "premium" : "free";
   const canAdd = canAddVehicle(effectivePlan, typedVehicles.length);
 
-  // Pending invitations for this user
+  // Pending invitations addressed to this user (not ones they sent)
   const { data: rawInvitations } = await supabase
     .from("vehicle_invitations")
     .select("id, token, role, expires_at, vehicle_id, vehicles(make, model)")
-    .eq("email", user.email!.toLowerCase())
+    .ilike("email", user.email!)
     .eq("status", "offen")
+    .neq("invited_by", user.id)
     .gt("expires_at", new Date().toISOString())
     .order("created_at", { ascending: false })
     .limit(10);
