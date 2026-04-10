@@ -105,20 +105,69 @@ export function matchesFactoryCode(
 }
 
 /**
+ * Extract price from SerpAPI rich_snippet or structured data.
+ * SerpAPI may return price info in rich_snippet.top.detected_extensions,
+ * rich_snippet.top.extensions, or other structured fields.
+ */
+export function extractRichSnippetPrice(item: Record<string, unknown>): number | null {
+  // Check rich_snippet.top.detected_extensions.price
+  const richSnippet = item.rich_snippet as Record<string, unknown> | undefined;
+  if (richSnippet?.top) {
+    const top = richSnippet.top as Record<string, unknown>;
+    const detected = top.detected_extensions as Record<string, unknown> | undefined;
+    if (detected?.price) {
+      const price = Number(detected.price);
+      if (!isNaN(price) && price >= 1000 && price <= 5_000_000) return price;
+    }
+    // Check extensions array for price strings
+    const extensions = top.extensions as string[] | undefined;
+    if (extensions) {
+      for (const ext of extensions) {
+        const price = parsePrice(ext);
+        if (price !== null) return price;
+      }
+    }
+  }
+
+  // Check displayed_link or other fields that might contain price
+  const richSnippetBottom = richSnippet?.bottom as Record<string, unknown> | undefined;
+  if (richSnippetBottom?.extensions) {
+    const extensions = richSnippetBottom.extensions as string[];
+    for (const ext of extensions) {
+      const price = parsePrice(ext);
+      if (price !== null) return price;
+    }
+  }
+
+  // SerpAPI sometimes includes price in a top-level "price" field
+  if (item.price) {
+    const priceStr = String(item.price);
+    const price = parsePrice(priceStr);
+    if (price !== null) return price;
+  }
+
+  return null;
+}
+
+/**
  * Parse a price from text (German format: "25.000 €", "25000€", "EUR 25.000").
  * Returns null if no price found or price is implausible.
  */
 export function parsePrice(text: string): number | null {
   // Patterns with dot as thousands separator (German: "25.900")
   const dotThousands = [
-    /(\d{1,3}(?:\.\d{3})+)\s*[,\-]*\s*€/,
-    /€\s*(\d{1,3}(?:\.\d{3})+)/,
-    /EUR\s*(\d{1,3}(?:\.\d{3})+)/,
-    /Preis[:\s]*(\d{1,3}(?:\.\d{3})+)/i,
-    /VB\s*(\d{1,3}(?:\.\d{3})+)/i,
-    /VHB\s*(\d{1,3}(?:\.\d{3})+)/i,
-    /(\d{1,3}(?:\.\d{3})+)\s*(?:VB|VHB)/i,
-    /(\d{1,3}(?:\.\d{3})+)\s*,-/,
+    /(\d{1,3}(?:\.\d{3})+),\d{2}\s*€/,           // "25.900,00 €"
+    /(\d{1,3}(?:\.\d{3})+)\s*[,\-]*\s*€/,         // "25.900 €", "25.900,-€"
+    /€\s*(\d{1,3}(?:\.\d{3})+)/,                   // "€ 25.900"
+    /EUR\s*(\d{1,3}(?:\.\d{3})+)/i,                // "EUR 25.900"
+    /Preis[:\s]*(\d{1,3}(?:\.\d{3})+)/i,           // "Preis: 25.900"
+    /VB\s*(\d{1,3}(?:\.\d{3})+)/i,                 // "VB 25.900"
+    /VHB\s*(\d{1,3}(?:\.\d{3})+)/i,                // "VHB 25.900"
+    /(\d{1,3}(?:\.\d{3})+)\s*(?:VB|VHB)/i,         // "25.900 VB"
+    /(\d{1,3}(?:\.\d{3})+)\s*,-/,                   // "25.900,-"
+    /(\d{1,3}(?:\.\d{3})+)\s*,\s*-\s*€/,           // "25.900, - €"
+    /ab\s*(\d{1,3}(?:\.\d{3})+)\b/i,               // "ab 25.900"
+    /for\s*€?\s*(\d{1,3}(?:\.\d{3})+)/i,           // "for €25.900"
   ];
 
   for (const pattern of dotThousands) {
@@ -157,6 +206,20 @@ export function parsePrice(text: string): number | null {
   if (spaceMatch) {
     const price = parseInt(spaceMatch[1].replace(/\s/g, ""), 10);
     if (!isNaN(price) && price >= 1000 && price <= 5_000_000) {
+      return price;
+    }
+  }
+
+  // Fallback: dot-separated number NOT followed by "km" (e.g. "25.900" standalone)
+  const fallbackDot = /\b(\d{1,3}(?:\.\d{3})+)\b/g;
+  let fallbackMatch: RegExpExecArray | null;
+  while ((fallbackMatch = fallbackDot.exec(text)) !== null) {
+    // Skip if followed by "km"
+    const after = text.slice(fallbackMatch.index + fallbackMatch[0].length, fallbackMatch.index + fallbackMatch[0].length + 5);
+    if (/^\s*km/i.test(after)) continue;
+    const priceStr = fallbackMatch[1].replace(/\./g, "");
+    const price = parseInt(priceStr, 10);
+    if (!isNaN(price) && price >= 2000 && price <= 5_000_000) {
       return price;
     }
   }

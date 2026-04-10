@@ -1,6 +1,6 @@
 import { getJson } from "serpapi";
 import type { MarketSearchParams, MarketListing, MarketSearchResult } from "./types";
-import { isSparePartListing, parsePrice, isPricePlausible, matchesFactoryCode } from "./filters";
+import { isSparePartListing, parsePrice, isPricePlausible, matchesFactoryCode, extractRichSnippetPrice } from "./filters";
 
 /**
  * Build a Google Search query for finding vehicle listings on a specific platform.
@@ -85,8 +85,8 @@ async function searchPlatform(
       // Filter: check factory code match (e.g. reject W124 when searching W123)
       if (params.factoryCode && !matchesFactoryCode(title, snippet, params.factoryCode)) continue;
 
-      // Try to extract price from title first, then snippet
-      const price = parsePrice(title) ?? parsePrice(snippet);
+      // Try to extract price from rich snippet, title, then snippet
+      const price = extractRichSnippetPrice(item) ?? parsePrice(title) ?? parsePrice(snippet);
 
       // Validate price plausibility
       if (price !== null && !isPricePlausible(price, title, snippet)) continue;
