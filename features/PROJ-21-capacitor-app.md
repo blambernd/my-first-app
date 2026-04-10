@@ -1,6 +1,6 @@
 # PROJ-21: Capacitor App Setup
 
-## Status: Approved
+## Status: Deployed
 **Created:** 2026-04-09
 **Last Updated:** 2026-04-09
 
@@ -408,4 +408,8 @@ Kein neues Datenmodell — die App nutzt die bestehende Supabase-Datenbank über
 - **Recommendation:** Deploy web-side changes. Fix BUG-1 (.gitignore) before committing. The 6 N/A criteria are deferred to when native builds are set up on macOS.
 
 ## Deployment
-_To be added by /deploy_
+
+- **Production URL:** https://my-first-app-blambernd.vercel.app
+- **Deployed:** 2026-04-10
+- **Commit:** 07d3c91
+- **Notes:** Web-side Capacitor setup deployed. Native builds (iOS/Android) require macOS with Xcode and Android Studio respectively. The Capacitor WebView will load the production Vercel URL.
