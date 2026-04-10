@@ -60,28 +60,32 @@ export default async function DashboardPage() {
   const effectivePlan = subscription ? getEffectivePlan(subscription) : isBetaMode ? "premium" : "free";
   const canAdd = canAddVehicle(effectivePlan, typedVehicles.length);
 
-  // Pending invitations addressed to this user (not ones they sent)
+  // Pending invitations addressed to this user
+  // RLS returns: invitations for owned vehicles + invitations matching user email
+  // We filter to only those NOT for vehicles the user already owns
+  const ownedVehicleIds = new Set(typedVehicles.map((v) => v.id));
+
   const { data: rawInvitations } = await supabase
     .from("vehicle_invitations")
     .select("id, token, role, expires_at, vehicle_id, vehicles(make, model)")
-    .ilike("email", user.email!)
     .eq("status", "offen")
-    .neq("invited_by", user.id)
     .gt("expires_at", new Date().toISOString())
     .order("created_at", { ascending: false })
-    .limit(10);
+    .limit(20);
 
-  const pendingInvitations: DashboardInvitation[] = (rawInvitations ?? []).map((inv) => {
-    const v = inv.vehicles as unknown as { make: string; model: string } | null;
-    return {
-      id: inv.id,
-      token: inv.token,
-      vehicle_name: v ? `${v.make} ${v.model}` : "Fahrzeug",
-      role: inv.role as DashboardInvitation["role"],
-      expires_at: inv.expires_at,
-      invited_by_email: "",
-    };
-  });
+  const pendingInvitations: DashboardInvitation[] = (rawInvitations ?? [])
+    .filter((inv) => !ownedVehicleIds.has(inv.vehicle_id))
+    .map((inv) => {
+      const v = inv.vehicles as unknown as { make: string; model: string } | null;
+      return {
+        id: inv.id,
+        token: inv.token,
+        vehicle_name: v ? `${v.make} ${v.model}` : "Fahrzeug",
+        role: inv.role as DashboardInvitation["role"],
+        expires_at: inv.expires_at,
+        invited_by_email: "",
+      };
+    });
 
   return (
     <div className="bg-muted/40">
