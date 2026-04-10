@@ -12,6 +12,9 @@ export function SiteFooter() {
           <Link href="/datenschutz" className="hover:text-foreground transition-colors">
             Datenschutz
           </Link>
+          <Link href="/agb" className="hover:text-foreground transition-colors">
+            AGB
+          </Link>
           <Link href="/haftung" className="hover:text-foreground transition-colors">
             Haftung
           </Link>
