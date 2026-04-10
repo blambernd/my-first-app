@@ -51,11 +51,8 @@ export function MobileBottomNav() {
           Einstellungen
         </Link>
 
-        {/* Pending Requests */}
-        <div className="flex flex-col items-center justify-center gap-0.5 min-w-[64px] h-full px-2 text-[10px] font-medium text-muted-foreground">
-          <PendingRequestsBell />
-          <span className="-mt-0.5">Anfragen</span>
-        </div>
+        {/* Pending Requests — only renders when there are open requests */}
+        <PendingRequestsBell mobileLabel="Anfragen" />
 
         {/* Notifications */}
         <div className="flex flex-col items-center justify-center gap-0.5 min-w-[64px] h-full px-2 text-[10px] font-medium text-muted-foreground">

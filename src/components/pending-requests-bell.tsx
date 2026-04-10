@@ -34,7 +34,11 @@ interface PendingInvitation {
   expires_at: string;
 }
 
-export function PendingRequestsBell() {
+interface PendingRequestsBellProps {
+  mobileLabel?: string;
+}
+
+export function PendingRequestsBell({ mobileLabel }: PendingRequestsBellProps = {}) {
   const router = useRouter();
   const [transfers, setTransfers] = useState<PendingTransfer[]>([]);
   const [invitations, setInvitations] = useState<PendingInvitation[]>([]);
@@ -113,19 +117,24 @@ export function PendingRequestsBell() {
   // Don't render until loaded, and hide if nothing pending
   if (!loaded || totalCount === 0) return null;
 
+  const trigger = (
+    <Button
+      variant="ghost"
+      size="icon"
+      className="relative h-9 w-9 text-muted-foreground hover:text-foreground"
+    >
+      <Inbox className="h-4 w-4" />
+      <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-blue-600 text-[10px] font-medium text-white">
+        {totalCount > 9 ? "9+" : totalCount}
+      </span>
+    </Button>
+  );
+
   return (
+    <div className={mobileLabel ? "flex flex-col items-center justify-center gap-0.5 min-w-[64px] h-full px-2 text-[10px] font-medium text-muted-foreground" : undefined}>
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="relative h-9 w-9 text-muted-foreground hover:text-foreground"
-        >
-          <Inbox className="h-4 w-4" />
-          <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-blue-600 text-[10px] font-medium text-white">
-            {totalCount > 9 ? "9+" : totalCount}
-          </span>
-        </Button>
+        {trigger}
       </PopoverTrigger>
       <PopoverContent className="w-80 p-0" align="end">
         <div className="px-4 py-3 border-b">
@@ -197,5 +206,7 @@ export function PendingRequestsBell() {
         </ScrollArea>
       </PopoverContent>
     </Popover>
+    {mobileLabel && <span className="-mt-0.5">{mobileLabel}</span>}
+    </div>
   );
 }
