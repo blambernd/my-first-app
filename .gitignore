@@ -36,6 +36,10 @@ yarn-error.log*
 # claude code personal settings
 .claude/settings.local.json
 
+# capacitor native platforms (generated)
+/ios/
+/android/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
