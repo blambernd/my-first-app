@@ -4,9 +4,12 @@ import { BrandLogoWithText } from "@/components/brand-logo";
 import { ContactForm } from "@/components/contact-form";
 
 export const metadata: Metadata = {
-  title: "Kontakt – Oldtimer Docs",
+  title: "Kontakt & Feedback",
   description:
     "Kontaktieren Sie uns – allgemeine Anfragen, Verbesserungsvorschläge, Bugs melden oder Fragen zu Ihrem Account.",
+  alternates: {
+    canonical: "/kontakt",
+  },
 };
 
 export default function KontaktPage() {

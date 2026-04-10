@@ -10,14 +10,40 @@ import {
 } from "@/components/ui/accordion";
 
 export const metadata: Metadata = {
-  title: "FAQ - Oldtimer Docs",
+  title: "Häufig gestellte Fragen (FAQ)",
   description:
     "Antworten auf die wichtigsten Fragen zu Oldtimer Docs: Fahrzeughistorie dokumentieren, Scheckheft, Dokumente, Verkaufsinserate und mehr.",
+  alternates: {
+    canonical: "/faq",
+  },
 };
+
+function FaqJsonLd() {
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: faqs.map((faq) => ({
+      "@type": "Question",
+      name: faq.question,
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: faq.answer,
+      },
+    })),
+  };
+
+  return (
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+    />
+  );
+}
 
 export default function FaqPage() {
   return (
     <div className="min-h-screen flex flex-col">
+      <FaqJsonLd />
       <header className="border-b bg-background">
         <div className="container mx-auto flex h-16 items-center px-4">
           <Link href="/" className="hover:opacity-80 transition-opacity">
