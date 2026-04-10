@@ -1,6 +1,6 @@
 # PROJ-22: Kamera-Integration
 
-## Status: Approved
+## Status: Deployed
 **Created:** 2026-04-09
 **Last Updated:** 2026-04-09
 
@@ -274,4 +274,7 @@ Kein neues Datenmodell — aufgenommene Fotos durchlaufen denselben Upload-Pfad 
 - **Recommendation:** Deploy as-is. Fix BUG-1 and BUG-2 when building Phase 2 (Capacitor integration).
 
 ## Deployment
-_To be added by /deploy_
+
+**Deployed:** 2026-04-10
+**Production URL:** https://my-first-app-blambernd.vercel.app
+**Commit:** 915212c
