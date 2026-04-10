@@ -16,53 +16,22 @@ export async function POST(
     return NextResponse.json({ error: "Nicht angemeldet" }, { status: 401 });
   }
 
-  // Find the transfer by token
-  const { data: transfer, error: findError } = await supabase
-    .from("vehicle_transfers")
-    .select("id, status, vehicle_id")
-    .eq("token", token)
-    .single();
+  const { data, error } = await supabase.rpc("cancel_vehicle_transfer", {
+    p_token: token,
+  });
 
-  if (findError || !transfer) {
-    return NextResponse.json(
-      { error: "Transfer nicht gefunden" },
-      { status: 404 }
-    );
-  }
-
-  if (transfer.status !== "offen") {
-    return NextResponse.json(
-      { error: "Transfer ist nicht mehr aktiv" },
-      { status: 400 }
-    );
-  }
-
-  // Verify the user owns this vehicle
-  const { data: vehicle } = await supabase
-    .from("vehicles")
-    .select("id")
-    .eq("id", transfer.vehicle_id)
-    .eq("user_id", user.id)
-    .single();
-
-  if (!vehicle) {
-    return NextResponse.json(
-      { error: "Nur der Besitzer kann den Transfer abbrechen" },
-      { status: 403 }
-    );
-  }
-
-  const { error: updateError } = await supabase
-    .from("vehicle_transfers")
-    .update({ status: "abgebrochen" })
-    .eq("id", transfer.id);
-
-  if (updateError) {
-    console.error("Transfer cancel error:", updateError);
+  if (error) {
+    console.error("Transfer cancel RPC error:", error);
     return NextResponse.json(
       { error: "Fehler beim Abbrechen des Transfers" },
       { status: 500 }
     );
+  }
+
+  const result = data as { error?: string; success?: boolean };
+
+  if (result.error) {
+    return NextResponse.json({ error: result.error }, { status: 400 });
   }
 
   return NextResponse.json({ success: true });

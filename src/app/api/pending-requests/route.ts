@@ -12,53 +12,20 @@ export async function GET() {
     return NextResponse.json({ transfers: [], invitations: [] });
   }
 
-  const now = new Date().toISOString();
+  const { data, error } = await supabase.rpc("get_pending_requests");
 
-  // Get user's owned vehicle IDs
-  const { data: ownedVehicles } = await supabase
-    .from("vehicles")
-    .select("id")
-    .eq("user_id", user.id);
-  const ownedIds = new Set((ownedVehicles ?? []).map((v) => v.id));
+  if (error) {
+    console.error("Pending requests RPC error:", error);
+    return NextResponse.json({ transfers: [], invitations: [] });
+  }
 
-  // Fetch open transfers (RLS: owner's vehicles + matching email)
-  const { data: rawTransfers } = await supabase
-    .from("vehicle_transfers")
-    .select("id, token, vehicle_id, expires_at, vehicles(make, model)")
-    .eq("status", "offen")
-    .gt("expires_at", now);
+  const result = data as {
+    transfers: Array<{ id: string; token: string; vehicle_name: string; expires_at: string }>;
+    invitations: Array<{ id: string; token: string; role: string; vehicle_name: string; expires_at: string }>;
+  };
 
-  const transfers = (rawTransfers ?? [])
-    .filter((t) => !ownedIds.has(t.vehicle_id))
-    .map((t) => {
-      const v = t.vehicles as unknown as { make: string; model: string } | null;
-      return {
-        id: t.id,
-        token: t.token,
-        vehicle_name: v ? `${v.make} ${v.model}` : "Fahrzeug",
-        expires_at: t.expires_at,
-      };
-    });
-
-  // Fetch open invitations (RLS: owner's vehicles + matching email)
-  const { data: rawInvitations } = await supabase
-    .from("vehicle_invitations")
-    .select("id, token, role, vehicle_id, expires_at, vehicles(make, model)")
-    .eq("status", "offen")
-    .gt("expires_at", now);
-
-  const invitations = (rawInvitations ?? [])
-    .filter((inv) => !ownedIds.has(inv.vehicle_id))
-    .map((inv) => {
-      const v = inv.vehicles as unknown as { make: string; model: string } | null;
-      return {
-        id: inv.id,
-        token: inv.token,
-        role: inv.role,
-        vehicle_name: v ? `${v.make} ${v.model}` : "Fahrzeug",
-        expires_at: inv.expires_at,
-      };
-    });
-
-  return NextResponse.json({ transfers, invitations });
+  return NextResponse.json({
+    transfers: result.transfers ?? [],
+    invitations: result.invitations ?? [],
+  });
 }
