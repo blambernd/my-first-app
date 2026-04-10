@@ -9,7 +9,6 @@ export const MILESTONE_CATEGORIES = [
   "trophaee",
   "lackierung",
   "umbau",
-  "besitzerwechsel",
   "sonstiges",
 ] as const;
 
@@ -26,7 +25,6 @@ export const CATEGORY_CONFIG: Record<
   trophaee: { label: "Trophäe / Auszeichnung", color: "text-yellow-600 bg-yellow-100" },
   lackierung: { label: "Lackierung", color: "text-violet-600 bg-violet-100" },
   umbau: { label: "Umbau / Tuning", color: "text-cyan-600 bg-cyan-100" },
-  besitzerwechsel: { label: "Besitzerwechsel", color: "text-indigo-600 bg-indigo-100" },
   sonstiges: { label: "Sonstiges", color: "text-gray-600 bg-gray-100" },
 };
 

@@ -417,7 +417,6 @@ export function PublicProfile({ token }: PublicProfileProps) {
                       trophaee: "bg-yellow-100 text-yellow-600 border-yellow-200",
                       lackierung: "bg-violet-100 text-violet-600 border-violet-200",
                       umbau: "bg-cyan-100 text-cyan-600 border-cyan-200",
-                      besitzerwechsel: "bg-indigo-100 text-indigo-600 border-indigo-200",
                       sonstiges: "bg-gray-100 text-gray-600 border-gray-200",
                     };
                     const categoryLabels: Record<string, string> = {
@@ -428,7 +427,6 @@ export function PublicProfile({ token }: PublicProfileProps) {
                       trophaee: "Auszeichnung",
                       lackierung: "Lackierung",
                       umbau: "Umbau",
-                      besitzerwechsel: "Besitzerwechsel",
                       sonstiges: "Sonstiges",
                     };
                     const colorClass = categoryColors[milestone.category || ""] || categoryColors.sonstiges;

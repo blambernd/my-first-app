@@ -59,7 +59,7 @@ export function VehicleProfileNav({ vehicleId }: VehicleProfileNavProps) {
   }, [pathname]);
 
   return (
-    <nav className="flex gap-1 py-2 -mx-2 overflow-x-auto scrollbar-hide">
+    <nav className="flex gap-1 py-2 -mx-2 overflow-x-auto scrollbar-hide touch-pan-x" style={{ WebkitOverflowScrolling: "touch" as const }}>
       {navItems.map((item) => {
         const fullPath = `${basePath}${item.href}`;
         const isActive =

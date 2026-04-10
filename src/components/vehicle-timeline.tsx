@@ -26,7 +26,6 @@ import {
   Paintbrush,
   Wrench,
   Flag,
-  ArrowRightLeft,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -78,7 +77,6 @@ const CATEGORY_ICONS: Record<MilestoneCategory, typeof FileCheck> = {
   trophaee: Trophy,
   lackierung: Paintbrush,
   umbau: Wrench,
-  besitzerwechsel: ArrowRightLeft,
   sonstiges: Flag,
 };
 
@@ -896,7 +894,6 @@ export function VehicleTimeline({
   const [selectedMilestoneId, setSelectedMilestoneId] = useState<string | null>(
     null
   );
-  const [isExporting, setIsExporting] = useState(false);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
 
@@ -1057,54 +1054,12 @@ export function VehicleTimeline({
     }
   };
 
-  const handleExportPdf = async () => {
-    setIsExporting(true);
-    try {
-      const params = new URLSearchParams();
-      if (dateFrom) params.set("from", dateFrom);
-      if (dateTo) params.set("to", dateTo);
-
-      const response = await fetch(
-        `/api/vehicles/${vehicleId}/timeline-pdf?${params.toString()}`
-      );
-
-      if (!response.ok) throw new Error("PDF-Export fehlgeschlagen");
-
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `Historie_${vehicleId}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-    } catch {
-      toast.error("PDF-Export fehlgeschlagen. Bitte versuche es erneut.");
-    } finally {
-      setIsExporting(false);
-    }
-  };
-
   return (
     <div>
       {/* Actions bar */}
       <div className="flex items-center justify-between gap-3 mb-6">
         <h3 className="text-lg font-semibold">Fahrzeug-Historie</h3>
         <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleExportPdf}
-            disabled={isExporting || milestones.length === 0}
-          >
-            {isExporting ? (
-              <Download className="h-4 w-4 mr-1.5 animate-pulse" />
-            ) : (
-              <Download className="h-4 w-4 mr-1.5" />
-            )}
-            PDF
-          </Button>
           {canEdit && (
             <Button size="sm" onClick={handleNewMilestone}>
               <Plus className="h-4 w-4 mr-1.5" />
@@ -1235,7 +1190,8 @@ export function VehicleTimeline({
             {/* Scrollable container */}
             <div
               ref={scrollRef}
-              className="overflow-x-auto scrollbar-hide px-4"
+              className="overflow-x-auto scrollbar-hide px-4 touch-pan-x"
+              style={{ WebkitOverflowScrolling: "touch" }}
             >
               <div className="relative flex items-start gap-3 sm:gap-5 pt-4 pb-2 min-w-min">
                 {/* Horizontal timeline line */}
