@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   Car,
   Wrench,
@@ -10,6 +10,8 @@ import {
   AlertTriangle,
   Eye,
   X,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -106,6 +108,32 @@ export function PublicProfile({ token }: PublicProfileProps) {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [viewingDoc, setViewingDoc] = useState<NonNullable<ProfileData["dokumente"]>[0] | null>(null);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const touchStartX = useRef<number | null>(null);
+
+  const allImages = data?.fotos ?? [];
+
+  const closeLightbox = useCallback(() => setLightboxIndex(null), []);
+  const prevImage = useCallback(() => {
+    setLightboxIndex((i) => (i !== null && i > 0 ? i - 1 : i));
+  }, []);
+  const nextImage = useCallback(() => {
+    setLightboxIndex((i) =>
+      i !== null && i < allImages.length - 1 ? i + 1 : i
+    );
+  }, [allImages.length]);
+
+  // Keyboard navigation for lightbox
+  useEffect(() => {
+    if (lightboxIndex === null) return;
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closeLightbox();
+      if (e.key === "ArrowLeft") prevImage();
+      if (e.key === "ArrowRight") nextImage();
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [lightboxIndex, closeLightbox, prevImage, nextImage]);
 
   useEffect(() => {
     async function load() {
@@ -186,13 +214,20 @@ export function PublicProfile({ token }: PublicProfileProps) {
         {/* Vehicle header */}
         <div className="space-y-4">
           {primaryImage && (
-            <div className="rounded-lg overflow-hidden bg-muted/30 aspect-[21/9] max-h-[300px]">
+            <button
+              type="button"
+              className="rounded-lg overflow-hidden bg-muted/30 aspect-[21/9] max-h-[300px] w-full cursor-pointer"
+              onClick={() => {
+                const idx = allImages.findIndex((f) => f.id === primaryImage.id);
+                setLightboxIndex(idx >= 0 ? idx : 0);
+              }}
+            >
               <img
                 src={getImageUrl(primaryImage.storage_path)}
                 alt={`${vehicle.make} ${vehicle.model}`}
                 className="w-full h-full object-contain"
               />
-            </div>
+            </button>
           )}
           <div>
             <h1 className="text-2xl font-bold">
@@ -214,18 +249,23 @@ export function PublicProfile({ token }: PublicProfileProps) {
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
             {data.fotos
               .filter((f) => f.id !== primaryImage?.id)
-              .map((foto) => (
-                <div
-                  key={foto.id}
-                  className="rounded-md overflow-hidden bg-muted/30 aspect-square"
-                >
-                  <img
-                    src={getImageUrl(foto.storage_path)}
-                    alt="Fahrzeugbild"
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-              ))}
+              .map((foto) => {
+                const idx = allImages.findIndex((f) => f.id === foto.id);
+                return (
+                  <button
+                    type="button"
+                    key={foto.id}
+                    className="rounded-md overflow-hidden bg-muted/30 aspect-square cursor-pointer"
+                    onClick={() => setLightboxIndex(idx >= 0 ? idx : 0)}
+                  >
+                    <img
+                      src={getImageUrl(foto.storage_path)}
+                      alt="Fahrzeugbild"
+                      className="w-full h-full object-cover"
+                    />
+                  </button>
+                );
+              })}
           </div>
         )}
 
@@ -457,10 +497,14 @@ export function PublicProfile({ token }: PublicProfileProps) {
                       key={doc.id}
                       className="flex items-center justify-between text-sm py-1.5"
                     >
-                      <div className="flex items-center gap-2">
-                        <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                      <button
+                        type="button"
+                        className="flex items-center gap-2 hover:text-primary transition-colors cursor-pointer text-left"
+                        onClick={() => setViewingDoc(doc)}
+                      >
+                        <FileText className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                         <span>{doc.title}</span>
-                      </div>
+                      </button>
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
                         {doc.category && (
                           <Badge variant="outline" className="text-xs">
@@ -486,6 +530,77 @@ export function PublicProfile({ token }: PublicProfileProps) {
               </div>
             </CardContent>
           </Card>
+        )}
+
+        {/* Image lightbox */}
+        {lightboxIndex !== null && allImages[lightboxIndex] && (
+          <div
+            className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center"
+            onClick={closeLightbox}
+            onTouchStart={(e) => {
+              touchStartX.current = e.touches[0].clientX;
+            }}
+            onTouchEnd={(e) => {
+              if (touchStartX.current === null) return;
+              const diff = e.changedTouches[0].clientX - touchStartX.current;
+              if (Math.abs(diff) > 50) {
+                if (diff > 0) prevImage();
+                else nextImage();
+              }
+              touchStartX.current = null;
+            }}
+          >
+            {/* Close button */}
+            <button
+              type="button"
+              className="absolute top-4 right-4 z-10 text-white/80 hover:text-white"
+              onClick={closeLightbox}
+            >
+              <X className="h-6 w-6" />
+            </button>
+
+            {/* Counter */}
+            <div className="absolute top-4 left-4 text-white/60 text-sm">
+              {lightboxIndex + 1} / {allImages.length}
+            </div>
+
+            {/* Previous button */}
+            {lightboxIndex > 0 && (
+              <button
+                type="button"
+                className="absolute left-2 sm:left-4 z-10 text-white/60 hover:text-white p-2"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  prevImage();
+                }}
+              >
+                <ChevronLeft className="h-8 w-8" />
+              </button>
+            )}
+
+            {/* Image */}
+            <img
+              src={getImageUrl(allImages[lightboxIndex].storage_path)}
+              alt={`Bild ${lightboxIndex + 1}`}
+              className="max-w-[90vw] max-h-[85vh] object-contain select-none"
+              onClick={(e) => e.stopPropagation()}
+              draggable={false}
+            />
+
+            {/* Next button */}
+            {lightboxIndex < allImages.length - 1 && (
+              <button
+                type="button"
+                className="absolute right-2 sm:right-4 z-10 text-white/60 hover:text-white p-2"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  nextImage();
+                }}
+              >
+                <ChevronRight className="h-8 w-8" />
+              </button>
+            )}
+          </div>
         )}
 
         {/* Document viewer overlay */}
