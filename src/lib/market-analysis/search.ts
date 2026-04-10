@@ -17,14 +17,9 @@ function buildVehicleQuery(params: MarketSearchParams): string {
   }
   parts.push(`"${params.model}"`);
 
-  // Body type for more precise results (e.g. "Coupé", "Cabriolet")
-  if (params.bodyType && params.bodyType !== "Sonstige") {
-    parts.push(params.bodyType);
-  }
-
-  // Year range: ±3 years to find comparable vehicles
-  const yearLow = params.year - 3;
-  const yearHigh = params.year + 3;
+  // Year range: ±5 years to find comparable vehicles
+  const yearLow = params.year - 5;
+  const yearHigh = params.year + 5;
   parts.push(`${yearLow}..${yearHigh}`);
 
   // Exclude spare parts from results
@@ -123,7 +118,6 @@ async function searchEbay(params: MarketSearchParams): Promise<{ listings: Marke
   try {
     const queryParts = [params.make, params.model];
     if (params.factoryCode) queryParts.push(params.factoryCode);
-    if (params.bodyType && params.bodyType !== "Sonstige") queryParts.push(params.bodyType);
     queryParts.push(String(params.year));
 
     const result = await Promise.race([
