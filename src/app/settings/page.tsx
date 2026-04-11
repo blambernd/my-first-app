@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase-server";
 import { AccountHeader } from "@/components/account-header";
 import { MobileBottomNav } from "@/components/mobile-bottom-nav";
 import { NotificationSettings } from "@/components/notification-settings";
+import { PlanSettings } from "@/components/plan-settings";
 import { PushOptInBanner } from "@/components/push-opt-in-banner";
 import { LogoutButton } from "@/components/logout-button";
 import { DeleteAccountButton } from "@/components/delete-account-button";
@@ -35,6 +36,9 @@ export default async function SettingsPage() {
         </div>
 
         <div className="space-y-6">
+          {/* Plan Overview */}
+          <PlanSettings />
+
           {/* Push Notification Opt-In + Settings */}
           <PushOptInBanner />
           <NotificationSettings />

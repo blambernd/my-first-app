@@ -16,6 +16,8 @@ export interface SubscriptionData {
   };
   vehicleCount: number;
   storageMb: number;
+  referralBonusMonths: number;
+  referralBonusUntil: string | null;
 }
 
 function calcTrialDays(data: SubscriptionData | null): number | null {

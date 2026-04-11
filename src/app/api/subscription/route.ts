@@ -45,6 +45,8 @@ export async function GET() {
       limits: serializeLimits(effectivePlan),
       vehicleCount: 0,
       storageMb: 0,
+      referralBonusMonths: 0,
+      referralBonusUntil: null,
     });
   }
 
@@ -67,5 +69,7 @@ export async function GET() {
     limits: serializeLimits(effectivePlan),
     vehicleCount: vehicleResult.count ?? 0,
     storageMb: Math.round(storageMb * 100) / 100,
+    referralBonusMonths: subscription.referral_bonus_months ?? 0,
+    referralBonusUntil: subscription.referral_bonus_until ?? null,
   });
 }
