@@ -139,7 +139,7 @@ describe("Push API - preferences", () => {
     expect(data.reminder_days).toBe(7);
     expect(data.tuv_enabled).toBe(true);
     expect(data.service_enabled).toBe(true);
-    expect(data.oil_enabled).toBe(true);
+    expect(data.email_enabled).toBe(true);
   });
 
   it("returns 400 for invalid preferences on PUT", async () => {
@@ -174,7 +174,7 @@ describe("Push API - preferences", () => {
         reminder_days: 14,
         tuv_enabled: true,
         service_enabled: false,
-        oil_enabled: true,
+        email_enabled: true,
       }),
     });
 

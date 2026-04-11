@@ -68,6 +68,10 @@ export function getEffectivePlan(subscription: {
     }
     return "free";
   }
+  // Free plan with active referral bonus → premium
+  if (subscription.plan === "free" && hasReferralBonus(subscription.referral_bonus_until)) {
+    return "premium";
+  }
   return subscription.plan as PlanType;
 }
 
