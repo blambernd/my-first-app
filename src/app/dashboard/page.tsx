@@ -119,8 +119,8 @@ export default async function DashboardPage() {
 
         </div>
 
-        {/* Sidebar: Plan overview + Referral */}
-        <div className="space-y-4">
+        {/* Sidebar: Plan overview + Referral (hidden on mobile — available in settings) */}
+        <div className="hidden lg:block space-y-4">
           <PlanOverview />
           <ReferralCard />
         </div>
