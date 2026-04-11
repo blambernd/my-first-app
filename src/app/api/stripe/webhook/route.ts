@@ -118,6 +118,45 @@ export async function POST(request: Request) {
         const subData = subscription as unknown as Record<string, unknown>;
         const updStartTs = subData.current_period_start as number | undefined;
         const updEndTs = subData.current_period_end as number | undefined;
+
+        // Check if user just canceled within 14-day withdrawal period
+        if (subscription.cancel_at_period_end) {
+          const createdTs = subData.created as number | undefined;
+          const subCreated = createdTs ? new Date(createdTs * 1000) : null;
+          const fourteenDaysMs = 14 * 24 * 60 * 60 * 1000;
+          const isWithinWithdrawal = subCreated ? (Date.now() - subCreated.getTime() <= fourteenDaysMs) : false;
+
+          if (isWithinWithdrawal) {
+            // Auto-refund and cancel immediately per German withdrawal law (§ 355 BGB)
+            try {
+              const invoices = await getStripe().invoices.list({
+                subscription: subscription.id,
+                limit: 1,
+              });
+              const latestInvoice = invoices.data[0] as unknown as Record<string, unknown>;
+              const piRaw = latestInvoice?.payment_intent;
+              if (piRaw) {
+                const paymentIntentId =
+                  typeof piRaw === "string"
+                    ? piRaw
+                    : (piRaw as { id: string }).id;
+                await getStripe().refunds.create({
+                  payment_intent: paymentIntentId,
+                  reason: "requested_by_customer",
+                });
+                console.log(`Widerruf: Refund issued for user ${userId}`);
+              }
+              // Cancel immediately instead of at period end
+              await getStripe().subscriptions.cancel(subscription.id);
+              console.log(`Widerruf: Subscription ${subscription.id} canceled immediately`);
+              // The cancel will trigger customer.subscription.deleted which handles the DB update
+              break;
+            } catch (refundErr) {
+              console.error("Widerruf refund failed:", refundErr);
+            }
+          }
+        }
+
         await adminClient
           .from("subscriptions")
           .update({
