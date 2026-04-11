@@ -3,7 +3,9 @@
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Crown, Check, Clock, Bell } from "lucide-react";
+import { Crown, Check, Clock, Bell, Sparkles } from "lucide-react";
+
+const isMvpMode = process.env.NEXT_PUBLIC_MVP_MODE === "true";
 import { UpgradeDialog } from "@/components/upgrade-dialog";
 
 interface PremiumUpsellProps {
@@ -34,7 +36,9 @@ export function PremiumUpsell({ feature, description }: PremiumUpsellProps) {
             <h2 className="text-xl font-bold mb-2">{feature}</h2>
             <p className="text-muted-foreground mb-2">{description}</p>
             <p className="text-sm text-amber-600 font-medium mb-6">
-              Dieses Feature ist Teil von Premium — Coming Soon!
+              {isMvpMode
+                ? "Dieses Feature ist Teil von Premium — Coming Soon!"
+                : "Dieses Feature ist Teil von Premium."}
             </p>
 
             <div className="text-left mx-auto max-w-xs mb-6">
@@ -59,8 +63,12 @@ export function PremiumUpsell({ feature, description }: PremiumUpsellProps) {
               className="bg-amber-500 hover:bg-amber-600"
               size="lg"
             >
-              <Bell className="h-4 w-4 mr-2" />
-              Benachrichtigt werden
+              {isMvpMode ? (
+                <Bell className="h-4 w-4 mr-2" />
+              ) : (
+                <Sparkles className="h-4 w-4 mr-2" />
+              )}
+              {isMvpMode ? "Benachrichtigt werden" : "Jetzt upgraden"}
             </Button>
           </CardContent>
         </Card>

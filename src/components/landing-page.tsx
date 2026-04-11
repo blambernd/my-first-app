@@ -304,7 +304,9 @@ export function LandingPage() {
             {/* Premium Plan */}
             <Card className="relative border-amber-300 shadow-lg">
               <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                <Badge className="px-4 py-1 bg-amber-500 hover:bg-amber-500">Coming Soon</Badge>
+                <Badge className="px-4 py-1 bg-amber-500 hover:bg-amber-500">
+                  {process.env.NEXT_PUBLIC_MVP_MODE === "true" ? "Coming Soon" : "Beliebt"}
+                </Badge>
               </div>
               <CardHeader className="text-center pb-2">
                 <CardTitle className="text-xl">Premium</CardTitle>
@@ -329,12 +331,9 @@ export function LandingPage() {
                     </li>
                   ))}
                 </ul>
-                <Button className="w-full" variant="outline" asChild={!isRegistered} disabled={isRegistered}>
-                  {isRegistered ? "Registriert ✓" : <Link href="/register">Kostenlos starten & informiert werden</Link>}
+                <Button className="w-full" asChild={!isRegistered} disabled={isRegistered}>
+                  {isRegistered ? "Registriert ✓" : <Link href="/register">Kostenlos starten</Link>}
                 </Button>
-                <p className="text-xs text-center text-muted-foreground mt-2">
-                  Wir benachrichtigen dich, sobald Premium verfügbar ist.
-                </p>
               </CardContent>
             </Card>
           </div>
