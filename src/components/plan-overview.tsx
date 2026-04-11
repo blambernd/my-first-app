@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Crown, Sparkles, ExternalLink } from "lucide-react";
+import { Crown, Sparkles, ExternalLink, Loader2 } from "lucide-react";
 import { UpgradeDialog } from "@/components/upgrade-dialog";
 
 const isBetaMode = process.env.NEXT_PUBLIC_BETA_MODE === "true";
@@ -46,11 +46,22 @@ export function PlanOverview() {
       ? 0
       : Math.round(((data.storageMb ?? 0) / data.limits.maxStorageMb) * 100);
 
+  const [portalLoading, setPortalLoading] = useState(false);
+
   const handleManageSubscription = async () => {
-    const res = await fetch("/api/stripe/portal", { method: "POST" });
-    const json = await res.json();
-    if (json.url) {
-      window.location.href = json.url;
+    setPortalLoading(true);
+    try {
+      const res = await fetch("/api/stripe/portal", { method: "POST" });
+      const json = await res.json();
+      if (json.url) {
+        window.location.href = json.url;
+      } else {
+        alert(json.error || "Kundenportal konnte nicht geöffnet werden.");
+      }
+    } catch {
+      alert("Verbindungsfehler. Bitte versuche es erneut.");
+    } finally {
+      setPortalLoading(false);
     }
   };
 
@@ -107,62 +118,72 @@ export function PlanOverview() {
             </div>
           )}
 
-          {/* Vehicle usage */}
-          <div>
-            <div className="flex items-center justify-between text-sm mb-1">
-              <span className="text-muted-foreground">Fahrzeuge</span>
-              <span className="font-medium">
-                {data.vehicleCount} /{" "}
-                {data.limits.maxVehicles === Infinity
-                  ? "∞"
-                  : data.limits.maxVehicles}
-              </span>
-            </div>
-            {data.limits.maxVehicles !== Infinity && (
-              <Progress value={vehiclePercent} className="h-2" />
-            )}
-          </div>
+          {isPremium ? (
+            <>
+              {/* Premium info */}
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Fahrzeuge</span>
+                <span className="font-medium">{data.vehicleCount} (unbegrenzt)</span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Speicher</span>
+                <span className="font-medium">
+                  {data.storageMb ?? 0} MB / 5 GB
+                </span>
+              </div>
+              {data.currentPeriodEnd && !data.cancelAtPeriodEnd && (
+                <p className="text-xs text-muted-foreground">
+                  Nächste Verlängerung: {new Date(data.currentPeriodEnd).toLocaleDateString("de-DE")}
+                </p>
+              )}
 
-          {/* Storage usage */}
-          <div>
-            <div className="flex items-center justify-between text-sm mb-1">
-              <span className="text-muted-foreground">Speicher</span>
-              <span className="font-medium">
-                {data.storageMb ?? 0} MB /{" "}
-                {data.limits.maxStorageMb === Infinity
-                  ? "∞"
-                  : data.limits.maxStorageMb >= 1024
-                    ? `${(data.limits.maxStorageMb / 1024).toFixed(0)} GB`
-                    : `${data.limits.maxStorageMb} MB`}
-              </span>
-            </div>
-            {data.limits.maxStorageMb !== Infinity && (
-              <Progress value={storagePercent} className="h-2" />
-            )}
-          </div>
+              {/* Stripe Customer Portal */}
+              {data.stripeCustomerId && (
+                <Button
+                  onClick={handleManageSubscription}
+                  disabled={portalLoading}
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                >
+                  <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
+                  Abo verwalten
+                </Button>
+              )}
+            </>
+          ) : (
+            <>
+              {/* Free plan usage */}
+              <div>
+                <div className="flex items-center justify-between text-sm mb-1">
+                  <span className="text-muted-foreground">Fahrzeuge</span>
+                  <span className="font-medium">
+                    {data.vehicleCount} / {data.limits.maxVehicles}
+                  </span>
+                </div>
+                <Progress value={vehiclePercent} className="h-2" />
+              </div>
+              <div>
+                <div className="flex items-center justify-between text-sm mb-1">
+                  <span className="text-muted-foreground">Speicher</span>
+                  <span className="font-medium">
+                    {data.storageMb ?? 0} MB / {data.limits.maxStorageMb} MB
+                  </span>
+                </div>
+                <Progress value={storagePercent} className="h-2" />
+              </div>
 
-          {/* Actions */}
-          <div className="flex gap-2 pt-1">
-            {!isPremium ? (
+              {/* Upgrade CTA */}
               <Button
                 onClick={() => setUpgradeOpen(true)}
                 size="sm"
-                className="bg-amber-500 hover:bg-amber-600"
+                className="w-full bg-amber-500 hover:bg-amber-600"
               >
                 <Crown className="h-3.5 w-3.5 mr-1.5" />
                 {isMvpMode ? "Premium — Coming Soon" : "Upgrade auf Premium"}
               </Button>
-            ) : data.stripeCustomerId ? (
-              <Button
-                onClick={handleManageSubscription}
-                variant="outline"
-                size="sm"
-              >
-                <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
-                Abo verwalten
-              </Button>
-            ) : null}
-          </div>
+            </>
+          )}
         </CardContent>
       </Card>
 
