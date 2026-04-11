@@ -36,15 +36,16 @@ export function PlanOverview() {
 
   if (!data) return null;
 
-  const vehiclePercent =
-    data.limits.maxVehicles === Infinity
-      ? 0
-      : Math.round((data.vehicleCount / data.limits.maxVehicles) * 100);
+  const isUnlimitedVehicles = data.limits.maxVehicles === -1;
+  const isUnlimitedStorage = data.limits.maxStorageMb === -1;
 
-  const storagePercent =
-    data.limits.maxStorageMb === Infinity
-      ? 0
-      : Math.round(((data.storageMb ?? 0) / data.limits.maxStorageMb) * 100);
+  const vehiclePercent = isUnlimitedVehicles
+    ? 0
+    : Math.round((data.vehicleCount / data.limits.maxVehicles) * 100);
+
+  const storagePercent = isUnlimitedStorage
+    ? 0
+    : Math.round(((data.storageMb ?? 0) / data.limits.maxStorageMb) * 100);
 
   const [portalLoading, setPortalLoading] = useState(false);
 

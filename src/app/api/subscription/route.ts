@@ -3,6 +3,16 @@ import { createClient } from "@/lib/supabase-server";
 import { getEffectivePlan, calculateStorageUsageMb, isBetaMode } from "@/lib/subscription";
 import { PLANS } from "@/lib/stripe";
 
+/** Serialize plan limits so Infinity becomes -1 (JSON-safe) */
+function serializeLimits(plan: keyof typeof PLANS) {
+  const p = PLANS[plan];
+  return {
+    name: p.name,
+    maxVehicles: p.maxVehicles === Infinity ? -1 : p.maxVehicles,
+    maxStorageMb: p.maxStorageMb === Infinity ? -1 : p.maxStorageMb,
+  };
+}
+
 export async function GET() {
   const supabase = await createClient();
   const {
@@ -32,7 +42,7 @@ export async function GET() {
       cancelAtPeriodEnd: false,
       currentPeriodEnd: null,
       stripeCustomerId: null,
-      limits: PLANS[effectivePlan],
+      limits: serializeLimits(effectivePlan),
       vehicleCount: 0,
       storageMb: 0,
     });
@@ -54,7 +64,7 @@ export async function GET() {
     cancelAtPeriodEnd: subscription.cancel_at_period_end,
     currentPeriodEnd: subscription.current_period_end,
     stripeCustomerId: subscription.stripe_customer_id,
-    limits: PLANS[effectivePlan],
+    limits: serializeLimits(effectivePlan),
     vehicleCount: vehicleResult.count ?? 0,
     storageMb: Math.round(storageMb * 100) / 100,
   });
