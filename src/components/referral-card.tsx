@@ -163,7 +163,7 @@ export function ReferralCard() {
       <CardContent className="space-y-4">
         <p className="text-sm text-muted-foreground">
           Empfiehl Oldtimer Docs und erhalte <strong>3 Monate Premium</strong> pro
-          erfolgreicher Einladung.
+          erfolgreicher Einladung. Dein Freund erhält <strong>1 Monat Premium</strong> geschenkt.
         </p>
 
         <div className="flex gap-2">

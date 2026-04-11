@@ -220,6 +220,23 @@ export async function POST(request: Request) {
           }
         }
 
+        // Check if user has referral bonus months — recalculate bonus_until
+        // so bonus months are not "consumed" during the paid subscription period
+        const { data: subBeforeCancel } = await adminClient
+          .from("subscriptions")
+          .select("referral_bonus_months")
+          .eq("user_id", userId)
+          .single();
+
+        const bonusMonths = subBeforeCancel?.referral_bonus_months ?? 0;
+        let newBonusUntil: string | null = null;
+        if (bonusMonths > 0) {
+          const bonusEnd = new Date();
+          bonusEnd.setMonth(bonusEnd.getMonth() + bonusMonths);
+          newBonusUntil = bonusEnd.toISOString();
+          console.log(`Referral: Restoring ${bonusMonths} bonus months for user ${userId}, until ${newBonusUntil}`);
+        }
+
         await adminClient
           .from("subscriptions")
           .update({
@@ -227,6 +244,7 @@ export async function POST(request: Request) {
             status: "canceled",
             stripe_subscription_id: null,
             cancel_at_period_end: false,
+            ...(newBonusUntil ? { referral_bonus_until: newBonusUntil } : {}),
             updated_at: new Date().toISOString(),
           })
           .eq("user_id", userId);
