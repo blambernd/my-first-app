@@ -79,7 +79,8 @@ export async function POST(request: Request) {
 
         await adminClient
           .from("subscriptions")
-          .update({
+          .upsert({
+            user_id: userId,
             stripe_customer_id: customerId,
             stripe_subscription_id: subscriptionId || null,
             plan: "premium",
@@ -90,8 +91,7 @@ export async function POST(request: Request) {
             cancel_at_period_end: false,
             past_due_since: null,
             updated_at: new Date().toISOString(),
-          })
-          .eq("user_id", userId);
+          }, { onConflict: "user_id" });
 
         // Unlock all vehicles for this user
         await adminClient
