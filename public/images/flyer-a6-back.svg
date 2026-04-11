@@ -1,0 +1,94 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 297.64 419.53" width="297.64" height="419.53" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif">
+  <!-- A6 Rückseite -->
+
+  <!-- Background -->
+  <rect width="297.64" height="419.53" fill="#f5f0e8"/>
+
+  <!-- Top accent line -->
+  <rect x="0" y="0" width="297.64" height="4" fill="#d4a74a"/>
+
+  <!-- Headline -->
+  <text x="148.82" y="50" text-anchor="middle" font-size="14" font-weight="700" fill="#0f1729">Kostenlos starten</text>
+  <text x="148.82" y="68" text-anchor="middle" font-size="9" fill="#4a5568" font-weight="400">QR-Code scannen oder besuchen Sie</text>
+  <text x="148.82" y="82" text-anchor="middle" font-size="10" font-weight="600" fill="#d4a74a">oldtimer-docs.com</text>
+
+  <!-- QR Code Placeholder -->
+  <rect x="98.82" y="100" width="100" height="100" rx="6" fill="white" stroke="#d4a74a" stroke-width="1.5"/>
+  <!-- QR grid pattern (placeholder — replace with real QR code for print) -->
+  <g transform="translate(108.82, 110)" fill="#0f1729">
+    <!-- Row 1 -->
+    <rect x="0" y="0" width="8" height="8"/><rect x="8" y="0" width="8" height="8"/><rect x="16" y="0" width="8" height="8"/>
+    <rect x="32" y="0" width="8" height="8"/>
+    <rect x="48" y="0" width="8" height="8"/><rect x="56" y="0" width="8" height="8"/><rect x="64" y="0" width="8" height="8"/><rect x="72" y="0" width="8" height="8"/>
+    <!-- Row 2 -->
+    <rect x="0" y="8" width="8" height="8"/><rect x="16" y="8" width="8" height="8"/>
+    <rect x="32" y="8" width="8" height="8"/><rect x="40" y="8" width="8" height="8"/>
+    <rect x="56" y="8" width="8" height="8"/><rect x="72" y="8" width="8" height="8"/>
+    <!-- Row 3 -->
+    <rect x="0" y="16" width="8" height="8"/><rect x="8" y="16" width="8" height="8"/><rect x="16" y="16" width="8" height="8"/>
+    <rect x="40" y="16" width="8" height="8"/>
+    <rect x="56" y="16" width="8" height="8"/><rect x="64" y="16" width="8" height="8"/><rect x="72" y="16" width="8" height="8"/>
+    <!-- Row 4 -->
+    <rect x="24" y="24" width="8" height="8"/><rect x="32" y="24" width="8" height="8"/><rect x="48" y="24" width="8" height="8"/>
+    <!-- Row 5 -->
+    <rect x="0" y="32" width="8" height="8"/><rect x="16" y="32" width="8" height="8"/><rect x="24" y="32" width="8" height="8"/>
+    <rect x="40" y="32" width="8" height="8"/><rect x="56" y="32" width="8" height="8"/><rect x="72" y="32" width="8" height="8"/>
+    <!-- Row 6 -->
+    <rect x="8" y="40" width="8" height="8"/><rect x="32" y="40" width="8" height="8"/><rect x="48" y="40" width="8" height="8"/><rect x="64" y="40" width="8" height="8"/>
+    <!-- Row 7 -->
+    <rect x="0" y="48" width="8" height="8"/><rect x="8" y="48" width="8" height="8"/><rect x="16" y="48" width="8" height="8"/>
+    <rect x="32" y="48" width="8" height="8"/><rect x="40" y="48" width="8" height="8"/>
+    <rect x="56" y="48" width="8" height="8"/><rect x="64" y="48" width="8" height="8"/><rect x="72" y="48" width="8" height="8"/>
+    <!-- Row 8 -->
+    <rect x="0" y="56" width="8" height="8"/><rect x="16" y="56" width="8" height="8"/>
+    <rect x="40" y="56" width="8" height="8"/><rect x="48" y="56" width="8" height="8"/>
+    <rect x="56" y="56" width="8" height="8"/><rect x="72" y="56" width="8" height="8"/>
+    <!-- Row 9 -->
+    <rect x="0" y="64" width="8" height="8"/><rect x="8" y="64" width="8" height="8"/><rect x="16" y="64" width="8" height="8"/>
+    <rect x="32" y="64" width="8" height="8"/>
+    <rect x="48" y="64" width="8" height="8"/><rect x="64" y="64" width="8" height="8"/>
+    <!-- Row 10 -->
+    <rect x="0" y="72" width="8" height="8"/><rect x="16" y="72" width="8" height="8"/>
+    <rect x="24" y="72" width="8" height="8"/><rect x="40" y="72" width="8" height="8"/><rect x="56" y="72" width="8" height="8"/>
+    <rect x="72" y="72" width="8" height="8"/>
+  </g>
+  <text x="148.82" y="215" text-anchor="middle" font-size="6.5" fill="#718096" font-style="italic">QR-Code vor dem Druck durch echten ersetzen</text>
+
+  <!-- Divider -->
+  <line x1="60" y1="235" x2="238" y2="235" stroke="#d4a74a" stroke-width="0.5" opacity="0.4"/>
+
+  <!-- Benefits -->
+  <text x="148.82" y="260" text-anchor="middle" font-size="11" font-weight="700" fill="#0f1729">Warum Oldtimer Docs?</text>
+
+  <g transform="translate(45, 280)" font-size="8.5" fill="#2d3748">
+    <circle cx="6" cy="-3" r="2.5" fill="#d4a74a" opacity="0.8"/>
+    <text x="6" y="-0.5" text-anchor="middle" font-size="5" fill="#0f1729" font-weight="700">&#x2713;</text>
+    <text x="16" y="0" font-weight="400">Werterhalt durch lückenlose Dokumentation</text>
+
+    <circle cx="6" cy="18" r="2.5" fill="#d4a74a" opacity="0.8"/>
+    <text x="6" y="20.5" text-anchor="middle" font-size="5" fill="#0f1729" font-weight="700">&#x2713;</text>
+    <text x="16" y="21" font-weight="400">Alle Dokumente sicher an einem Ort</text>
+
+    <circle cx="6" cy="39" r="2.5" fill="#d4a74a" opacity="0.8"/>
+    <text x="6" y="41.5" text-anchor="middle" font-size="5" fill="#0f1729" font-weight="700">&#x2713;</text>
+    <text x="16" y="42" font-weight="400">Fahrzeughistorie teilen — bei Verkauf oder TÜV</text>
+
+    <circle cx="6" cy="60" r="2.5" fill="#d4a74a" opacity="0.8"/>
+    <text x="6" y="62.5" text-anchor="middle" font-size="5" fill="#0f1729" font-weight="700">&#x2713;</text>
+    <text x="16" y="63" font-weight="400">Erinnerungen an HU, Inspektion &amp; Termine</text>
+  </g>
+
+  <!-- Pricing -->
+  <line x1="60" y1="358" x2="238" y2="358" stroke="#d4a74a" stroke-width="0.5" opacity="0.4"/>
+
+  <text x="148.82" y="378" text-anchor="middle" font-size="9" font-weight="600" fill="#0f1729">1 Fahrzeug kostenlos — Premium ab 4,99 €/Monat</text>
+
+  <!-- Logo small -->
+  <g transform="translate(130, 392) scale(1)">
+    <path d="M16 2L4 7v9c0 7.18 5.12 13.88 12 15.5C22.88 29.88 28 23.18 28 16V7L16 2z" fill="#d4a74a" opacity="0.15" stroke="#d4a74a" stroke-width="1.5" stroke-linejoin="round"/>
+    <path d="M9 19h14M10.5 17l1.5-3h8l1.5 3M10 19a1 1 0 1 0 2 0 1 1 0 0 0-2 0zM20 19a1 1 0 1 0 2 0 1 1 0 0 0-2 0z" stroke="#d4a74a" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  </g>
+
+  <!-- Bottom accent line -->
+  <rect x="0" y="415.53" width="297.64" height="4" fill="#d4a74a"/>
+</svg>
