@@ -202,6 +202,12 @@ export function UpgradeDialog({ open, onOpenChange }: UpgradeDialogProps) {
             </Button>
             <p className="text-xs text-center text-muted-foreground">
               Jederzeit kündbar. Sichere Zahlung über Stripe.
+              <br />
+              Es gilt ein{" "}
+              <a href="/agb#widerruf" target="_blank" className="underline hover:text-foreground">
+                14-tägiges Widerrufsrecht
+              </a>
+              .
             </p>
           </>
         )}

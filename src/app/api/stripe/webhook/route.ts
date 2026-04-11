@@ -149,6 +149,36 @@ export async function POST(request: Request) {
 
         if (!userId) break;
 
+        // Check if within 14-day withdrawal period (Widerrufsrecht)
+        const subCreated = new Date((subscription as unknown as Record<string, unknown>).created as number * 1000);
+        const fourteenDaysMs = 14 * 24 * 60 * 60 * 1000;
+        const isWithinWithdrawal = Date.now() - subCreated.getTime() <= fourteenDaysMs;
+
+        if (isWithinWithdrawal) {
+          // Auto-refund the latest invoice per German withdrawal law (§ 355 BGB)
+          try {
+            const invoices = await getStripe().invoices.list({
+              subscription: subscription.id,
+              limit: 1,
+            });
+            const latestInvoice = invoices.data[0] as unknown as Record<string, unknown>;
+            const piRaw = latestInvoice?.payment_intent;
+            if (piRaw) {
+              const paymentIntentId =
+                typeof piRaw === "string"
+                  ? piRaw
+                  : (piRaw as { id: string }).id;
+              await getStripe().refunds.create({
+                payment_intent: paymentIntentId,
+                reason: "requested_by_customer",
+              });
+              console.log(`Widerruf: Refund issued for user ${userId}, invoice ${latestInvoice.id}`);
+            }
+          } catch (refundErr) {
+            console.error("Widerruf refund failed:", refundErr);
+          }
+        }
+
         await adminClient
           .from("subscriptions")
           .update({
