@@ -31,12 +31,13 @@ export async function POST() {
 
   // Only trigger on first vehicle (count should be 1 after the insert)
   if ((count ?? 0) !== 1) {
-    return NextResponse.json({ completed: false });
+    console.log(`Referral: User ${user.id} has ${count} vehicles, skipping (need exactly 1)`);
+    return NextResponse.json({ completed: false, reason: "not_first_vehicle", count });
   }
 
   // Atomically mark referral as completed (prevents race condition)
   // Only updates if status is still 'pending', returns nothing if already completed
-  const { data: referral } = await adminClient
+  const { data: referral, error: referralError } = await adminClient
     .from("referrals")
     .update({ status: "completed", completed_at: new Date().toISOString() })
     .eq("referred_id", user.id)
@@ -45,9 +46,11 @@ export async function POST() {
     .single();
 
   if (!referral) {
-    // No pending referral or already completed
-    return NextResponse.json({ completed: false });
+    console.log(`Referral: No pending referral for user ${user.id}`, referralError?.message);
+    return NextResponse.json({ completed: false, reason: "no_pending_referral" });
   }
+
+  console.log(`Referral: Completing referral ${referral.id}, referrer=${referral.referrer_id}`);
 
   // Grant bonus to referrer: +3 months
   const { data: referrerSub } = await adminClient
@@ -57,6 +60,7 @@ export async function POST() {
     .single();
 
   if (referrerSub) {
+    console.log(`Referral: Granting ${REFERRER_BONUS_MONTHS} months to referrer ${referral.referrer_id}`);
     const newBonusMonths = (referrerSub.referral_bonus_months ?? 0) + REFERRER_BONUS_MONTHS;
 
     // Calculate new bonus_until date
@@ -82,6 +86,9 @@ export async function POST() {
         referral_bonus_until: bonusUntil.toISOString(),
       })
       .eq("user_id", referral.referrer_id);
+    console.log(`Referral: Referrer bonus set to ${newBonusMonths} months, until ${bonusUntil.toISOString()}`);
+  } else {
+    console.warn(`Referral: No subscription found for referrer ${referral.referrer_id}`);
   }
 
   // Grant bonus to referred user: +1 month
@@ -106,7 +113,11 @@ export async function POST() {
         referral_bonus_until: bonusUntil.toISOString(),
       })
       .eq("user_id", user.id);
+    console.log(`Referral: Referred user bonus set to ${newReferredBonusMonths} months, until ${bonusUntil.toISOString()}`);
+  } else {
+    console.warn(`Referral: No subscription found for referred user ${user.id}`);
   }
 
+  console.log(`Referral: Successfully completed referral ${referral.id}`);
   return NextResponse.json({ completed: true });
 }

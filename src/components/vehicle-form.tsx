@@ -376,7 +376,14 @@ export function VehicleForm({ vehicle, vehicleImages = [], existingDatekarte = n
 
       // Trigger referral completion on first vehicle creation
       if (mode === "create") {
-        fetch("/api/referral/complete", { method: "POST" }).catch(() => {});
+        try {
+          const refRes = await fetch("/api/referral/complete", { method: "POST" });
+          if (!refRes.ok) {
+            console.error("Referral completion failed:", await refRes.text());
+          }
+        } catch (refErr) {
+          console.error("Referral completion error:", refErr);
+        }
       }
 
       toast.success(
