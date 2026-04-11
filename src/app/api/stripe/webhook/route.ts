@@ -68,13 +68,16 @@ export async function POST(request: Request) {
         let periodStart: string | null = null;
         let periodEnd: string | null = null;
         if (subscriptionId) {
-          const subResponse = await getStripe().subscriptions.retrieve(subscriptionId);
-          // Stripe v22+ wraps in Response — access data via lastResponse or cast
-          const sub = subResponse as unknown as Record<string, unknown>;
-          periodStart = new Date(
-            (sub.current_period_start as number) * 1000
-          ).toISOString();
-          periodEnd = new Date((sub.current_period_end as number) * 1000).toISOString();
+          try {
+            const subResponse = await getStripe().subscriptions.retrieve(subscriptionId);
+            const sub = subResponse as unknown as Record<string, unknown>;
+            const startTs = sub.current_period_start as number | undefined;
+            const endTs = sub.current_period_end as number | undefined;
+            if (startTs) periodStart = new Date(startTs * 1000).toISOString();
+            if (endTs) periodEnd = new Date(endTs * 1000).toISOString();
+          } catch (subErr) {
+            console.error("Failed to fetch subscription details:", subErr);
+          }
         }
 
         await adminClient
@@ -113,17 +116,15 @@ export async function POST(request: Request) {
         const status = mapStripeStatus(subscription.status);
 
         const subData = subscription as unknown as Record<string, unknown>;
+        const updStartTs = subData.current_period_start as number | undefined;
+        const updEndTs = subData.current_period_end as number | undefined;
         await adminClient
           .from("subscriptions")
           .update({
             plan,
             status,
-            current_period_start: new Date(
-              (subData.current_period_start as number) * 1000
-            ).toISOString(),
-            current_period_end: new Date(
-              (subData.current_period_end as number) * 1000
-            ).toISOString(),
+            current_period_start: updStartTs ? new Date(updStartTs * 1000).toISOString() : null,
+            current_period_end: updEndTs ? new Date(updEndTs * 1000).toISOString() : null,
             cancel_at_period_end: subscription.cancel_at_period_end,
             updated_at: new Date().toISOString(),
           })
@@ -150,9 +151,10 @@ export async function POST(request: Request) {
         if (!userId) break;
 
         // Check if within 14-day withdrawal period (Widerrufsrecht)
-        const subCreated = new Date((subscription as unknown as Record<string, unknown>).created as number * 1000);
+        const createdTs = (subscription as unknown as Record<string, unknown>).created as number | undefined;
+        const subCreated = createdTs ? new Date(createdTs * 1000) : null;
         const fourteenDaysMs = 14 * 24 * 60 * 60 * 1000;
-        const isWithinWithdrawal = Date.now() - subCreated.getTime() <= fourteenDaysMs;
+        const isWithinWithdrawal = subCreated ? (Date.now() - subCreated.getTime() <= fourteenDaysMs) : false;
 
         if (isWithinWithdrawal) {
           // Auto-refund the latest invoice per German withdrawal law (§ 355 BGB)
