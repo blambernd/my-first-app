@@ -67,16 +67,21 @@ export function UpgradeDialog({ open, onOpenChange }: UpgradeDialogProps) {
       });
       const data = await res.json();
       if (!res.ok) {
-        toast.error(data.error || "Fehler beim Starten des Checkouts.");
+        const msg = data.error || "Fehler beim Starten des Checkouts.";
+        toast.error(msg);
+        alert(msg);
         return;
       }
       if (data.url) {
         window.location.href = data.url;
       } else {
         toast.error("Keine Checkout-URL erhalten. Bitte versuche es erneut.");
+        alert("Keine Checkout-URL erhalten. Bitte versuche es erneut.");
       }
-    } catch {
-      toast.error("Verbindungsfehler. Bitte versuche es erneut.");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Verbindungsfehler";
+      toast.error(msg);
+      alert(`Checkout-Fehler: ${msg}`);
     } finally {
       setLoading(false);
     }
