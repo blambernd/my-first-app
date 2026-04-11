@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Bell, BellOff, Loader2 } from "lucide-react";
+import { Bell, BellOff, Loader2, Mail } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -19,14 +19,14 @@ interface Preferences {
   reminder_days: number;
   tuv_enabled: boolean;
   service_enabled: boolean;
-  oil_enabled: boolean;
+  email_enabled: boolean;
 }
 
 const DEFAULT_PREFERENCES: Preferences = {
   reminder_days: 7,
   tuv_enabled: true,
   service_enabled: true,
-  oil_enabled: true,
+  email_enabled: true,
 };
 
 export function NotificationSettings() {
@@ -160,12 +160,23 @@ export function NotificationSettings() {
                     }
                   />
                 </div>
+                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide mt-4">
+                  Benachrichtigungskanal
+                </p>
                 <div className="flex items-center justify-between">
-                  <Label className="text-sm">Ölwechsel</Label>
+                  <div>
+                    <Label className="text-sm flex items-center gap-1.5">
+                      <Mail className="h-3.5 w-3.5" />
+                      E-Mail-Benachrichtigung
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Zusätzlich zur Glocke auch per E-Mail erinnern
+                    </p>
+                  </div>
                   <Switch
-                    checked={prefs.oil_enabled}
+                    checked={prefs.email_enabled}
                     onCheckedChange={(checked) =>
-                      savePreferences({ ...prefs, oil_enabled: checked })
+                      savePreferences({ ...prefs, email_enabled: checked })
                     }
                   />
                 </div>

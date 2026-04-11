@@ -20,7 +20,7 @@ const preferencesSchema = z.object({
   reminder_days: z.number().refine((v) => [1, 7, 14, 30].includes(v)),
   tuv_enabled: z.boolean(),
   service_enabled: z.boolean(),
-  oil_enabled: z.boolean(),
+  email_enabled: z.boolean(),
 });
 
 export async function GET() {
@@ -42,7 +42,7 @@ export async function GET() {
 
   const { data } = await supabase
     .from("notification_preferences")
-    .select("reminder_days, tuv_enabled, service_enabled, oil_enabled")
+    .select("reminder_days, tuv_enabled, service_enabled, email_enabled")
     .eq("user_id", user.id)
     .single();
 
@@ -52,7 +52,7 @@ export async function GET() {
       reminder_days: 7,
       tuv_enabled: true,
       service_enabled: true,
-      oil_enabled: true,
+      email_enabled: true,
     }
   );
 }

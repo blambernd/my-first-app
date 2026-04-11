@@ -81,6 +81,11 @@ export async function GET(request: Request) {
   let pushSent = 0;
 
   for (const dueDate of dueDates) {
+    // Skip all oil-related due types — no alerts for Ölwechsel
+    if (dueDate.due_type?.startsWith("oil_") || dueDate.due_type === "oil_change") {
+      continue;
+    }
+
     const vehicle = dueDate.vehicles as {
       make: string;
       model: string;
@@ -102,7 +107,7 @@ export async function GET(request: Request) {
     // Fetch user notification preferences (used for window check + push type filter)
     const { data: userPrefs } = await supabase
       .from("notification_preferences")
-      .select("reminder_days, tuv_enabled, service_enabled, oil_enabled")
+      .select("reminder_days, tuv_enabled, service_enabled, email_enabled")
       .eq("user_id", vehicle.user_id)
       .single();
 
@@ -138,8 +143,9 @@ export async function GET(request: Request) {
     });
     notificationsSent++;
 
-    // Send email
-    if (resend) {
+    // Send email (only if user has email notifications enabled)
+    const emailEnabled = userPrefs?.email_enabled ?? true;
+    if (resend && emailEnabled) {
       const { data: userData } = await supabase.auth.admin.getUserById(
         vehicle.user_id
       );
@@ -169,11 +175,9 @@ export async function GET(request: Request) {
     if (vapidPublic && vapidPrivate) {
       // Check if this reminder type is enabled (defaults to true)
       const isTuv = dueDate.due_type === "tuv_hu";
-      const isOil = dueDate.due_type?.startsWith("oil_");
       const typeEnabled = userPrefs
         ? (isTuv && userPrefs.tuv_enabled) ||
-          (isOil && userPrefs.oil_enabled) ||
-          (!isTuv && !isOil && userPrefs.service_enabled)
+          (!isTuv && userPrefs.service_enabled)
         : true;
 
       if (typeEnabled) {

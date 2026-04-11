@@ -83,8 +83,10 @@ export async function PUT(
         user_id: user.id,
         due_type: parsed.data.due_type,
         due_date: parsed.data.due_date,
-        reminder_sent_7d: false,
         reminder_sent_1d: false,
+        reminder_sent_7d: false,
+        reminder_sent_14d: false,
+        reminder_sent_30d: false,
         updated_at: new Date().toISOString(),
       },
       { onConflict: "vehicle_id,due_type" }
