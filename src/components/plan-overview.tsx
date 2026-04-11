@@ -16,6 +16,7 @@ const isMvpMode = process.env.NEXT_PUBLIC_MVP_MODE === "true";
 export function PlanOverview() {
   const { data, loading, isPremium, isTrial, trialDaysLeft } = useSubscription();
   const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const [portalLoading, setPortalLoading] = useState(false);
 
   if (isBetaMode) return null;
 
@@ -46,8 +47,6 @@ export function PlanOverview() {
   const storagePercent = isUnlimitedStorage
     ? 0
     : Math.round(((data.storageMb ?? 0) / data.limits.maxStorageMb) * 100);
-
-  const [portalLoading, setPortalLoading] = useState(false);
 
   const handleManageSubscription = async () => {
     setPortalLoading(true);
