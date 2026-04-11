@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { SiteFooter } from "@/components/site-footer";
-import { Toaster } from "@/components/ui/sonner";
+
 import { OfflineBanner } from "@/components/offline-banner";
 import { CookieConsentBanner } from "@/components/cookie-consent-banner";
 import { ConditionalAnalytics } from "@/components/conditional-analytics";
@@ -116,7 +116,6 @@ export default function RootLayout({
       <body className="antialiased flex flex-col min-h-screen">
         <div className="flex-1">{children}</div>
         <SiteFooter />
-        <Toaster />
         <OfflineBanner />
         <CookieConsentBanner />
         <ServiceWorkerRegister />
