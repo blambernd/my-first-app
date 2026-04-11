@@ -39,10 +39,15 @@ export function PlanSettings() {
   const bonusUntil = data.referralBonusUntil ? new Date(data.referralBonusUntil) : null;
   const bonusActive = bonusUntil && bonusUntil > new Date();
 
-  // Calculate how many months have been used
-  const bonusMonthsRemaining = bonusActive
-    ? Math.max(0, Math.ceil((bonusUntil.getTime() - Date.now()) / (1000 * 60 * 60 * 24 * 30)))
-    : 0;
+  // Calculate remaining months using calendar month difference
+  let bonusMonthsRemaining = 0;
+  if (bonusActive) {
+    const now = new Date();
+    bonusMonthsRemaining = (bonusUntil.getFullYear() - now.getFullYear()) * 12
+      + (bonusUntil.getMonth() - now.getMonth());
+    if (bonusUntil.getDate() > now.getDate()) bonusMonthsRemaining++;
+    bonusMonthsRemaining = Math.max(0, Math.min(bonusMonthsRemaining, bonusMonths));
+  }
   const bonusMonthsUsed = bonusMonths - bonusMonthsRemaining;
 
   const handleManageSubscription = async () => {
@@ -139,7 +144,7 @@ export function PlanSettings() {
                   <div>
                     <span className="text-muted-foreground">Verbleibend</span>
                     <p className="font-medium text-green-600">
-                      ~{bonusMonthsRemaining} {bonusMonthsRemaining === 1 ? "Monat" : "Monate"}
+                      {bonusMonthsRemaining} {bonusMonthsRemaining === 1 ? "Monat" : "Monate"}
                     </p>
                   </div>
                 ) : (
