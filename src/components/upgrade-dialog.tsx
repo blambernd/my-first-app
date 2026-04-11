@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Check, Crown, Loader2, Bell, BellRing } from "lucide-react";
+import { toast } from "sonner";
 
 interface UpgradeDialogProps {
   open: boolean;
@@ -65,11 +66,17 @@ export function UpgradeDialog({ open, onOpenChange }: UpgradeDialogProps) {
         body: JSON.stringify({ interval: isYearly ? "year" : "month" }),
       });
       const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error || "Fehler beim Starten des Checkouts.");
+        return;
+      }
       if (data.url) {
         window.location.href = data.url;
+      } else {
+        toast.error("Keine Checkout-URL erhalten. Bitte versuche es erneut.");
       }
     } catch {
-      // silently fail
+      toast.error("Verbindungsfehler. Bitte versuche es erneut.");
     } finally {
       setLoading(false);
     }
