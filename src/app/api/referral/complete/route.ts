@@ -35,6 +35,51 @@ export async function POST() {
     return NextResponse.json({ completed: false, reason: "not_first_vehicle", count });
   }
 
+  // Ensure referral entry exists (DB trigger may not have created it)
+  // Check user metadata for referral_code and create entry if missing
+  const { data: existingReferral } = await adminClient
+    .from("referrals")
+    .select("id")
+    .eq("referred_id", user.id)
+    .single();
+
+  if (!existingReferral) {
+    // No referral entry — try to create from user metadata
+    const referralCode = user.user_metadata?.referral_code as string | undefined;
+    console.log(`Referral: No entry for user ${user.id}, metadata referral_code=${referralCode || "none"}`);
+
+    if (referralCode) {
+      // Find the referrer by their referral code
+      const { data: referrerSub } = await adminClient
+        .from("subscriptions")
+        .select("user_id")
+        .eq("referral_code", referralCode)
+        .single();
+
+      if (referrerSub && referrerSub.user_id !== user.id) {
+        const { error: insertError } = await adminClient
+          .from("referrals")
+          .insert({
+            referrer_id: referrerSub.user_id,
+            referred_id: user.id,
+            referral_code: referralCode,
+            status: "pending",
+          });
+        if (insertError) {
+          console.error(`Referral: Failed to create entry:`, insertError.message);
+        } else {
+          console.log(`Referral: Created entry for referrer ${referrerSub.user_id} → referred ${user.id}`);
+        }
+      } else {
+        console.log(`Referral: No matching referrer for code ${referralCode}`);
+        return NextResponse.json({ completed: false, reason: "no_matching_referrer" });
+      }
+    } else {
+      console.log(`Referral: User ${user.id} has no referral_code in metadata`);
+      return NextResponse.json({ completed: false, reason: "no_referral_code" });
+    }
+  }
+
   // Atomically mark referral as completed (prevents race condition)
   // Only updates if status is still 'pending', returns nothing if already completed
   const { data: referral, error: referralError } = await adminClient
