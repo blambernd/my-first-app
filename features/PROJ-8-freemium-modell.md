@@ -280,5 +280,6 @@ Speicherberechnung:
 
 ## Deployment
 - **Deployed:** 2026-04-09
-- **Migrations to apply:** `20260408_subscriptions.sql`, `20260408_add_file_size_to_images.sql`, `20260731_reset_vehicle_locks.sql` (noch offen)
+- **Re-Deploy (BUG-4-Fix):** 2026-07-31 — Commit `b9aaa29`, Vercel-Build erfolgreich, Produktion: https://www.oldtimer-docs.com
+- **Migrations to apply:** `20260408_subscriptions.sql`, `20260408_add_file_size_to_images.sql`, `20260731_reset_vehicle_locks.sql` (noch offen — Code-Fix ist unabhängig davon wirksam)
 - **Env vars required:** `STRIPE_SECRET_KEY`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_MONTHLY`, `STRIPE_PRICE_YEARLY`
