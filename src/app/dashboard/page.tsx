@@ -13,7 +13,12 @@ import { PushOptInBanner } from "@/components/push-opt-in-banner";
 import { Car } from "lucide-react";
 import type { VehicleWithImages } from "@/lib/validations/vehicle";
 import { ROLE_LABELS, type MemberRole } from "@/lib/validations/member";
-import { getEffectivePlan, canAddVehicle, isBetaMode } from "@/lib/subscription";
+import {
+  getEffectivePlan,
+  canAddVehicle,
+  hasPremiumAccess,
+  isBetaMode,
+} from "@/lib/subscription";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -58,6 +63,7 @@ export default async function DashboardPage() {
 
   const effectivePlan = subscription ? getEffectivePlan(subscription) : isBetaMode ? "premium" : "free";
   const canAdd = canAddVehicle(effectivePlan, typedVehicles.length);
+  const premiumActive = hasPremiumAccess(effectivePlan);
 
   return (
     <div className="bg-muted/40">
@@ -84,7 +90,11 @@ export default async function DashboardPage() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {typedVehicles.map((vehicle) => (
-              <VehicleCard key={vehicle.id} vehicle={vehicle} />
+              <VehicleCard
+                key={vehicle.id}
+                vehicle={vehicle}
+                hasPremium={premiumActive}
+              />
             ))}
             {canAdd && <AddVehicleCard />}
           </div>

@@ -260,7 +260,25 @@ Speicherberechnung:
 ### Production-Ready Decision
 **READY** — All 3 bugs fixed. No Critical or High bugs remaining.
 
+### Post-Deployment Bugs
+
+#### BUG-4: Veraltetes "Gesperrt"-Badge trotz Premium-Zugriff [Medium] — FIXED (2026-07-31)
+**Severity:** Medium
+**Status:** Fixed
+**Symptom:** Im Dashboard zeigten Fahrzeuge dauerhaft das "Gesperrt"-Badge, obwohl der Nutzer (Beta-Modus) Premium-Zugriff hat.
+**Ursache:** `VehicleCard` rendert das Badge allein aus der DB-Spalte `vehicles.is_locked`, ohne den effektiven Plan zu berücksichtigen. Die Spalte wird nur vom Stripe-Webhook gesetzt (`lockExcessVehicles` beim Downgrade auf Free) und nur bei `checkout.session.completed`/Upgrade zurückgesetzt — Events, die bei `NEXT_PUBLIC_BETA_MODE=true` nie eintreffen. Sperren aus früheren Cancel-/Widerruf-Tests blieben daher permanent stehen.
+**Fix:** `VehicleCard` erhält Prop `hasPremium`; Badge nur noch bei `is_locked && !hasPremium`. Dashboard reicht `hasPremiumAccess(effectivePlan)` durch. Migration `20260731_reset_vehicle_locks.sql` setzt bestehende Flags zurück.
+**Hinweis:** Geteilte Fahrzeuge bleiben unverändert — dort spiegelt `is_locked` den Plan des Besitzers, nicht des Betrachters.
+**Tests:** `src/components/vehicle-card.test.tsx` (5 Tests) deckt Free/Premium × gesperrt/entsperrt sowie den Default des `hasPremium`-Props ab. Gegenprobe verifiziert: Mit der alten Bedingung (`showLock = vehicle.is_locked`) schlägt der Premium-Test fehl.
+**Verifiziert (2026-07-31):** `npm run build` erfolgreich, Lint ohne neue Fehler, Unit-Tests grün. DB-Stand: 2 von 5 Fahrzeugen weiterhin `is_locked = true` — Migration noch nicht angewendet (UI ist durch den Fix bereits korrekt).
+
+#### BUG-5: `lockExcessVehicles` kann alle Fahrzeuge sperren [Low] — OFFEN
+**Severity:** Low
+**Status:** Open
+**Beschreibung:** Der Widerruf-Pfad ruft innerhalb des `customer.subscription.updated`-Handlers `subscriptions.cancel()` auf, was sofort `customer.subscription.deleted` auslöst. Beide Handler rufen `lockExcessVehicles`. Da der Trigger `vehicles_updated_at` die Sortierreihenfolge zwischen den Läufen verändert, kann eine ungünstige Verschränkung *jedes* Fahrzeug sperren, statt eines entsperrt zu lassen. Gleiches Ergebnis, wenn das "aktive" Fahrzeug nach dem Downgrade gelöscht wird.
+**Anmerkung:** Aktuell ohne funktionale Auswirkung — `is_locked` wird nirgends erzwungen (keine RLS-Policy, keine API-Prüfung), nur angezeigt.
+
 ## Deployment
 - **Deployed:** 2026-04-09
-- **Migrations to apply:** `20260408_subscriptions.sql`, `20260408_add_file_size_to_images.sql`
+- **Migrations to apply:** `20260408_subscriptions.sql`, `20260408_add_file_size_to_images.sql`, `20260731_reset_vehicle_locks.sql` (noch offen)
 - **Env vars required:** `STRIPE_SECRET_KEY`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_MONTHLY`, `STRIPE_PRICE_YEARLY`

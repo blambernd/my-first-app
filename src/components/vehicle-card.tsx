@@ -9,6 +9,12 @@ import { createClient } from "@/lib/supabase";
 
 interface VehicleCardProps {
   vehicle: VehicleWithImages;
+  /**
+   * Ob der Betrachter Premium-Zugriff hat. Die Sperre gilt nur im Free-Plan —
+   * `is_locked` wird ausschließlich vom Stripe-Webhook gesetzt und bleibt nach
+   * einem späteren Upgrade (oder im Beta-Modus) veraltet stehen.
+   */
+  hasPremium?: boolean;
 }
 
 function getImageUrl(storagePath: string): string {
@@ -19,10 +25,11 @@ function getImageUrl(storagePath: string): string {
   return data.publicUrl;
 }
 
-export function VehicleCard({ vehicle }: VehicleCardProps) {
+export function VehicleCard({ vehicle, hasPremium = false }: VehicleCardProps) {
   const primaryImage = vehicle.vehicle_images?.find((img) => img.is_primary);
   const firstImage = primaryImage ?? vehicle.vehicle_images?.[0];
   const imageUrl = firstImage ? getImageUrl(firstImage.storage_path) : null;
+  const showLock = vehicle.is_locked && !hasPremium;
 
   return (
     <Link href={`/vehicles/${vehicle.id}`}>
@@ -39,7 +46,7 @@ export function VehicleCard({ vehicle }: VehicleCardProps) {
               <Car className="h-12 w-12 text-muted-foreground/40" />
             </div>
           )}
-          {vehicle.is_locked && (
+          {showLock && (
             <div className="absolute inset-0 bg-background/60 flex items-center justify-center">
               <Badge variant="secondary" className="text-xs gap-1">
                 <Lock className="h-3 w-3" />

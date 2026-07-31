@@ -36,6 +36,13 @@ yarn-error.log*
 # claude code personal settings
 .claude/settings.local.json
 
+# MCP server config (contains SUPABASE_ACCESS_TOKEN — never commit)
+.mcp.json
+
+# local dev/test scratch output
+dev-server.log
+pw-*.txt
+
 # capacitor native platforms (generated)
 /ios/
 /android/
