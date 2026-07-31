@@ -44,9 +44,9 @@ Eine SaaS-Plattform für Oldtimer-Besitzer, die es ermöglicht, die komplette Hi
 | P0 | PROJ-21: Capacitor App Setup (iOS + Android) | Planned |
 | P1 | PROJ-22: Kamera-Integration | Planned |
 | P1 | PROJ-23: Push-Notifications (Termine) | Planned |
-| P1 | PROJ-24: Tankbuch & Verbrauch | Planned |
-| P1 | PROJ-25: Wiederkehrende Kosten | Planned |
-| P2 | PROJ-26: Einzelkosten | Planned |
+| P1 | PROJ-24: Tankbuch & Verbrauch | Deployed |
+| P1 | PROJ-25: Wiederkehrende Kosten | Deployed |
+| P2 | PROJ-26: Einzelkosten | Deployed |
 | P1 | PROJ-27: Kostenanalyse | Planned |
 | P2 | PROJ-28: Kaufpreis & Wertentwicklung | Planned |
 

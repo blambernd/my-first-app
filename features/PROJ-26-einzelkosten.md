@@ -1,6 +1,6 @@
 # PROJ-26: Einzelkosten
 
-## Status: Approved
+## Status: Deployed
 **Created:** 2026-07-31
 **Last Updated:** 2026-07-31
 
@@ -331,4 +331,42 @@ Die Datenbank prüft nicht, ob der verknüpfte Scheckheft-Eintrag zum selben Fah
 **Produktionsreif.** BUG-1 ist ein Datenintegritäts-Thema ohne Sicherheitswirkung und blockiert das Deployment nicht — er sollte aber vor PROJ-27 behoben werden.
 
 ## Deployment
-_To be added by /deploy_
+
+- **Deployed:** 2026-07-31
+- **Commits:** `5e4721b` — `feat(PROJ-26): Implement Einzelkosten` · `6b6d5d5` — `test(PROJ-26): Add QA test results`
+- **Produktion:** https://www.oldtimer-docs.com
+- **Migrationen:** `20260731185259_create_one_off_costs` und `20260731185357_drop_one_off_costs_inclusion_check` — beide angewendet, gegen die Datenbank verifiziert
+- **Neue Env-Variablen:** keine. In Vercel ist nichts zu ergänzen
+- **Neue Abhängigkeiten:** keine
+
+### Vor dem Deployment geprüft
+
+| Punkt | Ergebnis |
+|---|---|
+| `npm run build` | erfolgreich, Route `/vehicles/[id]/kosten/einzelkosten` im Manifest |
+| `npm run lint` | 2 Fehler — beide vorbestehend in `cookie-consent-banner.tsx` und `landing-page.tsx`, keine PROJ-26-Datei betroffen |
+| QA | Approved, 17/17 Kriterien, keine kritischen oder hohen Befunde |
+| Migrationen | angewendet und verifiziert |
+| Secret-Scan des Commits | sauber, `.env.local` nicht im Commit |
+| Regression PROJ-24 / PROJ-25 | 44/44 grün |
+
+**Auffälligkeit beim Vorbereiten:** Die Implementierung war zum Zeitpunkt des Deploy-Starts noch **gar nicht committet** — im Verlauf war nur der QA-Commit entstanden. Deshalb steht `test(PROJ-26)` in der Historie vor `feat(PROJ-26)`. Inhaltlich ohne Folgen, beide Commits gingen gemeinsam nach `main`.
+
+### Nachprüfung in der Produktion
+
+Die Weiterleitung einer unangemeldeten Anfrage auf `/login` beweist **nichts** — eine Kontrollprobe zeigte, dass der Proxy jede `/vehicles/*`-Route gleich behandelt, auch eine, die es nicht gibt. Verifiziert wurde deshalb angemeldet über einen echten Browserlauf gegen die Produktion (nur lesend, keine Daten geschrieben):
+
+| Prüfung | Ergebnis |
+|---|---|
+| Anmeldung in der Produktion | ✅ |
+| Unterreiter „Einzelkosten" im Kosten-Bereich sichtbar | ✅ |
+| Seite lädt, leerer Zustand erscheint | ✅ |
+| Erfassungsdialog öffnet — belegt, dass die Datenbankabfrage durchläuft | ✅ |
+| Konsolenfehler auf Kosten- und Einzelkosten-Seite | **0** |
+
+**Vorbestehender Befund außerhalb dieses Features:** Auf `/dashboard` tritt ein React-Hydration-Fehler (#418) auf. Durch Gegenprobe eingegrenzt — Scheckheft, Kosten und Einzelkosten sind fehlerfrei. Gehört nicht zu PROJ-26, sollte aber separat verfolgt werden.
+
+### Offene Punkte
+
+- **BUG-1 (Low)** aus dem QA-Bericht: Die Datenbank erzwingt nicht, dass ein verknüpfter Scheckheft-Eintrag zum selben Fahrzeug gehört. Über die Oberfläche nicht erreichbar, keine Sicherheitswirkung — **vor PROJ-27 beheben**, weil die Auswertung sonst auf einer Annahme aufsetzt, die die Datenbank nicht garantiert
+- Veralteter Edge Case in dieser Spec: „Wertgutachten … alternativ in PROJ-25 anlegen" — diese Möglichkeit gibt es dort nicht. Empfehlung weiterhin: Hinweis streichen
