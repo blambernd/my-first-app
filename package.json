@@ -72,6 +72,7 @@
     "react-dropzone": "^15.0.0",
     "react-hook-form": "^7.71.1",
     "react-image-crop": "^11.0.10",
+    "recharts": "^2.15.4",
     "remark": "^15.0.1",
     "remark-gfm": "^4.0.1",
     "remark-html": "^16.0.1",

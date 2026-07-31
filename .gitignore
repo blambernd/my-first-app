@@ -10,6 +10,8 @@
 /coverage
 /playwright-report/
 /test-results/
+# E2E-Sitzungsdatei — enthält ein gültiges Supabase-Token, niemals committen
+/playwright/.auth/
 
 # next.js
 /.next/

@@ -3,7 +3,7 @@
 import { useRef, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BookOpen, Clock, FileText, Car, Workflow, Lock } from "lucide-react";
+import { BookOpen, Clock, FileText, Car, Workflow, Lock, Fuel } from "lucide-react";
 import { useSubscription } from "@/hooks/use-subscription";
 import { Badge } from "@/components/ui/badge";
 
@@ -32,6 +32,11 @@ const navItems = [
     label: "Dokumente",
     href: "/dokumente",
     icon: FileText,
+  },
+  {
+    label: "Tankbuch",
+    href: "/tankbuch",
+    icon: Fuel,
   },
   // Ersatzteil-Suche vorübergehend deaktiviert (Ergebnisqualität)
   // {
