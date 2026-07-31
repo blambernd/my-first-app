@@ -1,6 +1,6 @@
 # PROJ-27: Kostenanalyse
 
-## Status: Planned
+## Status: Architected
 **Created:** 2026-07-31
 **Last Updated:** 2026-07-31
 
@@ -87,7 +87,158 @@ Zwei Punkte prägen den Zuschnitt: Die Auswertung muss **mit unvollständigen Da
 <!-- Sections below are added by subsequent skills -->
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture_
+
+### Entscheidungen des Nutzers (2026-07-31)
+
+| Frage | Entscheidung |
+|---|---|
+| Premium oder frei? | **Auswertung Premium, Erfassung frei** — PROJ-24/25/26 bleiben frei, PROJ-27 ist Premium |
+| Sichtbarkeit bei geteilten Fahrzeugen | **Nur der Besitzer** |
+| Kostenhistorie beim Fahrzeug-Transfer | **Bleibt beim Vorbesitzer**, geht nicht mit über |
+
+### A) Komponenten-Struktur
+
+```
+Kosten-Bereich  (/vehicles/[id]/kosten)
++-- Unterreiter
+|   +-- Laufende Kosten     (PROJ-25)
+|   +-- Einzelkosten        (PROJ-26)
+|   +-- [Auswertung]        ← dieses Feature
+|
++-- Auswertung  (/vehicles/[id]/kosten/auswertung)
+    +-- Premium-Sperre (falls kein Premium)
+    |   +-- Erklärung, was die Auswertung zeigt, mit Verweis auf das Abo
+    +-- Zeitraum-Auswahl
+    |   +-- laufendes Jahr · letztes Jahr · gesamter Zeitraum
+    +-- Kennzahlen-Leiste
+    |   +-- Gesamtkosten im Zeitraum
+    |   +-- Standkosten je Monat und je Jahr  ("Was kostet es im Stand?")
+    |   +-- Kosten pro Kilometer   (oder "nicht berechenbar")
+    +-- Datenbasis-Hinweis
+    |   +-- welche Kostenarten nicht erfasst sind
+    |   +-- wie viele Beträge wegen Doppelerfassung ausgeschlossen wurden
+    |   +-- wie viele Scheckheft-Einträge ohne Kostenangabe sind
+    |   +-- Warnung bei überlappenden Zeiträumen (aus PROJ-25)
+    +-- Diagramm: Verteilung nach Kostenart
+    +-- Umschalter: alle Kostenarten / Standkosten / Fahrtkosten
+    +-- Diagramm: Entwicklung über die Zeit (monatlich gestapelt)
+    +-- Tabelle je Kostenart
+    |   +-- Betrag, Anteil, Anzahl Positionen
+    |   +-- Verweis zur Quelle (Tankbuch / Scheckheft / Laufende / Einzelkosten)
+    +-- Leerer Zustand
+        +-- Erklärung, welche Erfassungen die Auswertung speisen, mit Links
+```
+
+### B) Datenmodell
+
+**Dieses Feature legt keine eigene Tabelle an.** Es liest ausschließlich, was bereits erfasst ist:
+
+| Quelle | Liefert | Kostenarten |
+|---|---|---|
+| Tankbuch (PROJ-24) | Betrag und Datum je Tankvorgang | Benzin |
+| Scheckheft (PROJ-3) | Kosten je Eintrag, Kostenart aus dem Eintragstyp | Wartung, Reparatur, Sonstiges |
+| Laufende Kosten (PROJ-25) | Betrag, Intervall, Gültigkeitszeitraum | Versicherung, Steuer, Unterstellung, Clubbeitrag |
+| Einzelkosten (PROJ-26) | Betrag, Datum, Kennzeichen "bereits enthalten" | Ersatzteile, Wertgutachten, Sonstiges |
+
+Was die Auswertung im Arbeitsspeicher daraus bildet:
+
+```
+Je Kostenart:
+- Bezeichnung und Herkunft (aus welcher Erfassung sie stammt)
+- Einordnung: Standkosten, Fahrtkosten oder ohne Zuordnung
+- Summe im gewählten Zeitraum
+- Anzahl der Positionen
+- Zustand: "nicht erfasst" | "erfasst" — ausdrücklich unterschieden
+
+Je Monat im Zeitraum:
+- Betrag je Kostenart
+- Kennzeichen, ob der Monat überhaupt Daten hat
+
+Für die Datenbasis:
+- ausgeschlossene Beträge wegen Doppelerfassung (Anzahl und Summe)
+- Scheckheft-Einträge ohne Kostenangabe (Anzahl)
+- überlappende Zeiträume laufender Kosten (Anzahl)
+- ermittelte Fahrleistung im Zeitraum (oder: nicht ermittelbar)
+```
+
+### C) Technische Entscheidungen
+
+**C1 — Keine eigene Tabelle, keine gespeicherten Auswertungen.**
+Die Auswertung wird bei jedem Aufruf frisch berechnet. Gespeicherte Summen müssten bei jeder Änderung in vier Erfassungs-Features nachgezogen werden; jede vergessene Stelle erzeugt still falsche Zahlen. Der Rechenaufwand ist bei den erwarteten Datenmengen unerheblich.
+
+**C2 — Gerechnet wird auf dem Server, aber in der Anwendung, nicht in der Datenbank.**
+Die Spec verlangt serverseitige Aggregation, damit nicht alle Einzeleinträge zum Browser wandern. Das ist erfüllt: Die Seite lädt und verdichtet auf dem Server, an den Browser gehen nur die fertigen Summen.
+
+Bewusst **nicht** als Datenbankfunktion: Die schwierigen Regeln — die Umlage der Fixkosten aus PROJ-25 und der Doppelzählungsschutz aus PROJ-26 — existieren bereits als geprüfte Bausteine mit 22 bzw. gut zwei Dutzend Tests. Eine zweite Fassung derselben Regeln in der Datenbank hieße zwei Quellen der Wahrheit, die auseinanderlaufen werden. Genau bei diesen Regeln sind in PROJ-24 und PROJ-25 bereits Fehler aufgetreten, die erst durch Tests auffielen.
+
+**C3 — Ein zentrales Verzeichnis der Kostenarten.**
+An einer Stelle steht, welche Kostenart es gibt, aus welcher Erfassung sie stammt und ob sie Stand- oder Fahrtkosten sind. Damit erfüllt sich die Anforderung, dass eine in PROJ-25 oder PROJ-26 ergänzte Kostenart automatisch in der Auswertung erscheint — sie wird dort eingetragen und ist überall sichtbar, statt an mehreren Stellen nachgepflegt zu werden.
+
+**C4 — "Nicht erfasst" ist etwas anderes als "0 €".**
+Jede Kostenart hat einen von zwei Zuständen. Wer keine Versicherung erfasst hat, bekommt "nicht erfasst" — nicht die Aussage, seine Versicherung koste nichts. Diese Unterscheidung zieht sich durch alle Darstellungen: Nicht erfasste Arten erscheinen nicht im Verteilungsdiagramm, sondern im Datenbasis-Hinweis.
+
+**C5 — Fixkosten gehen monatlich umgelegt ein, und nur für vergangene Monate.**
+Ein Jahresbeitrag verteilt sich auf zwölf Monate, statt im Zahlungsmonat als Spitze zu erscheinen. Die Umlage-Logik aus PROJ-25 wird unverändert weiterverwendet. Läuft ein Gültigkeitszeitraum in die Zukunft, zählen nur die bereits vergangenen Monate — sonst weist die Auswertung Kosten aus, die noch gar nicht angefallen sind.
+
+**C6 — Doppelzählung wird ausgeschlossen und sichtbar gemacht.**
+Die Regel aus PROJ-26 wird unverändert übernommen: Ein Betrag wird nur dann übersprungen, wenn er als "bereits enthalten" gekennzeichnet ist **und** die Verknüpfung noch besteht. Fällt der Scheckheft-Eintrag weg, zählt der Betrag wieder mit. Die Auswertung nennt Anzahl und Summe der ausgeschlossenen Beträge ausdrücklich, statt sie stillschweigend zu unterschlagen.
+
+**C7 — Kosten pro Kilometer: Fahrleistung aus zwei Quellen, mit Vorsicht.**
+Kilometerstände stehen sowohl im Scheckheft als auch im Tankbuch. Beide werden zusammengeführt und nach Datum sortiert; die Fahrleistung ist die Summe der Zuwächse zwischen aufeinanderfolgenden Ablesungen.
+
+Übersprungen werden Abschnitte, in denen eine Tacho-Korrektur liegt oder der Stand sinkt — dieselbe Vorsicht, die im Tankbuch bereits die Verbrauchsberechnung schützt. Liegen weniger als zwei brauchbare Ablesungen vor, lautet das Ergebnis **"nicht berechenbar"**; es wird weder 0 € noch ein Unendlich-Wert angezeigt.
+
+Bei sehr geringer Fahrleistung — bei Oldtimern der Normalfall — wird der Wert mit der zugrundeliegenden Kilometerzahl zusammen genannt, damit ein hoher Wert einzuordnen ist und nicht als Alarm wirkt.
+
+**C8 — Diagramme mit dem vorhandenen Baukasten.**
+Die Spec vermerkt, es sei keine Diagramm-Bibliothek installiert. **Das stimmt nicht mehr:** Mit PROJ-24 kamen Recharts und die zugehörige shadcn-Komponente ins Projekt. Es wird also nichts Neues installiert und die Bündelgröße wächst nicht.
+
+Kostenarten sind nie **nur** über Farbe unterscheidbar: Jedes Segment und jede Reihe trägt zusätzlich eine Beschriftung, und die Tabelle unter den Diagrammen enthält dieselben Zahlen in Textform. Damit ist die Auswertung auch bei Farbfehlsichtigkeit und mit Vorlesehilfen benutzbar. Helles und dunkles Design sind über die vorhandene Komponente bereits abgedeckt.
+
+**C9 — Premium-Sperre nach dem etablierten Muster.**
+Es wird dieselbe Prüfung verwendet wie bei Marktpreis-Analyse und Verkaufsassistent. Statt einer leeren Seite sieht ein Nutzer ohne Premium, **was** die Auswertung leisten würde — sonst wirbt die Sperre nicht, sondern frustriert nur.
+
+**C10 — Sichtbarkeit nur für den Besitzer: betrifft den ganzen Kostenbereich.**
+Hier ist eine Folge zu benennen, die über dieses Feature hinausgeht. Die Auswertung zeigt nichts, was nicht schon in den Listen von PROJ-25 und PROJ-26 stünde — und **diese sind heute für alle Mitglieder sichtbar**, Werkstätten eingeschlossen. Nur die Auswertung zu sperren, wäre reine Fassade: Die Beträge blieben eine Klickebene tiefer offen.
+
+Empfehlung: Der gesamte Kostenbereich wird auf den Besitzer beschränkt — Seiten **und** Datenbankregeln, denn die Regeln erlauben Mitgliedern derzeit ebenfalls das Lesen. Das ist eine Änderung an zwei bereits ausgelieferten Features und sollte bewusst entschieden werden. Das Tankbuch bleibt davon unberührt: Verbrauch ist Fahrzeugtechnik, kein Finanzdatum.
+
+**C11 — Zeitachse in Monaten, Lücken bleiben Lücken.**
+Aggregiert wird monatlich, nicht tagesgenau, damit auch mehrjährige Zeiträume lesbar bleiben. Monate ohne jede Kostenposition werden als Lücke dargestellt und nicht als Nulllinie neben befüllten Monaten — eine durchgezogene Null suggeriert eine Aussage, die die Daten nicht hergeben.
+
+Monate mit Standkosten, aber ohne Fahrtkosten sind **kein** Datenfehler: Genau so sieht ein Winterlager mit Saisonkennzeichen aus. Sie werden nicht als Auffälligkeit markiert.
+
+**C12 — Von der Zahl zur Quelle.**
+Jede Kostenart in der Tabelle verweist auf die Erfassung, aus der sie stammt. Bewusst auf die jeweilige Übersicht und nicht auf den Einzeleintrag: Eine Kostenart fasst viele Positionen zusammen, ein Sprung auf genau eine davon wäre willkürlich.
+
+### D) Abhängigkeiten
+
+**Keine neuen Pakete.** Recharts und die Diagramm-Komponente kamen mit PROJ-24, die Rechenbausteine aus PROJ-24/25/26 werden weiterverwendet, die Premium-Prüfung besteht.
+
+### E) Was dieses Feature bewusst NICHT tut
+
+- **Keine eigene Datenerfassung.** Fehlt eine Kostenart, verweist die Auswertung auf das zuständige Erfassungs-Feature
+- **Kein Kaufpreis.** Die Anschaffung aus PROJ-28 wird dort getrennt ausgewiesen und verzerrt die Zeitreihe der laufenden Kosten nicht
+- **Kein Export.** Weder PDF noch CSV — nicht in den Acceptance Criteria; die Verkaufs-Story wird über PROJ-12 und PROJ-16 bedient
+
+### F) Offene Punkte für die Umsetzung
+
+**F1 — Der Fahrzeug-Transfer braucht eine eigene Aufgabe, und die Entscheidung hat eine unangenehme Kehrseite.**
+
+Die Entscheidung lautet: Kostendaten bleiben beim Vorbesitzer. PROJ-27 liest jedoch nur und kann das nicht umsetzen — die Änderung gehört in die Transfer-Logik von PROJ-7.
+
+Dabei ist Folgendes zu bedenken: Die Kostendaten hängen am Fahrzeug, nicht am Nutzer. "Bleiben beim Vorbesitzer" lässt sich technisch nur als **Löschen beim Transfer** umsetzen — und dann sind sie auch für den Vorbesitzer weg. Bei aktivierter Option "als Betrachter behalten" verliert er sie ebenfalls. Die Entscheidung schützt ihn also vor Offenlegung, kostet ihn aber seine eigenen Aufzeichnungen.
+
+Empfehlung: Vor dem Transfer ausdrücklich darauf hinweisen und einen Export anbieten, bevor die Kostendaten entfernt werden. Das ist eine eigenständige Aufgabe mit eigener ID (PROJ-29) und **keine Voraussetzung** für PROJ-27.
+
+**F2 — Die Zuordnung "Reifen zählen als Ersatzteile" ist nicht umsetzbar.**
+Das Acceptance Criterion setzt eine Kostenart "Reifen" voraus, die es nirgends gibt: Weder das Scheckheft noch die Einzelkosten kennen einen solchen Typ. Reifen sind heute eine Beschreibung, kein Typ. Empfehlung: Das Kriterium streichen — Reifen fallen als Ersatzteile ohnehin richtig an, sobald sie dort erfasst werden.
+
+**F3 — C10 ist eine Entscheidung über zwei ausgelieferte Features.**
+Ob PROJ-25 und PROJ-26 mit auf "nur Besitzer" umgestellt werden, sollte vor dem Bau feststehen. Ohne diese Umstellung ist die Zugriffsbeschränkung der Auswertung wirkungslos.
+
+**F4 — Aufteilung nach Stand- und Fahrtkosten bei "Sonstiges".**
+"Sonstiges" ist in PROJ-25 und PROJ-26 bewusst nicht eingeordnet. Solche Beträge erscheinen in der Gesamtsumme, aber in keinem der beiden Töpfe. In der Aufteilung wird das als eigener Posten "ohne Zuordnung" ausgewiesen, damit die Summe der Töpfe nachvollziehbar unter der Gesamtsumme liegt.
 
 ## QA Test Results
 _To be added by /qa_
