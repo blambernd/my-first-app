@@ -22,6 +22,9 @@ CREATE TABLE one_off_costs (
   -- der Auswertungsregel (Ausschluss nur bei gesetztem Kennzeichen UND
   -- bestehender Verknüpfung) zählt der Betrag dann automatisch wieder mit —
   -- er kann nicht dauerhaft und unbemerkt aus der Auswertung verschwinden.
+  -- NACHTRAG: Dieser Fremdschlüssel wurde durch einen zusammengesetzten ersetzt,
+  -- der zusätzlich die Gleichheit des Fahrzeugs erzwingt — siehe
+  -- 20260731_fix_one_off_costs_vehicle_match.sql (QA-Befund BUG-1).
   service_entry_id UUID REFERENCES service_entries(id) ON DELETE SET NULL,
   included_in_service_entry BOOLEAN NOT NULL DEFAULT FALSE,
   notes TEXT CHECK (notes IS NULL OR length(notes) <= 1000),

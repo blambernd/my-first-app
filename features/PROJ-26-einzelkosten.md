@@ -309,7 +309,7 @@ Alle Prüfungen in einer zurückgerollten Transaktion mit gesetzten JWT-Claims, 
 
 ### Gefundene Fehler
 
-**BUG-1 (Low): Verknüpfung auf einen fremden Scheckheft-Eintrag ist technisch möglich**
+**BUG-1 (Low) — BEHOBEN am 2026-07-31, siehe Abschnitt „Nachtrag" unten: Verknüpfung auf einen fremden Scheckheft-Eintrag war technisch möglich**
 
 Die Datenbank prüft nicht, ob der verknüpfte Scheckheft-Eintrag zum selben Fahrzeug gehört. Ein Besitzer kann per direktem API-Aufruf `service_entry_id` auf einen Eintrag eines fremden Fahrzeugs setzen — im Test bestätigt (1 Zeile geändert, Verknüpfung gesetzt).
 
@@ -368,5 +368,39 @@ Die Weiterleitung einer unangemeldeten Anfrage auf `/login` beweist **nichts** �
 
 ### Offene Punkte
 
-- **BUG-1 (Low)** aus dem QA-Bericht: Die Datenbank erzwingt nicht, dass ein verknüpfter Scheckheft-Eintrag zum selben Fahrzeug gehört. Über die Oberfläche nicht erreichbar, keine Sicherheitswirkung — **vor PROJ-27 beheben**, weil die Auswertung sonst auf einer Annahme aufsetzt, die die Datenbank nicht garantiert
+- ~~**BUG-1 (Low)**~~ — **behoben am 2026-07-31**, siehe Nachtrag unten
 - Veralteter Edge Case in dieser Spec: „Wertgutachten … alternativ in PROJ-25 anlegen" — diese Möglichkeit gibt es dort nicht. Empfehlung weiterhin: Hinweis streichen
+
+---
+
+## Nachtrag: BUG-1 behoben (2026-07-31)
+
+**Befund:** Der Fremdschlüssel prüfte nur, ob die verknüpfte ID in `service_entries` existiert — nicht, ob der Eintrag zum selben Fahrzeug gehört.
+
+**Lösung:** Ein zusammengesetzter Fremdschlüssel über `(service_entry_id, vehicle_id)` gegen `service_entries (id, vehicle_id)`. Die Datenbank garantiert damit, was PROJ-27 bisher nur voraussetzen konnte.
+
+- Migration: `20260731_fix_one_off_costs_vehicle_match.sql`, angewendet als `20260731...fix_one_off_costs_vehicle_match`
+- **Kein Anwendungscode geändert** — die Regel liegt vollständig im Schema. Über die Oberfläche war der Fall ohnehin nie erreichbar, die Auswahlliste zeigt per RLS nur eigene Einträge
+- Vor dem Anwenden geprüft: **0 bestehende Zeilen** hätten die neue Regel verletzt
+
+**Die entscheidende Feinheit:** `ON DELETE SET NULL` **(service_entry_id)** — mit ausdrücklicher Spaltenliste (PostgreSQL 15+, hier läuft 17.6). Ohne sie hätte PostgreSQL beim Löschen eines Scheckheft-Eintrags *beide* Spalten auf NULL gesetzt, auch `vehicle_id` — das scheitert an deren NOT-NULL-Regel und hätte das Löschen erneut unmöglich gemacht. Also exakt derselbe Fehler wie bei der ursprünglichen CHECK-Regel, nur an anderer Stelle. Genau deshalb prüft die Nachkontrolle unten nicht nur, ob der Angriff blockiert wird, sondern auch, ob Löschen und `vehicle_id` unversehrt bleiben.
+
+`MATCH SIMPLE` (Voreinstellung) ist hier gewollt: Ist `service_entry_id` NULL, greift der Fremdschlüssel gar nicht. Ausgaben ohne Zuordnung — der Normalfall beim Selbstschrauben — bleiben uneingeschränkt möglich.
+
+**Gegen die Datenbank verifiziert** (zurückgerollte Transaktion):
+
+| Prüfung | Ergebnis |
+|---|---|
+| Verknüpfung auf Eintrag eines **fremden** Fahrzeugs | **blockiert** (`23503`) |
+| **Gegenprobe:** Verknüpfung auf Eintrag des **eigenen** Fahrzeugs | **erlaubt** |
+| Scheckheft-Eintrag löschen (Kernkette C1) | **weiterhin möglich** |
+| Ausgabe überlebt das Löschen | ✅ |
+| Verknüpfung danach | `NULL` |
+| `vehicle_id` unverändert | ✅ — die Fallstricke der Spaltenliste greifen nicht |
+| Betrag zählt wieder mit | ✅ |
+
+**Regression:** PROJ-26 und PROJ-3 (Scheckheft, wegen der neuen Eindeutigkeits-Zusicherung auf `service_entries`) vollständig geprüft — **42/42 grün**, einschließlich der C1-Kette durch die echte Oberfläche.
+
+**Performance-Advisors:** Der neue Fremdschlüssel wird **nicht** als unindiziert gemeldet — der angepasste Index `(service_entry_id, vehicle_id)` deckt ihn ab. Die verbleibenden Meldungen (`auth_rls_init_plan` auf allen Policies, `created_by` ohne Index) bestehen projektweit seit Anlage der Tabellen und stammen nicht aus dieser Änderung.
+
+**Hinweis zum Wirkzeitpunkt:** Es gibt nur eine Datenbank. Die Migration war mit dem Anwenden sofort in der Produktion wirksam, unabhängig vom Vercel-Deployment. Die Produktion wurde danach erneut angemeldet nachgeprüft.
