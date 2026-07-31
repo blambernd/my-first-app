@@ -1,6 +1,6 @@
 # PROJ-24: Tankbuch & Verbrauch
 
-## Status: Approved
+## Status: Deployed
 **Created:** 2026-07-31
 **Last Updated:** 2026-07-31
 
@@ -421,4 +421,27 @@ Offen bleiben BUG-2 und BUG-3 (beide Low, nächster Sprint) sowie HINWEIS-1.
 **Was weiterhin nicht automatisiert geprüft ist:** die Darstellung des Verlaufsdiagramms samt Hover-Verhalten (dafür braucht es mindestens drei Volltankungen), Cross-Browser über Chromium und Mobile Safari hinaus, sowie die visuelle Erscheinung insgesamt. Die beiden Low-Befunde bleiben für einen späteren Sprint.
 
 ## Deployment
-_To be added by /deploy_
+
+- **Deployed:** 2026-07-31
+- **Commit:** `52283ce` — `feat(PROJ-24): Implement Tankbuch & Verbrauch`
+- **Produktion:** https://www.oldtimer-docs.com
+- **Migration:** `20260731_create_fuel_entries.sql` — **bereits angewendet** (verifiziert: Tabelle vorhanden, RLS aktiv, 4 Policies)
+- **Neue Env-Variablen:** keine für die Produktion. `E2E_EMAIL`, `E2E_PASSWORD` und `E2E_VEHICLE_ID` sind reine Entwicklungswerte für die angemeldeten Tests und stehen ausschließlich in `.env.local` (gitignored). In Vercel ist nichts zu ergänzen.
+- **Neue Abhängigkeit:** `recharts` über die shadcn-Chart-Komponente
+
+### Vor dem Deployment geprüft
+
+| Punkt | Ergebnis |
+|---|---|
+| `npm run build` | ✅ erfolgreich |
+| `npm run lint` | ⚠️ 2 Fehler — beide vorbestehend in `cookie-consent-banner.tsx:69` und `landing-page.tsx:133`, unverändert und bereits in Produktion |
+| QA freigegeben | ✅ Status Approved, 17/17 Kriterien |
+| Critical/High-Fehler | ✅ keine (2 offene Low) |
+| Env-Variablen dokumentiert | ✅ `.env.local.example` neu angelegt |
+| Keine Geheimnisse im Commit | ✅ Staged-Diff auf Muster geprüft, 0 Treffer; `.env.local`, `.mcp.json` und `playwright/.auth/` sind ignoriert |
+| Migration angewendet | ✅ |
+
+### Bewusst nicht getan
+
+- **Kein Feature-Test in der Produktion.** Die angemeldeten E2E-Tests laufen gegen `localhost`, nicht gegen die Live-Umgebung. Verifiziert ist, dass die Produktion erreichbar ist und der Build durchlief — nicht, dass das Tankbuch dort im eingeloggten Zustand funktioniert.
+- **Kein Lighthouse-Lauf**, keine Änderung an Security-Headern oder Fehler-Tracking — beides war bereits eingerichtet und ist von diesem Feature nicht berührt.

@@ -37,7 +37,7 @@
 | PROJ-21 | Capacitor App Setup | Deployed | [PROJ-21-capacitor-app.md](PROJ-21-capacitor-app.md) | 2026-04-09 |
 | PROJ-22 | Kamera-Integration | Deployed | [PROJ-22-kamera-integration.md](PROJ-22-kamera-integration.md) | 2026-04-09 |
 | PROJ-23 | Push-Notifications (Termine) | Deployed | [PROJ-23-push-notifications.md](PROJ-23-push-notifications.md) | 2026-04-09 |
-| PROJ-24 | Tankbuch & Verbrauch | Approved | [PROJ-24-tankbuch.md](PROJ-24-tankbuch.md) | 2026-07-31 |
+| PROJ-24 | Tankbuch & Verbrauch | Deployed | [PROJ-24-tankbuch.md](PROJ-24-tankbuch.md) | 2026-07-31 |
 | PROJ-25 | Wiederkehrende Kosten | Planned | [PROJ-25-wiederkehrende-kosten.md](PROJ-25-wiederkehrende-kosten.md) | 2026-07-31 |
 | PROJ-26 | Einzelkosten | Planned | [PROJ-26-einzelkosten.md](PROJ-26-einzelkosten.md) | 2026-07-31 |
 | PROJ-27 | Kostenanalyse | Planned | [PROJ-27-kostenanalyse.md](PROJ-27-kostenanalyse.md) | 2026-07-31 |
