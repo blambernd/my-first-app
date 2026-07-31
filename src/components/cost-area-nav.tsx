@@ -13,12 +13,11 @@ import { Repeat, Receipt, ChartColumn } from "lucide-react";
  */
 const tabs = [
   { label: "Laufende Kosten", href: "", icon: Repeat },
-  // { label: "Einzelkosten", href: "/einzelkosten", icon: Receipt },   // PROJ-26
+  { label: "Einzelkosten", href: "/einzelkosten", icon: Receipt },
   // { label: "Auswertung",   href: "/auswertung",   icon: ChartColumn }, // PROJ-27
 ];
 
-// Nur referenziert, damit die Icons für PROJ-26/27 nicht als ungenutzt gelten
-void Receipt;
+// Nur referenziert, damit das Icon für PROJ-27 nicht als ungenutzt gilt
 void ChartColumn;
 
 interface CostAreaNavProps {
