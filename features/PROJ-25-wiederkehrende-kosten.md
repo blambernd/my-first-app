@@ -1,6 +1,6 @@
 # PROJ-25: Wiederkehrende Kosten
 
-## Status: Approved
+## Status: Deployed
 **Created:** 2026-07-31
 **Last Updated:** 2026-07-31
 
@@ -320,4 +320,27 @@ Durchgeführt im Rahmen von `/backend`, hier zusammengefasst:
 **Was offen bleibt:** HINWEIS-1 — der Beitragsverlauf über mehrere Jahre wurde nie mit echten Daten gesehen, weil es im Test keine Einträge aus Vorjahren gab. Gruppierung und Sortierung sind per Unit-Test abgesichert, die Erkennbarkeit des Verlaufs in der Oberfläche nicht. Ebenfalls ungeprüft: Cross-Browser über Chromium und Mobile Safari hinaus.
 
 ## Deployment
-_To be added by /deploy_
+
+- **Deployed:** 2026-07-31
+- **Commit:** `ff0d661` — `feat(PROJ-25): Implement Wiederkehrende Kosten`
+- **Produktion:** https://www.oldtimer-docs.com
+- **Migration:** `20260731_create_recurring_costs.sql` — **bereits angewendet** (verifiziert: Tabelle vorhanden, RLS aktiv, 4 Policies, Zeitraum-Constraint greift)
+- **Neue Env-Variablen:** keine. In Vercel ist nichts zu ergänzen.
+- **Neue Abhängigkeiten:** keine — alle benötigten Bausteine waren vorhanden, die Diagrammkomponente kam bereits mit PROJ-24
+
+### Vor dem Deployment geprüft
+
+| Punkt | Ergebnis |
+|---|---|
+| `npm run build` | ✅ erfolgreich |
+| `npm run lint` | ⚠️ 2 Fehler — beide vorbestehend in `cookie-consent-banner.tsx:69` und `landing-page.tsx:133`, unverändert und bereits in Produktion |
+| QA freigegeben | ✅ Status Approved, 17/18 Kriterien belastbar verifiziert |
+| Critical/High-Fehler | ✅ keine; beide gefundenen Bugs (1 Medium, 1 Low) vor dem Deployment behoben |
+| Env-Variablen dokumentiert | ✅ keine neuen |
+| Keine Geheimnisse im Commit | ✅ Staged-Diff auf Muster geprüft, 0 Treffer |
+| Migration angewendet | ✅ |
+
+### Bewusst nicht getan
+
+- **Kein Feature-Test in der Produktion.** Die 22 E2E-Tests liefen gegen `localhost`. Verifiziert ist, dass die Produktion erreichbar ist und der Build durchlief — nicht, dass der Kosten-Bereich dort im eingeloggten Zustand funktioniert.
+- **Kein Lighthouse-Lauf**, keine Änderung an Security-Headern oder Fehler-Tracking — bereits eingerichtet und von diesem Feature nicht berührt.
