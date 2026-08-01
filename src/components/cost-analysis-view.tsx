@@ -186,21 +186,24 @@ export function CostAnalysisView({
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Standkosten
+              Standkosten aktuell
             </CardTitle>
           </CardHeader>
           <CardContent>
+            {/* Bewusst die aktuelle Belastung, nicht der Durchschnitt über den
+                gewählten Zeitraum: Ein neu erfasster Jahresbeitrag ergäbe sonst
+                einen Bruchteil des tatsächlichen Werts (QA BUG-1). */}
             <p className="text-2xl font-bold">
-              {analysis.standingPerMonthCents !== null
-                ? `${formatCentsToEur(analysis.standingPerMonthCents)} / Monat`
+              {analysis.standingMonthlyNowCents !== null
+                ? `${formatCentsToEur(analysis.standingMonthlyNowCents)} / Monat`
                 : "—"}
             </p>
             <p className="text-sm text-muted-foreground">
-              {analysis.standingPerYearCents !== null
+              {analysis.standingYearlyNowCents !== null
                 ? `${formatCentsToEur(
-                    analysis.standingPerYearCents
+                    analysis.standingYearlyNowCents
                   )} im Jahr — auch ohne zu fahren`
-                : "Noch keine Standkosten erfasst"}
+                : "Derzeit keine laufenden Standkosten hinterlegt"}
             </p>
           </CardContent>
         </Card>
@@ -425,6 +428,17 @@ function DataQualityNotes({
   if (quality.overlappingRecurring > 0) {
     notes.push(
       `${quality.overlappingRecurring} laufende Kosten haben überlappende Zeiträume derselben Kostenart — die Beträge könnten doppelt enthalten sein.`
+    );
+  }
+  if (quality.futureDated > 0) {
+    notes.push(
+      `${quality.futureDated} ${
+        quality.futureDated === 1 ? "Eintrag liegt" : "Einträge liegen"
+      } in der Zukunft und ${
+        quality.futureDated === 1 ? "zählt" : "zählen"
+      } noch nicht — ${
+        quality.futureDated === 1 ? "der Betrag erscheint" : "die Beträge erscheinen"
+      } erst, wenn das Datum erreicht ist.`
     );
   }
   if (truncated) {

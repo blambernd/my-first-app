@@ -49,6 +49,10 @@ const ERWARTET = {
   ausgeschlossen: "120,00 €",
   proKm: "0,50 € / km",
   fahrleistung: "1.000 km",
+  // Die aktuelle Standkosten-Belastung: 1.200 € im Jahr sind 100 € im Monat.
+  // Nicht der Durchschnitt über den Zeitraum — siehe QA BUG-1.
+  standProMonat: "100,00 €",
+  standProJahr: "1.200,00 €",
 };
 
 async function waitForToastsGone(page: Page) {
@@ -346,13 +350,53 @@ test.describe("PROJ-27: Kostenanalyse — vier Quellen, eine Summe", () => {
     await expect(karte).toContainText(ERWARTET.fahrleistung);
   });
 
-  test("AC: Standkosten werden je Monat und je Jahr ausgewiesen", async ({
+  test("AC: Standkosten nennen die aktuelle Belastung je Monat und je Jahr", async ({
     page,
   }) => {
+    // Regressionstest für QA BUG-1: Die Versicherung kostet 1.200 € im Jahr,
+    // also 100 € im Monat. Zuvor wurde über alle Monate des Zeitraums
+    // gemittelt und dadurch 12,50 € angezeigt — achtfach zu wenig und im
+    // Widerspruch zu PROJ-25, das für dieselben Daten 100,00 € nennt.
     await page.goto(AUSWERTUNG);
-    const karte = kennzahl(page, "Standkosten");
-    await expect(karte).toContainText("/ Monat", { timeout: 30000 });
-    await expect(karte).toContainText("im Jahr");
+    const karte = kennzahl(page, "Standkosten aktuell");
+    await expect(karte).toContainText(ERWARTET.standProMonat, { timeout: 30000 });
+    await expect(karte).toContainText(ERWARTET.standProJahr);
+  });
+
+  test("KERN: Standkosten stimmen mit der Anzeige in PROJ-25 überein", async ({
+    page,
+  }) => {
+    // Dieselben Daten dürfen auf zwei Seiten nicht widersprechen
+    await page.goto(KOSTEN);
+    await expect(page.getByText("Aktuell pro Monat")).toBeVisible({
+      timeout: 30000,
+    });
+    const laufendeSeite = page
+      .getByText("Aktuell pro Monat")
+      .locator("xpath=../..");
+    await expect(laufendeSeite).toContainText(ERWARTET.standProMonat);
+
+    await page.goto(AUSWERTUNG);
+    await expect(kennzahl(page, "Standkosten aktuell")).toContainText(
+      ERWARTET.standProMonat,
+      { timeout: 30000 }
+    );
+  });
+
+  test("AC: Ohne künftig datierte Einträge erscheint kein entsprechender Hinweis", async ({
+    page,
+  }) => {
+    // Gegenprobe zu QA BUG-2. Der Hinweis selbst wird auf Unit-Ebene geprüft
+    // (drei Tests in cost-analysis.test.ts); ihn hier zu erzeugen verlangte,
+    // einen Datumswähler zwei Monate vorzublättern — viel Aufwand und
+    // Flackerrisiko für eine Zeile, die strukturgleich zu drei bereits
+    // abgedeckten Hinweisen ist. Geprüft wird deshalb der negative Zweig:
+    // Bei ausschließlich vergangenen Daten darf der Hinweis nicht erscheinen.
+    await page.goto(AUSWERTUNG);
+    await expect(kennzahl(page, "Gesamtkosten")).toContainText(ERWARTET.gesamt, {
+      timeout: 30000,
+    });
+    await expect(page.getByText(/in der Zukunft und/)).not.toBeVisible();
   });
 
   test("AC: Aufteilung nach Stand- und Fahrtkosten", async ({ page }) => {

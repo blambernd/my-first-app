@@ -475,5 +475,52 @@ Alle Prüfungen mit Gegenprobe — ohne sie wäre „0 Zeilen" auch bei einer le
 
 **Noch nicht produktionsreif.** BUG-1 sollte vor dem Deployment behoben werden: Die Kennzahl steht prominent auf der Seite, betrifft jeden neuen Nutzer und widerspricht sichtbar der Anzeige in PROJ-25. BUG-2 kann danach folgen.
 
+---
+
+## Fehlerbehebung BUG-1 und BUG-2 (2026-08-01)
+
+Beide Befunde behoben. Erneutes `/qa` steht noch aus.
+
+### BUG-1 — Standkosten nennen jetzt die aktuelle Belastung
+
+Die Kennzahl heißt jetzt **„Standkosten aktuell"** und zeigt, was das Fahrzeug **derzeit** je Monat kostet, wenn es nur steht: die Summe der zum Stichtag laufenden Standkosten, umgelegt auf den Monat. Kein Durchschnitt über den gewählten Zeitraum mehr.
+
+Damit rechnet PROJ-27 dieselbe Größe wie PROJ-25 („Aktuell pro Monat") und beide Seiten können sich nicht mehr widersprechen.
+
+| | vorher | jetzt |
+|---|---|---|
+| Versicherung 1.200 €/Jahr, im August abgeschlossen | 12,50 € / Monat · 150,00 € im Jahr | **100,00 € / Monat · 1.200,00 € im Jahr** |
+
+Bewusste Abgrenzung: In die Monatsangabe fließen **nur laufende** Standkosten ein. Ein Wertgutachten fällt alle zwei bis drei Jahre an; es in eine Monatszahl zu mitteln wäre dieselbe Sorte Verzerrung, die hier gerade behoben wurde. In der Gesamtsumme und in der Stand-/Fahrt-Aufteilung ist es weiterhin enthalten.
+
+Liegen zum Stichtag keine laufenden Standkosten vor, steht dort „—" statt einer Zahl.
+
+### BUG-2 — Künftige Einträge werden benannt
+
+Der Datenbasis-Hinweis zählt jetzt Einträge mit einem Datum in der Zukunft und nennt sie ausdrücklich. Der Ausschluss aus der Summe bleibt richtig und unverändert; er ist nur nicht mehr stumm.
+
+Scheckheft-Einträge **ohne** Kostenangabe werden dabei nicht mitgezählt — ein geplanter Termin ohne Betrag fehlt in keiner Summe, ihn zu melden wäre ein Fehlalarm.
+
+### Beim Beheben zusätzlich gefunden
+
+Ein eigener Test hat eine Inkonsistenz offengelegt, die vorher niemandem aufgefallen wäre: Die Regel „nichts aus der Zukunft zählt" war **nur für die Umlage der laufenden Kosten** umgesetzt. Punktuelle Kosten aus Tankbuch, Scheckheft und Einzelkosten verließen sich darauf, dass der übergebene Zeitraum ohnehin am heutigen Monat endet.
+
+Das stimmte, solange `buildPeriods` der einzige Aufrufer ist — war aber eine Falle für den nächsten, etwa PROJ-28. Die Regel liegt jetzt zentral an einer Stelle und gilt unabhängig vom übergebenen Zeitraum.
+
+### Geprüft
+
+| Prüfung | Ergebnis |
+|---|---|
+| Unit-Tests `cost-analysis` | **47/47 grün** (41 vorher, 6 neu) |
+| Unit gesamt | 456 grün, 4 vorbestehende Fehlschläge |
+| E2E PROJ-27 | **29/29 grün** (27 vorher, 2 neu) |
+| **Neuer Test: PROJ-25 und PROJ-27 zeigen denselben Wert** | beide 100,00 € |
+| `npm run build` | erfolgreich |
+| `npx eslint` auf allen berührten Dateien | keine Meldung |
+
+Die Regressionstests decken beide Befunde ausdrücklich ab — mit der Begründung im Testcode, damit die Rechnung nicht später versehentlich auf einen Durchschnitt zurückgedreht wird.
+
+**Nicht per E2E abgedeckt:** das Erscheinen des Zukunfts-Hinweises selbst. Es hätte verlangt, im Test einen Datumswähler zwei Monate vorzublättern — viel Flackerrisiko für eine Zeile, die strukturgleich zu drei bereits E2E-geprüften Hinweisen ist. Stattdessen: drei Unit-Tests für den positiven Fall und ein E2E-Test für den negativen (kein Hinweis bei ausschließlich vergangenen Daten).
+
 ## Deployment
 _To be added by /deploy_

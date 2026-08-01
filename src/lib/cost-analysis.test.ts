@@ -613,8 +613,122 @@ describe("analyzeCosts — Stand- und Fahrtkosten", () => {
       YEAR_2026,
       END_OF_2026
     );
-    expect(result.standingPerMonthCents).toBe(10000);
-    expect(result.standingPerYearCents).toBe(120000);
+    expect(result.standingMonthlyNowCents).toBe(10000);
+    expect(result.standingYearlyNowCents).toBe(120000);
+  });
+
+  it("nennt die aktuelle Belastung, nicht den Durchschnitt über den Zeitraum", () => {
+    // Regressionstest für QA BUG-1. Ein am 1. August abgeschlossener
+    // Jahresbeitrag von 1.200 € kostet 100 € im Monat. Über Januar bis August
+    // gemittelt ergäbe derselbe Betrag 12,50 € — eine plausibel aussehende,
+    // achtfach zu niedrige Antwort auf die Frage, was das Fahrzeug im Stand
+    // kostet. PROJ-25 zeigt für dieselben Daten 100 €; beide Seiten müssen
+    // übereinstimmen.
+    const result = analyzeCosts(
+      input({
+        recurringCosts: [
+          recurring({
+            amount_cents: 120000,
+            payment_interval: "yearly",
+            valid_from: "2026-08-01",
+            valid_to: "2027-07-31",
+          }),
+        ],
+      }),
+      { fromMonth: "2026-01", toMonth: "2026-08", label: "2026" },
+      new Date(2026, 7, 15)
+    );
+    expect(result.standingMonthlyNowCents).toBe(10000);
+    expect(result.standingYearlyNowCents).toBe(120000);
+    // Die Summe im Zeitraum bleibt davon unberührt: ein Monat Laufzeit
+    expect(result.standingCents).toBe(10000);
+  });
+
+  it("meldet keine Standkosten, wenn zum Stichtag keine laufen", () => {
+    const result = analyzeCosts(
+      input({
+        recurringCosts: [
+          recurring({
+            amount_cents: 120000,
+            valid_from: "2025-01-01",
+            valid_to: "2025-12-31",
+          }),
+        ],
+      }),
+      YEAR_2026,
+      END_OF_2026
+    );
+    expect(result.standingMonthlyNowCents).toBeNull();
+    expect(result.standingYearlyNowCents).toBeNull();
+  });
+
+  it("lässt Fahrtkosten aus der Standkosten-Kennzahl heraus", () => {
+    const result = analyzeCosts(
+      input({
+        fuelEntries: [fuel({ fueled_at: "2026-02-01", cost_cents: 99999 })],
+        recurringCosts: [
+          recurring({
+            amount_cents: 120000,
+            valid_from: "2026-01-01",
+            valid_to: "2026-12-31",
+          }),
+        ],
+      }),
+      YEAR_2026,
+      END_OF_2026
+    );
+    expect(result.standingMonthlyNowCents).toBe(10000);
+  });
+});
+
+describe("analyzeCosts — Einträge in der Zukunft", () => {
+  it("zählt künftige Einträge und meldet sie", () => {
+    // Regressionstest für QA BUG-2. Solche Beträge zählen zu Recht nicht als
+    // angefallen, dürfen aber nicht wortlos verschwinden.
+    //
+    // Der Zeitraum reicht hier bewusst bis Dezember, obwohl heute August ist:
+    // Die Regel „nichts aus der Zukunft zählt" muss unabhängig vom übergebenen
+    // Zeitraum greifen, nicht nur weil `buildPeriods` ihn zufällig beschneidet.
+    const result = analyzeCosts(
+      input({
+        serviceEntries: [
+          service({ service_date: "2026-11-01", cost_cents: 99900 }),
+        ],
+        oneOffCosts: [oneOff({ purchased_at: "2026-12-01", amount_cents: 5000 })],
+      }),
+      YEAR_2026,
+      new Date(2026, 7, 15)
+    );
+    expect(result.quality.futureDated).toBe(2);
+    expect(result.totalCents).toBe(0);
+  });
+
+  it("meldet nichts, wenn alle Einträge in der Vergangenheit liegen", () => {
+    const result = analyzeCosts(
+      input({
+        serviceEntries: [
+          service({ service_date: "2026-03-01", cost_cents: 10000 }),
+        ],
+      }),
+      YEAR_2026,
+      new Date(2026, 7, 15)
+    );
+    expect(result.quality.futureDated).toBe(0);
+  });
+
+  it("zählt künftige Scheckheft-Einträge ohne Kostenangabe nicht mit", () => {
+    // Ein geplanter Termin ohne Betrag fehlt in keiner Summe — ihn zu melden
+    // wäre ein Fehlalarm
+    const result = analyzeCosts(
+      input({
+        serviceEntries: [
+          service({ service_date: "2026-11-01", cost_cents: null }),
+        ],
+      }),
+      YEAR_2026,
+      new Date(2026, 7, 15)
+    );
+    expect(result.quality.futureDated).toBe(0);
   });
 });
 
