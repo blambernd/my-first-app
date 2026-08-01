@@ -639,9 +639,60 @@ describe("analyzeCosts — Stand- und Fahrtkosten", () => {
       new Date(2026, 7, 15)
     );
     expect(result.standingMonthlyNowCents).toBe(10000);
-    expect(result.standingYearlyNowCents).toBe(120000);
+    // Die Jahresangabe zählt die Monate, die ins Kalenderjahr 2026 fallen:
+    // August bis Dezember sind fünf Monate zu 100 €. Bewusst nicht 1.200 € —
+    // das wäre die hochgerechnete Jahresrate, die bei unterjährigen Verträgen
+    // falsch ist (QA BUG-3).
+    expect(result.standingYearlyNowCents).toBe(50000);
     // Die Summe im Zeitraum bleibt davon unberührt: ein Monat Laufzeit
     expect(result.standingCents).toBe(10000);
+  });
+
+  it("rechnet die Jahresangabe nicht als Monatsbelastung mal zwölf", () => {
+    // Regressionstest für QA BUG-3. Ein Winterlager über sechs Monate kostet
+    // 600 € im Jahr, nicht 1.200 €. Die Monatsbelastung ist mit 100 € richtig,
+    // hochgerechnet ergäbe sie aber den doppelten Jahreswert. PROJ-25 nennt
+    // für dieselben Daten 600 € — beide Seiten müssen übereinstimmen.
+    const result = analyzeCosts(
+      input({
+        recurringCosts: [
+          recurring({
+            cost_type: "storage",
+            amount_cents: 60000,
+            payment_interval: "yearly",
+            valid_from: "2026-06-01",
+            valid_to: "2026-11-30",
+          }),
+        ],
+      }),
+      { fromMonth: "2026-01", toMonth: "2026-08", label: "2026" },
+      new Date(2026, 7, 15)
+    );
+    expect(result.standingMonthlyNowCents).toBe(10000);
+    expect(result.standingYearlyNowCents).toBe(60000);
+    expect(result.currentYear).toBe(2026);
+  });
+
+  it("zählt für die Jahresangabe nur die Monate, die ins Jahr fallen", () => {
+    // Vertrag läuft über den Jahreswechsel: Oktober bis März, 1.200 € gesamt.
+    // Auf zwölf Monate verteilt sind das 200 €/Monat; in 2026 fallen nur
+    // Oktober bis Dezember, also drei Monate zu 200 € = 600 €.
+    const result = analyzeCosts(
+      input({
+        recurringCosts: [
+          recurring({
+            cost_type: "storage",
+            amount_cents: 120000,
+            payment_interval: "yearly",
+            valid_from: "2026-10-01",
+            valid_to: "2027-03-31",
+          }),
+        ],
+      }),
+      YEAR_2026,
+      new Date(2026, 10, 15)
+    );
+    expect(result.standingYearlyNowCents).toBe(60000);
   });
 
   it("meldet keine Standkosten, wenn zum Stichtag keine laufen", () => {
@@ -659,7 +710,8 @@ describe("analyzeCosts — Stand- und Fahrtkosten", () => {
       END_OF_2026
     );
     expect(result.standingMonthlyNowCents).toBeNull();
-    expect(result.standingYearlyNowCents).toBeNull();
+    // Im laufenden Kalenderjahr fielen keine Standkosten an
+    expect(result.standingYearlyNowCents).toBe(0);
   });
 
   it("lässt Fahrtkosten aus der Standkosten-Kennzahl heraus", () => {

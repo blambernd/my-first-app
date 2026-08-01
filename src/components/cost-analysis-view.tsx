@@ -198,13 +198,30 @@ export function CostAnalysisView({
                 ? `${formatCentsToEur(analysis.standingMonthlyNowCents)} / Monat`
                 : "—"}
             </p>
-            <p className="text-sm text-muted-foreground">
-              {analysis.standingYearlyNowCents !== null
-                ? `${formatCentsToEur(
-                    analysis.standingYearlyNowCents
-                  )} im Jahr — auch ohne zu fahren`
-                : "Derzeit keine laufenden Standkosten hinterlegt"}
-            </p>
+            {analysis.standingYearlyNowCents > 0 ||
+            analysis.standingMonthlyNowCents !== null ? (
+              <>
+                {/* „in 2026" statt „im Jahr": Der Wert ist bewusst die Summe
+                    des laufenden Kalenderjahres und keine hochgerechnete
+                    Jahresrate. Ein Winterlager über sechs Monate kostet 600 €
+                    im Jahr, nicht 1.200 € (QA BUG-3). */}
+                <p className="text-sm text-muted-foreground">
+                  {formatCentsToEur(analysis.standingYearlyNowCents)} in{" "}
+                  {analysis.currentYear}
+                </p>
+                {/* Diese Karte beantwortet eine Frage über den heutigen Tag und
+                    folgt deshalb nicht der Zeitraum-Auswahl. Ohne diesen Zusatz
+                    liest man sie neben den beiden zeitraumgebundenen Kennzahlen
+                    leicht falsch (QA BUG-4). */}
+                <p className="mt-1 text-xs text-muted-foreground/80">
+                  auch ohne zu fahren · unabhängig vom gewählten Zeitraum
+                </p>
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Derzeit keine laufenden Standkosten hinterlegt
+              </p>
+            )}
           </CardContent>
         </Card>
 

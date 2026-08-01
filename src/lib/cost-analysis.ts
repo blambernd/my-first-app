@@ -12,7 +12,11 @@ import {
 } from "@/lib/validations/one-off-cost";
 import { type ServiceEntryType } from "@/lib/validations/service-entry";
 import { type FuelEntry } from "@/lib/validations/fuel-entry";
-import { prorate, findOverlapping } from "@/lib/recurring-costs";
+import {
+  prorate,
+  findOverlapping,
+  yearlyTotalCents,
+} from "@/lib/recurring-costs";
 import { countsTowardTotal } from "@/lib/one-off-costs";
 
 /**
@@ -238,8 +242,19 @@ export interface CostAnalysis {
    * `null`, wenn zum Stichtag keine laufenden Standkosten aktiv sind.
    */
   standingMonthlyNowCents: number | null;
-  /** Die aktuelle Monatsbelastung auf zwölf Monate gerechnet */
-  standingYearlyNowCents: number | null;
+  /**
+   * Standkosten des **laufenden Kalenderjahres**.
+   *
+   * Bewusst **nicht** „Monatsbelastung mal zwölf" (QA BUG-3): Ein Winterlager
+   * über sechs Monate hat eine hohe Monatsbelastung, fällt aber nur sechs
+   * Monate an — hochgerechnet ergäbe das den doppelten Jahreswert. Gezählt
+   * werden stattdessen nur die Monate, die tatsächlich in das Jahr fallen.
+   * Dieselbe Rechnung wie `yearlyTotalCents` in PROJ-25, damit beide Seiten
+   * für dieselben Daten denselben Wert nennen.
+   */
+  standingYearlyNowCents: number;
+  /** Das Jahr, auf das sich `standingYearlyNowCents` bezieht */
+  currentYear: number;
   mileage: MileageResult;
   centsPerKm: number | null;
   quality: DataQuality;
@@ -555,11 +570,12 @@ export function analyzeCosts(
     today.getMonth() + 1
   ).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
 
-  const aktiveStandkosten = input.recurringCosts.filter(
-    (cost) =>
-      COST_CLASSIFICATION[cost.cost_type] === "standing" &&
-      cost.valid_from <= todayIso &&
-      todayIso <= cost.valid_to
+  const laufendeStandkosten = input.recurringCosts.filter(
+    (cost) => COST_CLASSIFICATION[cost.cost_type] === "standing"
+  );
+
+  const aktiveStandkosten = laufendeStandkosten.filter(
+    (cost) => cost.valid_from <= todayIso && todayIso <= cost.valid_to
   );
   const standingMonthlyNowCents =
     aktiveStandkosten.length > 0
@@ -570,6 +586,11 @@ export function analyzeCosts(
           )
         )
       : null;
+
+  const currentYear = today.getFullYear();
+  const standingYearlyNowCents = Math.round(
+    yearlyTotalCents(laufendeStandkosten, currentYear)
+  );
 
   // Einträge, deren Datum in der Zukunft liegt. Sie zählen zu Recht nicht als
   // angefallen — aber sie tauchen dadurch in keinem wählbaren Zeitraum auf und
@@ -596,8 +617,8 @@ export function analyzeCosts(
     drivingCents,
     unclassifiedCents,
     standingMonthlyNowCents,
-    standingYearlyNowCents:
-      standingMonthlyNowCents === null ? null : standingMonthlyNowCents * 12,
+    standingYearlyNowCents,
+    currentYear,
     mileage,
     // Nur berechnen, wenn eine Fahrleistung ermittelbar war — sonst entstünde
     // je nach Datenlage eine Division durch null oder ein Unendlich-Wert.

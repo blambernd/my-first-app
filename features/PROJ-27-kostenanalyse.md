@@ -35,7 +35,7 @@ Zwei Punkte prägen den Zuschnitt: Die Auswertung muss **mit unvollständigen Da
 - [x] Zuordnung der Scheckheft-Einträge über `entry_type`: **Wartung** = Inspektion, Ölwechsel, TÜV/HU; **Reparatur** = Reparatur, Restaurierung; **Sonstiges** = Sonstiges
 - [ ] **Reifen** zählen als Ersatzteile, nicht als Wartung — damit die Zuordnung nicht je nach Erfassungsweg schwankt  _(nicht umsetzbar, siehe QA)_
 - [x] Die Auswertung ist zusätzlich nach **Standkosten** und **Fahrtkosten** aufteilbar: Standkosten = Versicherung, Steuer, Unterstellung, Clubbeitrag, Wertgutachten; Fahrtkosten = Benzin, Wartung, Reparatur, Ersatzteile
-- [x] Die Standkosten beantworten sichtbar die Frage "Was kostet mich das Fahrzeug, wenn ich es nicht fahre?" — als Betrag pro Monat und pro Jahr  _(BUG-1 behoben; Jahresangabe bei unterjährigen Verträgen noch fehlerhaft, siehe BUG-3)_
+- [x] Die Standkosten beantworten sichtbar die Frage "Was kostet mich das Fahrzeug, wenn ich es nicht fahre?" — als Betrag pro Monat und pro Jahr  _(BUG-1 und BUG-3 behoben. Die Jahresangabe ist die Summe des laufenden Kalenderjahres, keine hochgerechnete Jahresrate — Begründung im Abschnitt zur Fehlerbehebung)_
 - [x] Die Kostenarten sind nicht fest verdrahtet: Eine in PROJ-25/26 ergänzte Kostenart erscheint automatisch in der Auswertung
 - [x] Der Kaufpreis aus PROJ-28 fließt **nicht** in die Zeitreihe der laufenden Kosten ein, sondern wird getrennt ausgewiesen
 - [x] Verteilung der Kosten nach Kostenart wird grafisch dargestellt
@@ -587,3 +587,52 @@ Nach der Severity-Regel des Prozesses (blockierend ab Hoch) steht dem Deployment
 BUG-4 kann danach oder später folgen.
 
 **Status bleibt In Review.** Soll stattdessen jetzt ausgeliefert werden, ist das vertretbar — dann setze ich auf Approved.
+
+---
+
+## Fehlerbehebung BUG-3 und BUG-4 (2026-08-01)
+
+### BUG-3 — Jahresangabe zählt nur die Monate, die ins Jahr fallen
+
+Die Jahresangabe verwendet jetzt `yearlyTotalCents` aus PROJ-25 statt „Monatsbelastung mal zwölf". Damit stimmen beide Seiten in **beiden** Zahlen überein — vorher nur in der Monatsangabe.
+
+| Winterlager, 600 € über sechs Monate | vorher | jetzt |
+|---|---|---|
+| pro Monat | 100,00 € | 100,00 € |
+| im Jahr | 1.200,00 € ❌ | **600,00 €** ✅ |
+| PROJ-25 „Kosten 2026" | 600,00 € | 600,00 € |
+
+**Damit ändert sich die Bedeutung der Zahl — das ist eine bewusste Auslegung des Acceptance Criteria und soll nicht untergehen.** Angezeigt wird jetzt die **Summe des laufenden Kalenderjahres**, nicht eine hochgerechnete Jahresrate. Die Beschriftung sagt das ausdrücklich: „500,00 € in 2026" statt „im Jahr".
+
+Warum diese Auslegung: Beide Lesarten sind vertretbar, aber keine ist in allen Fällen richtig.
+
+- Eine **hochgerechnete Jahresrate** (Monat × 12) ist bei unterjährigen Verträgen falsch — Winterlager über sechs Monate ergäbe den doppelten Wert. Genau BUG-3
+- Die **Kalenderjahressumme** ist eine überprüfbare Tatsache und identisch mit dem, was PROJ-25 nennt. Sie ist nur dann nicht die „Jahresbelastung", wenn ein Vertrag mitten im Jahr beginnt — dann steht dort weniger, als der Vertrag jährlich kostet
+
+Ausschlaggebend war: Die Kalenderjahressumme kann nicht falsch sein, die Hochrechnung schon. Und zwei Seiten, die für dieselben Daten verschiedene Zahlen nennen, sind schlimmer als eine Zahl, die eine genaue Frage genau beantwortet. Die Frage „was kostet es mich, wenn es nur steht" beantwortet ohnehin die Monatsangabe — die ist der handlungsleitende Wert.
+
+### BUG-4 — Der Zeitraumbezug steht jetzt in der Karte
+
+Unter der Kennzahl steht „auch ohne zu fahren · unabhängig vom gewählten Zeitraum". Zusammen mit der Jahresangabe „in 2026" ist damit an der Karte selbst ablesbar, worauf sich beide Zahlen beziehen — sie folgen als einzige der drei Kennzahlen nicht der Zeitraum-Auswahl.
+
+### Zwei Tests mussten geändert werden — und warum das in Ordnung ist
+
+Zwei Zusicherungen aus der BUG-1-Behebung schlugen fehl. Beide schrieben das alte, fehlerhafte Verhalten fest:
+
+| Test | alt | neu | von Hand geprüft |
+|---|---|---|---|
+| Versicherung 1.200 €, Laufzeit ab August | 1.200,00 € | **500,00 €** | Aug–Dez sind fünf Monate zu 100 € |
+| Vertrag lief im Vorjahr | `null` | **0** | im laufenden Jahr fielen keine Standkosten an; der Wert ist jetzt eine Zahl, kein `null` |
+
+Beide Werte wurden vor der Änderung nachgerechnet, nicht nachträglich an den Code angepasst.
+
+### Geprüft
+
+| Prüfung | Ergebnis |
+|---|---|
+| Unit-Tests `cost-analysis` | **49/49 grün** (47 vorher, 2 neu für BUG-3) |
+| Unit gesamt | 458 grün, 4 vorbestehende Fehlschläge |
+| E2E PROJ-27 | **29/29 grün** |
+| `npm run build` · `npx eslint` | erfolgreich · keine Meldung |
+
+Der E2E-Test rechnet die erwartete Jahresangabe aus dem heutigen Monat aus, statt sie fest einzutragen — sonst wäre er am nächsten Monatsersten rot geworden, ohne dass sich etwas geändert hätte.

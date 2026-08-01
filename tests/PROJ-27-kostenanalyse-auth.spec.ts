@@ -49,10 +49,15 @@ const ERWARTET = {
   ausgeschlossen: "120,00 €",
   proKm: "0,50 € / km",
   fahrleistung: "1.000 km",
-  // Die aktuelle Standkosten-Belastung: 1.200 € im Jahr sind 100 € im Monat.
-  // Nicht der Durchschnitt über den Zeitraum — siehe QA BUG-1.
+  // Die aktuelle Standkosten-Belastung: 1.200 € Jahresbeitrag sind 100 € im
+  // Monat. Nicht der Durchschnitt über den Zeitraum — siehe QA BUG-1.
   standProMonat: "100,00 €",
-  standProJahr: "1.200,00 €",
+  // Die Jahresangabe ist die Summe des laufenden Kalenderjahres, nicht die
+  // hochgerechnete Jahresrate (QA BUG-3). Der Vertrag beginnt am Ersten des
+  // laufenden Monats, es fallen also nur die restlichen Monate des Jahres an.
+  standProJahr: `${(
+    (12 - new Date().getMonth()) * 100
+  ).toLocaleString("de-DE")},00 € in ${new Date().getFullYear()}`,
 };
 
 async function waitForToastsGone(page: Page) {
