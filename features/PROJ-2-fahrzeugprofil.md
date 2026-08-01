@@ -240,3 +240,49 @@ Run the SQL migration in Supabase Dashboard: SQL Editor > New query > Paste cont
 - **Deployed:** 2026-04-05
 - **Commit:** f54bf4d
 - **Method:** Git push to main → Vercel auto-deploy
+
+---
+
+## UX-Überarbeitung Übersichtstab — 2026-08-01
+
+**Anlass:** Der Übersichtstab zwang zum Scrollen, ohne dass etwas nebeneinander
+stand: Hero-Bild (280 px) → Thumbnails → Überschrift → 4-Spalten-Grid, zusammen
+rund 670 px.
+
+### Befund
+1. Rein vertikale Stapelung, die Breite blieb ungenutzt
+2. Marke und Modell standen doppelt — bereits als H1 im Layout
+3. Thumbnails waren nicht klickbar, das Hauptbild ließ sich nicht wechseln
+4. Flache Liste ohne Hierarchie: FIN, Farbe, Versicherungsnummer und Leistung
+   gleichwertig nebeneinander
+5. `object-contain` im 21:9-Rahmen erzeugte bei Hochformat-Fotos große Leerflächen
+
+### Umsetzung
+- **Zweispaltiges Raster** (`lg:grid-cols-5`): Galerie links (3/5), Fahrzeugdaten
+  rechts (2/5). Unterhalb `lg` gestapelt, Bild zuerst.
+- **Gruppierte Datenliste** statt flachem Grid: Identität, Technik,
+  Versicherung. Label links, Wert rechts, dünne Trennlinien. Leere Gruppen
+  entfallen vollständig.
+- **Marke und Modell entfernt** — sie stehen bereits in der Kopfzeile.
+  Erstzulassung blieb bewusst erhalten: in der H1 erscheint das Datum unbeschriftet
+  und wäre sonst nicht von einem Baujahr zu unterscheiden.
+- **FIN und Policennummer in Festbreitenschrift** (`font-mono`), da Kennungen
+  zeichenweise gelesen werden.
+- **Neue Komponente `vehicle-gallery.tsx`** (Client): Thumbnail-Klick wechselt das
+  Hauptbild, Klick auf das Hauptbild öffnet die Vollbildansicht im Dialog mit
+  Vor/Zurück und Zähler. Bildformat auf 4:3 geändert.
+- **Leerzustand** ergänzt: ohne gepflegte Daten erscheint ein Hinweis, für den
+  Besitzer mit Link zum Bearbeiten.
+- Barrierefreiheit: Thumbnails sind Buttons mit `aria-label` und `aria-current`,
+  Vollbild-Dialog hat einen `sr-only` Titel, alle Bedienelemente sind
+  tastaturerreichbar mit sichtbarem Fokusring.
+
+### Tests
+`src/components/vehicle-gallery.test.tsx` — 8 Tests: Platzhalter ohne Bild, keine
+Thumbnail-Leiste bei einem Bild, Bildwechsel, `aria-current`, Öffnen der
+Vollbildansicht, Vorwärts- und Rückwärtsblättern mit Umlauf, keine Blätter-Schalter
+bei einem Bild. Alle grün. `npm run build` fehlerfrei.
+
+### Nicht geändert
+Datenmodell, Zugriffsregeln und das Bearbeiten-Formular blieben unberührt. Die
+Überarbeitung betrifft ausschließlich die Darstellung des Übersichtstabs.

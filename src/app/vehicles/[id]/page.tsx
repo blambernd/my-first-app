@@ -1,14 +1,53 @@
 import { redirect, notFound } from "next/navigation";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase-server";
-import { Car } from "lucide-react";
+import { VehicleGallery, type GalleryImage } from "@/components/vehicle-gallery";
 import type { VehicleWithImages } from "@/lib/validations/vehicle";
 
 interface VehicleDetailPageProps {
   params: Promise<{ id: string }>;
 }
 
+interface SpecItem {
+  label: string;
+  value: string | null;
+  /** Kennungen wie die FIN lesen sich in Festbreite deutlich besser. */
+  mono?: boolean;
+}
+
 function getImageUrl(storagePath: string, supabaseUrl: string): string {
   return `${supabaseUrl}/storage/v1/object/public/vehicle-images/${storagePath}`;
+}
+
+function SpecGroup({ title, items }: { title: string; items: SpecItem[] }) {
+  return (
+    <section>
+      <h2 className="text-xs font-medium tracking-widest uppercase text-muted-foreground/60 mb-2">
+        {title}
+      </h2>
+      <dl className="divide-y divide-border/40">
+        {items.map((item) => (
+          <div
+            key={item.label}
+            className="flex items-baseline justify-between gap-4 py-2"
+          >
+            <dt className="text-xs text-muted-foreground/70 shrink-0">
+              {item.label}
+            </dt>
+            <dd
+              className={
+                item.mono
+                  ? "text-xs font-mono text-right break-all"
+                  : "text-sm font-medium text-right"
+              }
+            >
+              {item.value}
+            </dd>
+          </div>
+        ))}
+      </dl>
+    </section>
+  );
 }
 
 export default async function VehicleDetailPage({
@@ -35,6 +74,8 @@ export default async function VehicleDetailPage({
       .single()
   ).data;
 
+  let isOwner = Boolean(vehicle);
+
   if (!vehicle) {
     // Check membership
     const { data: membership } = await supabase
@@ -46,6 +87,7 @@ export default async function VehicleDetailPage({
 
     if (membership?.vehicles) {
       vehicle = membership.vehicles as unknown as VehicleWithImages & Record<string, unknown>;
+      isOwner = false;
     }
   }
 
@@ -55,97 +97,101 @@ export default async function VehicleDetailPage({
 
   const typedVehicle = vehicle as VehicleWithImages;
 
-  const sortedImages = [...(typedVehicle.vehicle_images ?? [])].sort(
-    (a, b) => a.position - b.position
-  );
-  const primaryImage =
-    sortedImages.find((img) => img.is_primary) ?? sortedImages[0];
+  // Das Hauptbild eröffnet die Galerie, der Rest folgt in gepflegter Reihenfolge.
+  const galleryImages: GalleryImage[] = [...(typedVehicle.vehicle_images ?? [])]
+    .sort((a, b) => {
+      if (a.is_primary !== b.is_primary) return a.is_primary ? -1 : 1;
+      return a.position - b.position;
+    })
+    .map((img) => ({
+      id: img.id,
+      url: getImageUrl(img.storage_path, supabaseUrl),
+    }));
 
-  const details = [
-    { label: "Marke", value: typedVehicle.make },
-    { label: "Modell", value: typedVehicle.model },
+  const vehicleName = `${typedVehicle.make} ${typedVehicle.model}`;
+
+  // Marke und Modell stehen bereits als Überschrift im Layout und werden hier
+  // bewusst nicht wiederholt.
+  const groups: Array<{ title: string; items: SpecItem[] }> = [
     {
-      label: "Erstzulassung",
-      value: typedVehicle.first_registration_date
-        ? new Date(typedVehicle.first_registration_date).toLocaleDateString("de-DE")
-        : `${typedVehicle.year}`,
-    },
-    { label: "FIN", value: typedVehicle.vin },
-    { label: "Werksbezeichnung", value: typedVehicle.factory_code },
-    { label: "Kennzeichen", value: typedVehicle.license_plate },
-    { label: "Farbe", value: typedVehicle.color },
-    { label: "Motortyp", value: typedVehicle.engine_type },
-    {
-      label: "Hubraum",
-      value: typedVehicle.displacement_ccm
-        ? `${typedVehicle.displacement_ccm.toLocaleString("de-DE")} ccm`
-        : null,
-    },
-    {
-      label: "Leistung",
-      value: typedVehicle.horsepower ? `${typedVehicle.horsepower} PS` : null,
+      title: "Identität",
+      items: [
+        {
+          label: "Erstzulassung",
+          value: typedVehicle.first_registration_date
+            ? new Date(typedVehicle.first_registration_date).toLocaleDateString("de-DE")
+            : `${typedVehicle.year}`,
+        },
+        { label: "Werksbezeichnung", value: typedVehicle.factory_code },
+        { label: "FIN", value: typedVehicle.vin, mono: true },
+        { label: "Kennzeichen", value: typedVehicle.license_plate },
+      ],
     },
     {
-      label: "Laufleistung",
-      value: typedVehicle.mileage_km
-        ? `${typedVehicle.mileage_km.toLocaleString("de-DE")} km`
-        : null,
+      title: "Technik",
+      items: [
+        { label: "Motortyp", value: typedVehicle.engine_type },
+        {
+          label: "Hubraum",
+          value: typedVehicle.displacement_ccm
+            ? `${typedVehicle.displacement_ccm.toLocaleString("de-DE")} ccm`
+            : null,
+        },
+        {
+          label: "Leistung",
+          value: typedVehicle.horsepower ? `${typedVehicle.horsepower} PS` : null,
+        },
+        {
+          label: "Laufleistung",
+          value: typedVehicle.mileage_km
+            ? `${typedVehicle.mileage_km.toLocaleString("de-DE")} km`
+            : null,
+        },
+        { label: "Farbe", value: typedVehicle.color },
+      ],
     },
-    { label: "Versicherung", value: typedVehicle.insurance_company },
-    { label: "Versicherungsnummer", value: typedVehicle.insurance_policy_number },
-  ];
+    {
+      title: "Versicherung",
+      items: [
+        { label: "Gesellschaft", value: typedVehicle.insurance_company },
+        { label: "Police", value: typedVehicle.insurance_policy_number, mono: true },
+      ],
+    },
+  ]
+    .map((group) => ({ ...group, items: group.items.filter((i) => i.value) }))
+    .filter((group) => group.items.length > 0);
 
   return (
-    <>
-      {/* Image gallery */}
-      {primaryImage ? (
-        <div className="mb-8">
-          <div className="rounded-lg overflow-hidden bg-muted/30 aspect-[21/9] max-h-[280px]">
-            <img
-              src={getImageUrl(primaryImage.storage_path, supabaseUrl)}
-              alt={`${typedVehicle.make} ${typedVehicle.model}`}
-              className="w-full h-full object-contain"
-            />
-          </div>
-          {sortedImages.length > 1 && (
-            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-1.5 mt-1.5">
-              {sortedImages.slice(0, 6).map((img) => (
-                <div
-                  key={img.id}
-                  className="aspect-[4/3] rounded overflow-hidden bg-muted/30"
-                >
-                  <img
-                    src={getImageUrl(img.storage_path, supabaseUrl)}
-                    alt="Fahrzeugbild"
-                    className="w-full h-full object-contain"
-                  />
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      ) : (
-        <div className="rounded-lg bg-muted/10 aspect-[21/9] max-h-[200px] flex items-center justify-center mb-8">
-          <Car className="h-12 w-12 text-muted-foreground/15" />
-        </div>
-      )}
-
-      {/* Technical details */}
-      <h2 className="text-xs font-medium tracking-widest uppercase text-muted-foreground/60 mb-6">
-        Fahrzeugdaten
-      </h2>
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-x-8 gap-y-5">
-        {details
-          .filter((d) => d.value)
-          .map((detail) => (
-            <div key={detail.label}>
-              <p className="text-xs text-muted-foreground/50 tracking-wide uppercase mb-1">
-                {detail.label}
-              </p>
-              <p className="text-sm font-medium">{detail.value}</p>
-            </div>
-          ))}
+    <div className="grid gap-6 lg:grid-cols-5 lg:gap-10">
+      <div className="lg:col-span-3">
+        <VehicleGallery images={galleryImages} vehicleName={vehicleName} />
       </div>
-    </>
+
+      <div className="lg:col-span-2">
+        {groups.length > 0 ? (
+          <div className="space-y-6">
+            {groups.map((group) => (
+              <SpecGroup key={group.title} title={group.title} items={group.items} />
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-lg border border-dashed border-border/60 p-6 text-center">
+            <p className="text-sm font-medium">Noch keine Fahrzeugdaten</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Ergänze Werksbezeichnung, Motor und Laufleistung, damit das Profil
+              vollständig ist.
+            </p>
+            {isOwner && (
+              <Link
+                href={`/vehicles/${id}/edit`}
+                className="inline-block mt-3 text-xs font-medium text-primary underline underline-offset-4"
+              >
+                Fahrzeugdaten ergänzen
+              </Link>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
