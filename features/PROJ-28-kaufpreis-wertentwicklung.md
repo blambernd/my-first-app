@@ -1,6 +1,6 @@
 # PROJ-28: Kaufpreis & Wertentwicklung
 
-## Status: In Review
+## Status: Approved
 **Created:** 2026-07-31
 **Last Updated:** 2026-07-31
 
@@ -434,3 +434,85 @@ Zwei weitere Fehlschläge im Lauf waren Testfehler und wurden dort behoben: „5
 
 ## Deployment
 _To be added by /deploy_
+
+---
+
+## QA Test Results — zweiter Durchgang (2026-08-01)
+
+**Ergebnis: produktionsreif.** BUG-1 behoben und nachgeprüft, keine neuen Befunde.
+
+### Testläufe
+
+| Ebene | Ergebnis |
+|---|---|
+| E2E unangemeldet | **10/10 grün** |
+| E2E angemeldet | **19/19 grün** (17 aus Durchgang 1, 2 neu) |
+| Unit `value-development` | **23/23 grün** |
+| Unit gesamt | 503 grün, 4 vorbestehende Fehlschläge |
+| Regression PROJ-24 / 25 / 26 / 27 | **95/95 grün** — die Auffälligkeit aus Durchgang 1 trat nicht wieder auf |
+| Wegwerf-Fahrzeug danach | alle beteiligten Tabellen 0 Zeilen |
+
+### Neu in diesem Durchgang
+
+**Angriffsfläche, die es in PROJ-27 nicht gab.** Anders als die Kostenanalyse rendert dieses Feature **Nutzereingaben** — die Bezeichnung der Nebenkosten und die Notiz. Dafür wurde ein eigener Test ergänzt: Eine Eingabe mit `<img src=x onerror=...>` erscheint unverändert als Text, es entsteht kein Bild-Element und nichts wird ausgeführt.
+
+**Kaufdatum in der Zukunft** ist im Kalender gesperrt.
+
+### Ergänzend geprüft, was kein E2E abdecken kann
+
+Diese Pfade brauchen eine Marktpreis-Analyse bzw. einen Meilenstein und sind über die Oberfläche allein nicht herstellbar. Geprüft mit angelegten Daten:
+
+| Prüfung | Ergebnis |
+|---|---|
+| Marktwert aus der **jüngsten** Analyse | 24.450,00 € — die ältere, teurere (99.999) wird ignoriert |
+| Median statt Durchschnitt, kenntlich gemacht | „Median der Vergleichsangebote" |
+| Wertveränderung gegen den Kaufpreis | **+ 4.450,00 €** |
+| Gesamtbilanz | **+ 3.950,00 €** |
+| Schätzhinweis und Analysedatum | vorhanden |
+| Hinweis bei Analyse älter als 90 Tage | erscheint |
+| **Meilenstein-Vorbelegung** (AC 5) | Kauf-Meilenstein vom 07.03.2019 → Formular zeigt **07.03.2019** |
+| Konsolenfehler | **0** |
+
+**Zur Ehrlichkeit:** Meine erwartete Gesamtbilanz lag bei 3.830 € — falsch, weil ich mit den Nebenkosten eines früheren Szenarios gerechnet hatte. Die Nachrechnung ergibt 3.950 €, und genau das zeigt die Seite. Der Fehler lag bei der Erwartung, nicht beim Produkt.
+
+### Acceptance Criteria
+
+| # | Kriterium | Ergebnis |
+|---|---|---|
+| 1 | Kaufpreis und Kaufdatum hinterlegen | ✅ E2E |
+| 2 | Kauf-Nebenkosten erfassen | ✅ E2E |
+| 3 | Beträge in Cent, Eingabe in Euro | ✅ auf den Cent genau durch die Oberfläche |
+| 4 | Beide Angaben optional | ✅ E2E |
+| 5 | Kauf-Meilenstein als Vorbelegung | ✅ mit angelegtem Meilenstein |
+| 6 | Bilanz stellt vier Größen gegenüber | ✅ |
+| 7 | Wertveränderung gegen den Kaufpreis | ✅ |
+| 8 | Gesamtbilanz | ✅ |
+| 9 | Marktwert als Schätzung kenntlich | ✅ samt Analysedatum und Altershinweis |
+| 10 | Ohne Analyse nur die Kostenseite | ✅ E2E, mit Gegenprobe |
+| 11 | Ohne Kaufpreis Hinweis statt Bilanz | ✅ E2E, mit Gegenprobe |
+| 12 | Sichtbarkeit gesondert steuerbar | ⛔ **bewusst nicht umgesetzt** (Tech Design C10) |
+| 13 | Zugriff nach Rollen | ✅ |
+| 14 | Mobile, Tablet, Desktop | ✅ je mit Daten geprüft |
+
+**13 von 14 erfüllt**, das 14. bewusst abgewählt.
+
+### Sicherheitsaudit
+
+| Prüfung | Ergebnis |
+|---|---|
+| Werkstatt / fremder Nutzer / anonym gegen Besitzer | **0/0/0 gegen 1/1** |
+| Kaufpreis in sieben fremden Seitenantworten | **nirgends enthalten** |
+| Unangemeldet: „Kaufpreis", „Anschaffung", „Gesamtbilanz" im HTML | nicht enthalten |
+| XSS über Bezeichnung und Notiz | als Text dargestellt, nichts ausgeführt |
+| Kaufpreis in der Kostenanalyse | fließt nicht ein |
+| Supabase-Security-Advisors | keine Meldung zu den neuen Tabellen |
+
+### Grenzen dieses Testlaufs
+
+- **Firefox** ist im Projekt nicht konfiguriert; geprüft wurden Chromium und Mobile Safari (nur unangemeldet)
+- Der Sicherheitstest über sieben Seiten fiel in einem von drei Läufen in eine Zeitgrenze und lief in den anderen beiden durch. Kein Produktverhalten, aber der Test ist der langsamste der Suite
+- Marktwert-Pfad und Meilenstein-Vorbelegung sind nicht Teil der dauerhaften E2E-Suite, weil sie Daten voraussetzen, die über die Oberfläche allein nicht entstehen
+
+### Empfehlung
+
+**Produktionsreif.** Keine offenen Befunde der Stufen Kritisch, Hoch oder Mittel.

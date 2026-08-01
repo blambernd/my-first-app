@@ -182,6 +182,60 @@ test.describe("PROJ-28: Kaufpreis & Wertentwicklung", () => {
     await expect(page.getByText(ERWARTET.anschaffung)).toBeVisible();
   });
 
+  test("SICHERHEIT: Bezeichnung und Notiz werden als Text dargestellt", async ({
+    page,
+  }) => {
+    // Anders als die Kostenanalyse rendert dieses Feature Nutzereingaben —
+    // Bezeichnung der Nebenkosten und Notiz. Damit gibt es hier eine
+    // Angriffsfläche, die es in PROJ-27 nicht gab.
+    const payload = '<img src=x onerror="window.__xss=1">Teil';
+
+    await page.goto(PROFIL);
+    await page.getByRole("button", { name: "Anschaffung bearbeiten" }).click();
+    const dialog = page.getByRole("dialog");
+    await expect(dialog).toBeVisible({ timeout: 15000 });
+    await dialog.getByPlaceholder("Überführung").fill(payload);
+    await dialog.getByRole("textbox").last().fill(payload);
+    await dialog.getByRole("button", { name: "Speichern" }).click();
+    await expect(dialog).not.toBeVisible({ timeout: 20000 });
+    await waitForToastsGone(page);
+
+    // Der Text erscheint unverändert, das Bild-Element entsteht nicht
+    await expect(page.getByText(payload).first()).toBeVisible({ timeout: 20000 });
+    expect(await page.locator('img[src="x"]').count()).toBe(0);
+    expect(
+      await page.evaluate(
+        () => (window as unknown as Record<string, unknown>).__xss
+      )
+    ).toBeUndefined();
+
+    // Wieder auf den Ausgangswert zurücksetzen
+    await page.getByRole("button", { name: "Anschaffung bearbeiten" }).click();
+    await expect(dialog).toBeVisible({ timeout: 15000 });
+    await dialog.getByPlaceholder("Überführung").fill("Überführung");
+    await dialog.getByRole("textbox").last().fill("");
+    await dialog.getByRole("button", { name: "Speichern" }).click();
+    await expect(dialog).not.toBeVisible({ timeout: 20000 });
+    await waitForToastsGone(page);
+  });
+
+  test("AC: Ein Kaufdatum in der Zukunft ist nicht wählbar", async ({ page }) => {
+    await page.goto(PROFIL);
+    await page.getByRole("button", { name: "Anschaffung bearbeiten" }).click();
+    const dialog = page.getByRole("dialog");
+    await expect(dialog).toBeVisible({ timeout: 15000 });
+
+    // Der barrierefreie Name der Schaltfläche ist „Kaufdatum" — er stammt aus
+    // der Feldbeschriftung, nicht aus dem angezeigten Datum
+    await dialog.getByRole("button", { name: "Kaufdatum" }).click();
+    const gesperrt = page.locator('[data-disabled="true"], button[disabled]');
+    await expect
+      .poll(async () => gesperrt.count(), { timeout: 10000 })
+      .toBeGreaterThan(0);
+    await page.keyboard.press("Escape");
+    await dialog.getByRole("button", { name: "Abbrechen" }).click();
+  });
+
   test("AC: Der Abschnitt ist als privat gekennzeichnet", async ({ page }) => {
     await page.goto(PROFIL);
     await expect(page.getByText("privat")).toBeVisible({ timeout: 30000 });
