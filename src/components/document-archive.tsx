@@ -1,22 +1,18 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
   Plus,
   FileText,
-  Filter,
   Trash2,
   Download,
-  FileImage,
   FolderOpen,
   Pencil,
   Check,
   X,
-  ChevronLeft,
-  ChevronRight,
-  Clock,
+  Search,
   Archive,
   Loader2,
 } from "lucide-react";
@@ -25,6 +21,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
@@ -44,6 +41,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { DocumentUploadForm } from "@/components/document-upload-form";
+import { ImageLightbox, type LightboxImage } from "@/components/image-lightbox";
 import { createClient } from "@/lib/supabase";
 import {
   DOCUMENT_CATEGORIES,
@@ -57,7 +55,6 @@ import type { ServiceEntry } from "@/lib/validations/service-entry";
 import {
   CATEGORY_CONFIG,
   type VehicleMilestoneWithImages,
-  type VehicleMilestoneImage,
 } from "@/lib/validations/milestone";
 
 const CATEGORY_COLORS: Record<DocumentCategory, string> = {
@@ -71,11 +68,30 @@ const CATEGORY_COLORS: Record<DocumentCategory, string> = {
   sonstiges: "bg-gray-100 text-gray-800",
 };
 
-interface MilestoneImageEntry {
-  image: VehicleMilestoneImage;
-  milestoneTitle: string;
-  milestoneCategory: string;
-  milestoneDate: string;
+type ArchiveKind = "dokument" | "bild" | "historie";
+type SortKey = "neueste" | "aelteste" | "titel" | "groesse";
+
+/**
+ * Dokumente, hochgeladene Bilder und Bilder aus der Historie stammen aus drei
+ * Quellen mit unterschiedlichen Feldern. Für die Anzeige werden sie auf eine
+ * gemeinsame Form gebracht — nur so lassen sich Suche, Filter und Sortierung
+ * über alles hinweg anwenden statt je Abschnitt getrennt.
+ */
+interface ArchiveItem {
+  id: string;
+  kind: ArchiveKind;
+  title: string;
+  date: string;
+  categoryKey: string;
+  categoryLabel: string;
+  categoryColor: string;
+  fileName: string | null;
+  fileSize: number | null;
+  previewUrl: string | null;
+  description: string | null;
+  /** Löschen bzw. Beschreibung ändern erlaubt. */
+  canModify: boolean;
+  document?: VehicleDocument;
 }
 
 interface DocumentArchiveProps {
@@ -89,136 +105,96 @@ interface DocumentArchiveProps {
   userId?: string;
 }
 
-function DocumentCard({
-  document,
-  supabaseUrl,
-  onDelete,
+function ArchiveCard({
+  item,
+  onOpenImage,
   onDownload,
-  canEdit,
+  onDelete,
+  onUpdateDescription,
   selectMode,
   selected,
   onToggleSelect,
 }: {
-  document: VehicleDocument;
-  supabaseUrl: string;
-  onDelete: () => void;
-  onDownload: () => void;
-  canEdit: boolean;
-  selectMode?: boolean;
-  selected?: boolean;
-  onToggleSelect?: () => void;
+  item: ArchiveItem;
+  onOpenImage?: () => void;
+  onDownload?: () => void;
+  onDelete?: () => void;
+  onUpdateDescription?: (description: string) => void;
+  selectMode: boolean;
+  selected: boolean;
+  onToggleSelect: () => void;
 }) {
-  const isImage = isImageMimeType(document.mime_type);
-  const fileUrl = `${supabaseUrl}/storage/v1/object/public/vehicle-documents/${document.storage_path}`;
+  const [isEditing, setIsEditing] = useState(false);
+  const [draft, setDraft] = useState(item.description ?? "");
+
+  const canEditDescription = item.kind === "bild" && item.canModify && onUpdateDescription;
 
   return (
     <Card
-      className={`overflow-hidden group ${selectMode ? "cursor-pointer" : ""} ${selected ? "ring-2 ring-primary" : ""}`}
+      className={`overflow-hidden group ${selectMode ? "cursor-pointer" : ""} ${
+        selected ? "ring-2 ring-primary" : ""
+      }`}
       onClick={selectMode ? onToggleSelect : undefined}
     >
-      {/* Thumbnail / Icon area */}
       <div className="aspect-[4/3] bg-muted flex items-center justify-center relative">
         {selectMode && (
           <div className="absolute top-2 left-2 z-10">
             <Checkbox checked={selected} />
           </div>
         )}
-        {isImage ? (
-          <img
-            src={fileUrl}
-            alt={document.title}
-            className="w-full h-full object-contain"
-            loading="lazy"
-          />
+
+        {item.previewUrl ? (
+          <button
+            type="button"
+            disabled={selectMode}
+            onClick={onOpenImage}
+            aria-label={`${item.title} formatfüllend anzeigen`}
+            className="w-full h-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={item.previewUrl}
+              alt={item.description || item.title}
+              className="w-full h-full object-contain"
+              loading="lazy"
+            />
+          </button>
         ) : (
           <FileText className="h-12 w-12 text-muted-foreground/40" />
         )}
-        {/* Hover actions */}
-        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors hidden sm:flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100">
-          <Button
-            variant="secondary"
-            size="icon"
-            className="h-8 w-8"
-            onClick={onDownload}
-          >
-            <Download className="h-4 w-4" />
-          </Button>
-          {canEdit && (
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button
-                  variant="destructive"
-                  size="icon"
-                  className="h-8 w-8"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Dokument löschen?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    &ldquo;{document.title}&rdquo; wird unwiderruflich gelöscht.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Abbrechen</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={onDelete}
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  >
-                    Löschen
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          )}
-        </div>
-      </div>
-      <CardContent className="p-3 space-y-1.5">
-        <p className="text-sm font-medium truncate" title={document.title}>
-          {document.title}
-        </p>
-        <div className="flex items-center gap-2 flex-wrap">
-          <Badge
-            className={`${CATEGORY_COLORS[document.category]} border-0 text-xs`}
-          >
-            {getCategoryLabel(document.category)}
-          </Badge>
-          <span className="text-xs text-muted-foreground">
-            {new Date(document.document_date).toLocaleDateString("de-DE")}
-          </span>
-        </div>
-        <div className="flex items-center justify-between">
-          <p className="text-xs text-muted-foreground truncate flex-1 min-w-0">
-            {document.file_name} · {formatFileSize(document.file_size)}
-          </p>
-          {/* Mobile-visible action buttons (hidden on desktop where hover overlay works) */}
-          <div className="flex gap-1 sm:hidden shrink-0 ml-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
-              onClick={onDownload}
-            >
-              <Download className="h-3.5 w-3.5" />
-            </Button>
-            {canEdit && (
+
+        {!selectMode && (onDownload || onDelete) && (
+          <div className="absolute top-1.5 right-1.5 flex gap-1 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 transition-opacity">
+            {onDownload && (
+              <Button
+                variant="secondary"
+                size="icon"
+                className="h-7 w-7 shadow-sm"
+                onClick={onDownload}
+                aria-label={`${item.title} herunterladen`}
+              >
+                <Download className="h-3.5 w-3.5" />
+              </Button>
+            )}
+            {onDelete && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button
-                    variant="ghost"
+                    variant="destructive"
                     size="icon"
-                    className="h-7 w-7 text-destructive"
+                    className="h-7 w-7 shadow-sm"
+                    aria-label={`${item.title} löschen`}
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>Dokument löschen?</AlertDialogTitle>
+                    <AlertDialogTitle>
+                      {item.kind === "bild" ? "Bild löschen?" : "Dokument löschen?"}
+                    </AlertDialogTitle>
                     <AlertDialogDescription>
-                      &ldquo;{document.title}&rdquo; wird unwiderruflich gelöscht.
+                      &ldquo;{item.title}&rdquo; wird unwiderruflich gelöscht.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
@@ -234,408 +210,99 @@ function DocumentCard({
               </AlertDialog>
             )}
           </div>
+        )}
+      </div>
+
+      <CardContent className="p-3 space-y-1.5">
+        <p className="text-sm font-medium truncate" title={item.title}>
+          {item.title}
+        </p>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Badge className={`${item.categoryColor} border-0 text-xs`}>
+            {item.categoryLabel}
+          </Badge>
+          <span className="text-xs text-muted-foreground">
+            {new Date(item.date).toLocaleDateString("de-DE")}
+          </span>
         </div>
+
+        {(item.fileName || item.fileSize != null) && (
+          <p className="text-xs text-muted-foreground truncate">
+            {[item.fileName, item.fileSize != null ? formatFileSize(item.fileSize) : null]
+              .filter(Boolean)
+              .join(" · ")}
+          </p>
+        )}
+
+        {isEditing ? (
+          <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+            <Input
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              placeholder="Bildbeschreibung…"
+              className="h-7 text-xs"
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  onUpdateDescription?.(draft);
+                  setIsEditing(false);
+                } else if (e.key === "Escape") {
+                  setIsEditing(false);
+                }
+              }}
+            />
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 shrink-0 text-green-600"
+              aria-label="Beschreibung speichern"
+              onClick={() => {
+                onUpdateDescription?.(draft);
+                setIsEditing(false);
+              }}
+            >
+              <Check className="h-3.5 w-3.5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 shrink-0"
+              aria-label="Bearbeiten abbrechen"
+              onClick={() => setIsEditing(false)}
+            >
+              <X className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        ) : (
+          (item.description || canEditDescription) && (
+            <div className="flex items-start gap-1">
+              <p className="text-xs text-muted-foreground flex-1 min-w-0 line-clamp-2">
+                {item.description || (
+                  <span className="italic text-muted-foreground/50">
+                    Beschreibung hinzufügen…
+                  </span>
+                )}
+              </p>
+              {canEditDescription && !selectMode && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 shrink-0 text-muted-foreground"
+                  aria-label="Beschreibung bearbeiten"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setDraft(item.description ?? "");
+                    setIsEditing(true);
+                  }}
+                >
+                  <Pencil className="h-3 w-3" />
+                </Button>
+              )}
+            </div>
+          )
+        )}
       </CardContent>
     </Card>
-  );
-}
-
-function ImageGallery({
-  images,
-  supabaseUrl,
-  canEdit,
-  canEditAll,
-  userId,
-  onDelete,
-  onUpdateDescription,
-  selectMode,
-  selectedIds,
-  onToggleSelect,
-}: {
-  images: VehicleDocument[];
-  supabaseUrl: string;
-  canEdit: boolean;
-  canEditAll: boolean;
-  userId?: string;
-  onDelete: (doc: VehicleDocument) => void;
-  onUpdateDescription: (docId: string, description: string) => void;
-  selectMode?: boolean;
-  selectedIds?: Set<string>;
-  onToggleSelect?: (id: string) => void;
-}) {
-  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editingText, setEditingText] = useState("");
-  const touchStartX = useRef(0);
-  const touchDeltaX = useRef(0);
-
-  const goNext = useCallback(() => setLightboxIndex((i) => i !== null ? Math.min(i + 1, images.length - 1) : null), [images.length]);
-  const goPrev = useCallback(() => setLightboxIndex((i) => i !== null ? Math.max(i - 1, 0) : null), []);
-
-  useEffect(() => {
-    if (lightboxIndex === null) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setLightboxIndex(null);
-      if (e.key === "ArrowRight") goNext();
-      if (e.key === "ArrowLeft") goPrev();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [lightboxIndex, goNext, goPrev]);
-
-  if (images.length === 0) return null;
-
-  return (
-    <div className="mb-8">
-      <h3 className="text-sm font-medium mb-3 flex items-center gap-2">
-        <FileImage className="h-4 w-4 text-muted-foreground" />
-        Bildergalerie ({images.length})
-      </h3>
-      <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
-        {images.map((img, imgIdx) => {
-          const fileUrl = `${supabaseUrl}/storage/v1/object/public/vehicle-documents/${img.storage_path}`;
-          const canEditThis = canEdit && (canEditAll || img.created_by === userId);
-          const isEditing = editingId === img.id;
-
-          return (
-            <div
-              key={img.id}
-              className={`flex gap-4 items-start group/img rounded-lg border p-3 ${selectMode ? "cursor-pointer" : ""} ${selectMode && selectedIds?.has(img.id) ? "ring-2 ring-primary" : ""}`}
-              onClick={selectMode ? () => onToggleSelect?.(img.id) : undefined}
-            >
-              {selectMode && (
-                <div className="shrink-0 flex items-center pt-2">
-                  <Checkbox checked={selectedIds?.has(img.id)} />
-                </div>
-              )}
-              <div
-                className="shrink-0 w-36 sm:w-48 aspect-[4/3] rounded-lg overflow-hidden bg-muted cursor-pointer relative"
-                onClick={selectMode ? undefined : () => setLightboxIndex(imgIdx)}
-              >
-                <img
-                  src={fileUrl}
-                  alt={img.description ?? img.title}
-                  className="w-full h-full object-contain"
-                  loading="lazy"
-                />
-              </div>
-              <div className="flex-1 min-w-0 space-y-1">
-                <div className="flex items-center gap-1.5">
-                  <p className="text-sm font-medium truncate flex-1 min-w-0">{img.title}</p>
-                  {canEditThis && (
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 shrink-0 text-destructive"
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Bild löschen?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            &ldquo;{img.title}&rdquo; wird unwiderruflich gelöscht.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Abbrechen</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => onDelete(img)}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                          >
-                            Löschen
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  )}
-                </div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <Badge className={`${CATEGORY_COLORS[img.category]} border-0 text-xs`}>
-                    {getCategoryLabel(img.category)}
-                  </Badge>
-                  <span className="text-xs text-muted-foreground">
-                    {new Date(img.document_date).toLocaleDateString("de-DE")}
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    {formatFileSize(img.file_size)}
-                  </span>
-                </div>
-                {isEditing ? (
-                  <div className="flex items-center gap-1.5 mt-1">
-                    <Input
-                      value={editingText}
-                      onChange={(e) => setEditingText(e.target.value)}
-                      placeholder="Bildbeschreibung..."
-                      className="h-8 text-sm flex-1"
-                      autoFocus
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          onUpdateDescription(img.id, editingText);
-                          setEditingId(null);
-                        } else if (e.key === "Escape") {
-                          setEditingId(null);
-                        }
-                      }}
-                    />
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 shrink-0 text-green-600"
-                      onClick={() => {
-                        onUpdateDescription(img.id, editingText);
-                        setEditingId(null);
-                      }}
-                    >
-                      <Check className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 shrink-0"
-                      onClick={() => setEditingId(null)}
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="flex items-start gap-1.5 mt-1">
-                    <p className="text-sm text-muted-foreground flex-1 min-w-0">
-                      {img.description || (canEditThis ? <span className="italic text-muted-foreground/50">Beschreibung hinzufügen...</span> : null)}
-                    </p>
-                    {canEditThis && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 shrink-0 text-muted-foreground"
-                        onClick={() => {
-                          setEditingId(img.id);
-                          setEditingText(img.description ?? "");
-                        }}
-                      >
-                        <Pencil className="h-3 w-3" />
-                      </Button>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Lightbox with swipe navigation */}
-      {lightboxIndex !== null && (
-        <div
-          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center"
-          onClick={() => setLightboxIndex(null)}
-        >
-          <button
-            type="button"
-            className="absolute top-4 right-4 z-10 text-white/70 hover:text-white"
-            onClick={() => setLightboxIndex(null)}
-          >
-            <X className="h-6 w-6" />
-          </button>
-
-          {images.length > 1 && lightboxIndex > 0 && (
-            <button
-              type="button"
-              className="absolute left-3 top-1/2 -translate-y-1/2 z-10 h-10 w-10 rounded-full bg-black/50 flex items-center justify-center text-white/70 hover:text-white hover:bg-black/70 transition-colors"
-              onClick={(e) => { e.stopPropagation(); goPrev(); }}
-            >
-              <ChevronLeft className="h-5 w-5" />
-            </button>
-          )}
-
-          <div
-            className="max-w-[90vw] max-h-[85vh] flex items-center justify-center"
-            onClick={(e) => e.stopPropagation()}
-            onTouchStart={(e) => { touchStartX.current = e.touches[0].clientX; touchDeltaX.current = 0; }}
-            onTouchMove={(e) => { touchDeltaX.current = e.touches[0].clientX - touchStartX.current; }}
-            onTouchEnd={() => { if (touchDeltaX.current > 60) goPrev(); else if (touchDeltaX.current < -60) goNext(); }}
-          >
-            <img
-              src={`${supabaseUrl}/storage/v1/object/public/vehicle-documents/${images[lightboxIndex].storage_path}`}
-              alt={images[lightboxIndex].title}
-              className="max-w-full max-h-[85vh] object-contain rounded-lg select-none"
-              draggable={false}
-            />
-          </div>
-
-          {images.length > 1 && lightboxIndex < images.length - 1 && (
-            <button
-              type="button"
-              className="absolute right-3 top-1/2 -translate-y-1/2 z-10 h-10 w-10 rounded-full bg-black/50 flex items-center justify-center text-white/70 hover:text-white hover:bg-black/70 transition-colors"
-              onClick={(e) => { e.stopPropagation(); goNext(); }}
-            >
-              <ChevronRight className="h-5 w-5" />
-            </button>
-          )}
-
-          {images.length > 1 && (
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white/70 text-sm bg-black/50 px-3 py-1 rounded-full">
-              {lightboxIndex + 1} / {images.length}
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function HistorieGallery({
-  entries,
-  supabaseUrl,
-  selectMode,
-  selectedIds,
-  onToggleSelect,
-}: {
-  entries: MilestoneImageEntry[];
-  supabaseUrl: string;
-  selectMode?: boolean;
-  selectedIds?: Set<string>;
-  onToggleSelect?: (id: string) => void;
-}) {
-  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
-  const touchStartX = useRef(0);
-  const touchDeltaX = useRef(0);
-
-  const goNext = useCallback(() => setLightboxIndex((i) => i !== null ? Math.min(i + 1, entries.length - 1) : null), [entries.length]);
-  const goPrev = useCallback(() => setLightboxIndex((i) => i !== null ? Math.max(i - 1, 0) : null), []);
-
-  useEffect(() => {
-    if (lightboxIndex === null) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setLightboxIndex(null);
-      if (e.key === "ArrowRight") goNext();
-      if (e.key === "ArrowLeft") goPrev();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [lightboxIndex, goNext, goPrev]);
-
-  if (entries.length === 0) return null;
-
-  return (
-    <div className="mb-8">
-      <h3 className="text-sm font-medium mb-3 flex items-center gap-2">
-        <Clock className="h-4 w-4 text-muted-foreground" />
-        Historie ({entries.length})
-      </h3>
-      <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
-        {entries.map((entry, idx) => {
-          const fileUrl = `${supabaseUrl}/storage/v1/object/public/vehicle-images/${entry.image.storage_path}`;
-          const categoryConfig = CATEGORY_CONFIG[entry.milestoneCategory as keyof typeof CATEGORY_CONFIG];
-
-          return (
-            <div
-              key={entry.image.id}
-              className={`flex gap-4 items-start rounded-lg border p-3 ${selectMode ? "cursor-pointer" : ""} ${selectMode && selectedIds?.has(entry.image.id) ? "ring-2 ring-primary" : ""}`}
-              onClick={selectMode ? () => onToggleSelect?.(entry.image.id) : undefined}
-            >
-              {selectMode && (
-                <div className="shrink-0 flex items-center pt-2">
-                  <Checkbox checked={selectedIds?.has(entry.image.id)} />
-                </div>
-              )}
-              <div
-                className="shrink-0 w-36 sm:w-48 aspect-[4/3] rounded-lg overflow-hidden bg-muted cursor-pointer"
-                onClick={selectMode ? undefined : () => setLightboxIndex(idx)}
-              >
-                <img
-                  src={fileUrl}
-                  alt={entry.image.caption ?? entry.milestoneTitle}
-                  className="w-full h-full object-contain"
-                  loading="lazy"
-                />
-              </div>
-              <div className="flex-1 min-w-0 space-y-1">
-                <p className="text-sm font-medium truncate">{entry.milestoneTitle}</p>
-                <div className="flex items-center gap-2 flex-wrap">
-                  {categoryConfig && (
-                    <Badge className={`${categoryConfig.color} border-0 text-xs`}>
-                      {categoryConfig.label}
-                    </Badge>
-                  )}
-                  <span className="text-xs text-muted-foreground">
-                    {new Date(entry.milestoneDate).toLocaleDateString("de-DE")}
-                  </span>
-                  {"file_size" in entry.image && entry.image.file_size ? (
-                    <span className="text-xs text-muted-foreground">
-                      {formatFileSize(entry.image.file_size as number)}
-                    </span>
-                  ) : null}
-                </div>
-                {entry.image.caption && (
-                  <p className="text-sm text-muted-foreground">{entry.image.caption}</p>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Lightbox with swipe navigation */}
-      {lightboxIndex !== null && (
-        <div
-          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center"
-          onClick={() => setLightboxIndex(null)}
-        >
-          <button
-            type="button"
-            className="absolute top-4 right-4 z-10 text-white/70 hover:text-white"
-            onClick={() => setLightboxIndex(null)}
-          >
-            <X className="h-6 w-6" />
-          </button>
-
-          {entries.length > 1 && lightboxIndex > 0 && (
-            <button
-              type="button"
-              className="absolute left-3 top-1/2 -translate-y-1/2 z-10 h-10 w-10 rounded-full bg-black/50 flex items-center justify-center text-white/70 hover:text-white hover:bg-black/70 transition-colors"
-              onClick={(e) => { e.stopPropagation(); goPrev(); }}
-            >
-              <ChevronLeft className="h-5 w-5" />
-            </button>
-          )}
-
-          <div
-            className="max-w-[90vw] max-h-[85vh] flex items-center justify-center"
-            onClick={(e) => e.stopPropagation()}
-            onTouchStart={(e) => { touchStartX.current = e.touches[0].clientX; touchDeltaX.current = 0; }}
-            onTouchMove={(e) => { touchDeltaX.current = e.touches[0].clientX - touchStartX.current; }}
-            onTouchEnd={() => { if (touchDeltaX.current > 60) goPrev(); else if (touchDeltaX.current < -60) goNext(); }}
-          >
-            <img
-              src={`${supabaseUrl}/storage/v1/object/public/vehicle-images/${entries[lightboxIndex].image.storage_path}`}
-              alt={entries[lightboxIndex].image.caption ?? entries[lightboxIndex].milestoneTitle}
-              className="max-w-full max-h-[85vh] object-contain rounded-lg select-none"
-              draggable={false}
-            />
-          </div>
-
-          {entries.length > 1 && lightboxIndex < entries.length - 1 && (
-            <button
-              type="button"
-              className="absolute right-3 top-1/2 -translate-y-1/2 z-10 h-10 w-10 rounded-full bg-black/50 flex items-center justify-center text-white/70 hover:text-white hover:bg-black/70 transition-colors"
-              onClick={(e) => { e.stopPropagation(); goNext(); }}
-            >
-              <ChevronRight className="h-5 w-5" />
-            </button>
-          )}
-
-          {entries.length > 1 && (
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white/70 text-sm bg-black/50 px-3 py-1 rounded-full">
-              {lightboxIndex + 1} / {entries.length}
-            </div>
-          )}
-        </div>
-      )}
-    </div>
   );
 }
 
@@ -651,40 +318,128 @@ export function DocumentArchive({
 }: DocumentArchiveProps) {
   const router = useRouter();
   const [documents, setDocuments] = useState<VehicleDocument[]>(initialDocuments);
+  const [tab, setTab] = useState<"alle" | ArchiveKind>("alle");
+  const [search, setSearch] = useState("");
   const [filterCategory, setFilterCategory] = useState<string>("all");
+  const [sortKey, setSortKey] = useState<SortKey>("neueste");
   const [uploadOpen, setUploadOpen] = useState(false);
   const [selectMode, setSelectMode] = useState(false);
   const [selectedDocIds, setSelectedDocIds] = useState<Set<string>>(new Set());
-  const [selectedMilestoneImgIds, setSelectedMilestoneImgIds] = useState<Set<string>>(new Set());
-  const [downloading, setDownloading] = useState(false);
-
-  const imageDocuments = documents.filter((d) => isImageMimeType(d.mime_type));
-  const nonImageDocuments = documents.filter((d) => !isImageMimeType(d.mime_type));
-
-  const milestoneImageEntries: MilestoneImageEntry[] = milestones.flatMap((m) =>
-    m.vehicle_milestone_images.map((img) => ({
-      image: img,
-      milestoneTitle: m.title,
-      milestoneCategory: m.category,
-      milestoneDate: m.milestone_date,
-    }))
+  const [selectedMilestoneImgIds, setSelectedMilestoneImgIds] = useState<Set<string>>(
+    new Set()
   );
-
-  const filteredDocuments =
-    filterCategory === "all"
-      ? nonImageDocuments
-      : nonImageDocuments.filter((d) => d.category === filterCategory);
-
-  const refreshDocuments = useCallback(() => {
-    router.refresh();
-  }, [router]);
+  const [downloading, setDownloading] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   // Sync from server when initialDocuments changes
   useEffect(() => {
     setDocuments(initialDocuments);
   }, [initialDocuments]);
 
-  const handleDownload = async (doc: VehicleDocument) => {
+  const items: ArchiveItem[] = useMemo(() => {
+    const docItems: ArchiveItem[] = documents.map((doc) => {
+      const isImage = isImageMimeType(doc.mime_type);
+      const url = `${supabaseUrl}/storage/v1/object/public/vehicle-documents/${doc.storage_path}`;
+      return {
+        id: doc.id,
+        kind: isImage ? "bild" : "dokument",
+        title: doc.title,
+        date: doc.document_date,
+        categoryKey: doc.category,
+        categoryLabel: getCategoryLabel(doc.category),
+        categoryColor: CATEGORY_COLORS[doc.category],
+        fileName: doc.file_name,
+        fileSize: doc.file_size,
+        previewUrl: isImage ? url : null,
+        description: doc.description ?? null,
+        canModify: canEdit && (canEditAll || doc.created_by === userId),
+        document: doc,
+      };
+    });
+
+    const historieItems: ArchiveItem[] = milestones.flatMap((m) =>
+      m.vehicle_milestone_images.map((img) => {
+        const config = CATEGORY_CONFIG[m.category as keyof typeof CATEGORY_CONFIG];
+        const size = "file_size" in img ? (img.file_size as number | null) : null;
+        return {
+          id: img.id,
+          kind: "historie" as const,
+          title: m.title,
+          date: m.milestone_date,
+          categoryKey: m.category,
+          categoryLabel: config?.label ?? m.category,
+          categoryColor: config?.color ?? "bg-gray-100 text-gray-800",
+          fileName: null,
+          fileSize: size,
+          previewUrl: `${supabaseUrl}/storage/v1/object/public/vehicle-images/${img.storage_path}`,
+          description: img.caption ?? null,
+          // Historie-Bilder werden in der Historie gepflegt, nicht hier.
+          canModify: false,
+        };
+      })
+    );
+
+    return [...docItems, ...historieItems];
+  }, [documents, milestones, supabaseUrl, canEdit, canEditAll, userId]);
+
+  const counts = useMemo(
+    () => ({
+      alle: items.length,
+      dokument: items.filter((i) => i.kind === "dokument").length,
+      bild: items.filter((i) => i.kind === "bild").length,
+      historie: items.filter((i) => i.kind === "historie").length,
+      pdf: documents.filter((d) => d.mime_type === "application/pdf").length,
+    }),
+    [items, documents]
+  );
+
+  const visibleItems = useMemo(() => {
+    const needle = search.trim().toLowerCase();
+
+    const filtered = items.filter((item) => {
+      if (tab !== "alle" && item.kind !== tab) return false;
+      if (filterCategory !== "all" && item.categoryKey !== filterCategory) return false;
+      if (!needle) return true;
+      return [item.title, item.fileName, item.description, item.categoryLabel]
+        .filter(Boolean)
+        .some((field) => field!.toLowerCase().includes(needle));
+    });
+
+    const sorted = [...filtered];
+    sorted.sort((a, b) => {
+      switch (sortKey) {
+        case "aelteste":
+          return a.date.localeCompare(b.date);
+        case "titel":
+          return a.title.localeCompare(b.title, "de");
+        case "groesse":
+          return (b.fileSize ?? 0) - (a.fileSize ?? 0);
+        default:
+          return b.date.localeCompare(a.date);
+      }
+    });
+    return sorted;
+  }, [items, tab, filterCategory, search, sortKey]);
+
+  // Die Vollbildansicht blättert durch genau die Bilder, die gerade sichtbar sind.
+  const visibleImages: LightboxImage[] = useMemo(
+    () =>
+      visibleItems
+        .filter((i) => i.previewUrl)
+        .map((i) => ({
+          id: i.id,
+          url: i.previewUrl!,
+          title: i.title,
+          caption: i.description,
+        })),
+    [visibleItems]
+  );
+
+  const refreshDocuments = useCallback(() => {
+    router.refresh();
+  }, [router]);
+
+  const handleDownload = (doc: VehicleDocument) => {
     const url = `${supabaseUrl}/storage/v1/object/public/vehicle-documents/${doc.storage_path}`;
     const link = document.createElement("a");
     link.href = url;
@@ -699,13 +454,11 @@ export function DocumentArchive({
     try {
       const supabase = createClient();
 
-      // Delete from storage first
       const { error: storageError } = await supabase.storage
         .from("vehicle-documents")
         .remove([doc.storage_path]);
       if (storageError) throw storageError;
 
-      // Delete DB record
       const { error: dbError } = await supabase
         .from("vehicle_documents")
         .delete()
@@ -744,25 +497,31 @@ export function DocumentArchive({
 
   const totalSelected = selectedDocIds.size + selectedMilestoneImgIds.size;
 
-  const toggleDocSelect = (id: string) => {
-    setSelectedDocIds((prev) => {
+  const toggleSelect = (item: ArchiveItem) => {
+    const setter =
+      item.kind === "historie" ? setSelectedMilestoneImgIds : setSelectedDocIds;
+    setter((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
+      if (next.has(item.id)) next.delete(item.id);
+      else next.add(item.id);
       return next;
     });
   };
 
-  const toggleMilestoneImgSelect = (id: string) => {
-    setSelectedMilestoneImgIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
-      return next;
-    });
-  };
+  const isSelected = (item: ArchiveItem) =>
+    item.kind === "historie"
+      ? selectedMilestoneImgIds.has(item.id)
+      : selectedDocIds.has(item.id);
 
-  const selectAll = () => {
-    setSelectedDocIds(new Set(documents.map((d) => d.id)));
-    setSelectedMilestoneImgIds(new Set(milestoneImageEntries.map((e) => e.image.id)));
+  // Auswählen bezieht sich auf das, was gerade sichtbar ist — sonst lädt man
+  // ungewollt Dateien herunter, die durch Suche oder Filter ausgeblendet sind.
+  const selectAllVisible = () => {
+    setSelectedDocIds(
+      new Set(visibleItems.filter((i) => i.kind !== "historie").map((i) => i.id))
+    );
+    setSelectedMilestoneImgIds(
+      new Set(visibleItems.filter((i) => i.kind === "historie").map((i) => i.id))
+    );
   };
 
   const deselectAll = () => {
@@ -814,46 +573,67 @@ export function DocumentArchive({
     }
   };
 
-  return (
-    <div>
-      {/* Summary */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        <Card>
-          <CardContent className="p-4 flex items-center gap-3">
-            <FolderOpen className="h-5 w-5 text-muted-foreground" />
-            <div>
-              <p className="text-2xl font-bold">{documents.length + milestoneImageEntries.length}</p>
-              <p className="text-xs text-muted-foreground">Gesamt</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 flex items-center gap-3">
-            <FileImage className="h-5 w-5 text-muted-foreground" />
-            <div>
-              <p className="text-2xl font-bold">
-                {documents.filter((d) => isImageMimeType(d.mime_type)).length + milestoneImageEntries.length}
-              </p>
-              <p className="text-xs text-muted-foreground">Bilder</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 flex items-center gap-3">
-            <FileText className="h-5 w-5 text-muted-foreground" />
-            <div>
-              <p className="text-2xl font-bold">
-                {documents.filter((d) => d.mime_type === "application/pdf").length}
-              </p>
-              <p className="text-xs text-muted-foreground">PDFs</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+  const allVisibleSelected =
+    visibleItems.length > 0 && totalSelected === visibleItems.length;
 
-      {/* Toolbar */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
+  const grid = (
+    <>
+      {visibleItems.length === 0 ? (
+        <div className="text-center py-12">
+          <FolderOpen className="h-10 w-10 mx-auto text-muted-foreground/30 mb-3" />
+          <p className="text-sm text-muted-foreground">
+            {counts.alle === 0
+              ? "Noch keine Dokumente. Lade das erste Dokument hoch."
+              : "Nichts gefunden. Passe Suche oder Filter an."}
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+          {visibleItems.map((item) => {
+            const imageIndex = visibleImages.findIndex((img) => img.id === item.id);
+            return (
+              <ArchiveCard
+                key={`${item.kind}-${item.id}`}
+                item={item}
+                selectMode={selectMode}
+                selected={isSelected(item)}
+                onToggleSelect={() => toggleSelect(item)}
+                onOpenImage={
+                  imageIndex >= 0 ? () => setLightboxIndex(imageIndex) : undefined
+                }
+                onDownload={
+                  item.document ? () => handleDownload(item.document!) : undefined
+                }
+                onDelete={
+                  item.canModify && item.document
+                    ? () => handleDelete(item.document!)
+                    : undefined
+                }
+                onUpdateDescription={
+                  item.canModify && item.document
+                    ? (description) => handleUpdateDescription(item.id, description)
+                    : undefined
+                }
+              />
+            );
+          })}
+        </div>
+      )}
+    </>
+  );
+
+  return (
+    <div className="space-y-4">
+      {/* Kopfzeile: Bestand links, Aktionen rechts */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-muted-foreground">
+          {counts.alle} {counts.alle === 1 ? "Datei" : "Dateien"}
+          {counts.bild + counts.historie > 0 &&
+            ` · ${counts.bild + counts.historie} Bilder`}
+          {counts.pdf > 0 && ` · ${counts.pdf} PDF`}
+        </p>
+
+        <div className="flex items-center gap-2 flex-wrap">
           {selectMode ? (
             <>
               <Button size="sm" variant="outline" onClick={exitSelectMode}>
@@ -863,15 +643,9 @@ export function DocumentArchive({
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() =>
-                  totalSelected === documents.length + milestoneImageEntries.length
-                    ? deselectAll()
-                    : selectAll()
-                }
+                onClick={allVisibleSelected ? deselectAll : selectAllVisible}
               >
-                {totalSelected === documents.length + milestoneImageEntries.length
-                  ? "Keine auswählen"
-                  : "Alle auswählen"}
+                {allVisibleSelected ? "Keine auswählen" : "Alle auswählen"}
               </Button>
               {totalSelected > 0 && (
                 <Button
@@ -894,7 +668,7 @@ export function DocumentArchive({
                 size="sm"
                 variant="outline"
                 onClick={() => handleZipDownload(true)}
-                disabled={downloading || (documents.length === 0 && milestoneImageEntries.length === 0)}
+                disabled={downloading || counts.alle === 0}
               >
                 {downloading ? (
                   <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
@@ -903,100 +677,81 @@ export function DocumentArchive({
                 )}
                 Alle herunterladen
               </Button>
-              {(documents.length + milestoneImageEntries.length) > 1 && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setSelectMode(true)}
-                >
+              {counts.alle > 1 && (
+                <Button size="sm" variant="outline" onClick={() => setSelectMode(true)}>
                   <Check className="h-4 w-4 mr-1.5" />
                   Auswählen
+                </Button>
+              )}
+              {canEdit && (
+                <Button size="sm" onClick={() => setUploadOpen(true)}>
+                  <Plus className="h-4 w-4 mr-1.5" />
+                  Hochladen
                 </Button>
               )}
             </>
           )}
         </div>
-        <div>
-          {canEdit && !selectMode && (
-            <Button size="sm" onClick={() => setUploadOpen(true)}>
-              <Plus className="h-4 w-4 mr-1.5" />
-              Hochladen
-            </Button>
-          )}
-        </div>
       </div>
 
-      {/* Image gallery */}
-      <ImageGallery
-        images={imageDocuments}
-        supabaseUrl={supabaseUrl}
-        canEdit={canEdit}
-        canEditAll={canEditAll}
-        userId={userId}
-        onDelete={handleDelete}
-        onUpdateDescription={handleUpdateDescription}
-        selectMode={selectMode}
-        selectedIds={selectedDocIds}
-        onToggleSelect={toggleDocSelect}
-      />
+      <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
+        <TabsList className="w-full sm:w-auto overflow-x-auto justify-start">
+          <TabsTrigger value="alle">Alle {counts.alle}</TabsTrigger>
+          <TabsTrigger value="dokument">Dokumente {counts.dokument}</TabsTrigger>
+          <TabsTrigger value="bild">Bilder {counts.bild}</TabsTrigger>
+          <TabsTrigger value="historie">Historie {counts.historie}</TabsTrigger>
+        </TabsList>
 
-      {/* Historie images from milestones */}
-      <HistorieGallery
-        entries={milestoneImageEntries}
-        supabaseUrl={supabaseUrl}
-        selectMode={selectMode}
-        selectedIds={selectedMilestoneImgIds}
-        onToggleSelect={toggleMilestoneImgSelect}
-      />
-
-      {/* Document filter */}
-      <div className="flex items-center gap-2 mb-4">
-        <Filter className="h-4 w-4 text-muted-foreground" />
-        <Select value={filterCategory} onValueChange={setFilterCategory}>
-          <SelectTrigger className="w-[180px] h-9">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Alle Kategorien</SelectItem>
-            {DOCUMENT_CATEGORIES.map((cat) => (
-              <SelectItem key={cat.value} value={cat.value}>
-                {cat.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Document grid (non-image files only) */}
-      {filteredDocuments.length === 0 ? (
-        <div className="text-center py-12">
-          <FolderOpen className="h-12 w-12 mx-auto text-muted-foreground/30 mb-3" />
-          <p className="text-muted-foreground">
-            {filterCategory === "all"
-              ? "Noch keine Dokumente. Lade das erste Dokument hoch."
-              : "Keine Dokumente in dieser Kategorie."}
-          </p>
+        {/* Werkzeugleiste — wirkt auf die gerade gewählte Ansicht */}
+        <div className="flex flex-col sm:flex-row gap-2 mt-4">
+          <div className="relative flex-1 min-w-0">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Titel, Dateiname oder Beschreibung suchen…"
+              aria-label="Dokumente durchsuchen"
+              className="h-9 pl-8"
+            />
+          </div>
+          <Select value={filterCategory} onValueChange={setFilterCategory}>
+            <SelectTrigger className="h-9 w-full sm:w-[190px]" aria-label="Kategorie">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Alle Kategorien</SelectItem>
+              {DOCUMENT_CATEGORIES.map((cat) => (
+                <SelectItem key={cat.value} value={cat.value}>
+                  {cat.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={sortKey} onValueChange={(v) => setSortKey(v as SortKey)}>
+            <SelectTrigger className="h-9 w-full sm:w-[170px]" aria-label="Sortierung">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="neueste">Neueste zuerst</SelectItem>
+              <SelectItem value="aelteste">Älteste zuerst</SelectItem>
+              <SelectItem value="titel">Titel A–Z</SelectItem>
+              <SelectItem value="groesse">Größe</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
-      ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-          {filteredDocuments.map((doc) => {
-            const canEditThis = canEdit && (canEditAll || doc.created_by === userId);
-            return (
-              <DocumentCard
-                key={doc.id}
-                document={doc}
-                supabaseUrl={supabaseUrl}
-                canEdit={canEditThis}
-                onDelete={() => handleDelete(doc)}
-                onDownload={() => handleDownload(doc)}
-                selectMode={selectMode}
-                selected={selectedDocIds.has(doc.id)}
-                onToggleSelect={() => toggleDocSelect(doc.id)}
-              />
-            );
-          })}
-        </div>
-      )}
+
+        <TabsContent value="alle" className="mt-4">{grid}</TabsContent>
+        <TabsContent value="dokument" className="mt-4">{grid}</TabsContent>
+        <TabsContent value="bild" className="mt-4">{grid}</TabsContent>
+        <TabsContent value="historie" className="mt-4">{grid}</TabsContent>
+      </Tabs>
+
+      <ImageLightbox
+        images={visibleImages}
+        index={lightboxIndex}
+        onIndexChange={setLightboxIndex}
+        onClose={() => setLightboxIndex(null)}
+      />
 
       <DocumentUploadForm
         vehicleId={vehicleId}

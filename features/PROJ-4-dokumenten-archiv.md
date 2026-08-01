@@ -286,3 +286,63 @@ Run the SQL migration in Supabase Dashboard: SQL Editor > New query > Paste cont
 **Production URL:** https://my-first-app-blambernd.vercel.app
 **Git Tag:** v1.3.0-PROJ-4
 **Commit:** 6e9a74b
+
+---
+
+## UX-Überarbeitung Dokumente-Tab — 2026-08-01
+
+**Anlass:** Der Tab war unübersichtlich, weil drei Quellen in drei
+unterschiedlichen Darstellungen untereinander standen.
+
+### Befund
+1. **Verschachteltes Scrollen.** Bildergalerie und Historie hatten je einen
+   eigenen Container mit `max-h-[500px] overflow-y-auto`. Zusammen mit der Seite
+   scrollten drei Bereiche unabhängig voneinander.
+2. **Drei konkurrierende Layouts:** Bilder als Liste, Historie als Liste,
+   Dokumente als Kachelraster.
+3. **Der Kategoriefilter wirkte nur auf ein Drittel** — ausschließlich auf
+   Nicht-Bild-Dokumente. Er stand optisch als globales Werkzeug da, und zwar
+   unterhalb der Galerien, die er gar nicht filterte.
+4. **Keine Suche und keine Sortierung**, bei einem Limit von 200 Dokumenten.
+5. **Zwei fast identische Lightbox-Implementierungen** à ~110 Zeilen, plus eine
+   dritte in `vehicle-gallery.tsx`.
+6. Der Lösch-Dialog stand doppelt in jeder Dokumentkarte (Hover- und
+   Mobilvariante).
+
+### Umsetzung
+- **Ein gemeinsames Datenmodell `ArchiveItem`.** Dokumente, Bild-Dokumente und
+  Historie-Bilder werden auf eine Form gebracht. Erst dadurch lassen sich Suche,
+  Filter und Sortierung über alles hinweg anwenden statt je Abschnitt getrennt.
+- **Reiter statt Abschnitte:** Alle / Dokumente / Bilder / Historie, jeweils mit
+  Anzahl. Ein einheitliches Kartenraster für alle vier Ansichten.
+- **Verschachteltes Scrollen entfernt** — nur noch die Seite scrollt.
+- **Globale Werkzeugleiste:** Volltextsuche über Titel, Dateiname, Beschreibung
+  und Kategoriename; Kategoriefilter; Sortierung nach Datum (neu/alt), Titel und
+  Größe.
+- **Statistikkarten zu einer Textzeile eingedampft** (~100 px gespart).
+- **„Alle auswählen" bezieht sich jetzt auf das Sichtbare**, nicht mehr auf den
+  Gesamtbestand — sonst lädt man Dateien herunter, die durch Suche oder Filter
+  ausgeblendet sind.
+- **Neue Komponente `image-lightbox.tsx`** ersetzt alle drei Vollbild-
+  Implementierungen: Tastatur, Wischgesten, Umlauf, Zähler, Bildunterschrift,
+  Fokusfalle über den Dialog. Auch `vehicle-gallery.tsx` nutzt sie jetzt.
+- Lösch-Dialog je Karte nur noch einmal; Aktionen liegen als Overlay auf der
+  Vorschau und sind auf Mobilgeräten dauerhaft sichtbar.
+- Barrierefreiheit: sprechende `aria-label` für Herunterladen, Löschen,
+  Beschreibung bearbeiten und die Vollbildansicht; Such- und Auswahlfelder
+  beschriftet.
+
+### Unverändert
+Datenmodell, Zugriffsregeln, Upload-Formular und der ZIP-Download-Endpunkt.
+Historie-Bilder bleiben hier weiterhin nicht löschbar — sie werden in der
+Historie gepflegt.
+
+### Tests
+- `src/components/document-archive.test.tsx` — 12 Tests: Zählungen, Reiter-
+  Beschriftung, Filterung je Reiter, Suche über Titel/Dateiname/Beschreibung,
+  beide Leerzustände, Rechteprüfung für Betrachter, keine Löschaktion für
+  Historie-Bilder
+- `src/components/image-lightbox.test.tsx` — 10 Tests: geschlossener Zustand,
+  Zähler, Blättern per Schaltfläche und Pfeiltasten, Umlauf in beide Richtungen,
+  Bildunterschrift, abgefangener Index nach dem Löschen eines Bildes
+- `npm run build` fehlerfrei, ESLint ohne neue Meldungen

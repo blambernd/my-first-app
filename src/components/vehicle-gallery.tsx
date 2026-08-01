@@ -1,12 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Car, ChevronLeft, ChevronRight, Expand } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Car, Expand } from "lucide-react";
+import { ImageLightbox } from "@/components/image-lightbox";
 
 export interface GalleryImage {
   id: string;
@@ -34,13 +30,6 @@ export function VehicleGallery({ images, vehicleName }: VehicleGalleryProps) {
   // Schützt gegen einen Index, der nach dem Entfernen eines Bildes ins Leere zeigt.
   const safeIndex = Math.min(activeIndex, images.length - 1);
   const active = images[safeIndex];
-
-  const step = (delta: number) => {
-    setActiveIndex((i) => {
-      const next = (i + delta + images.length) % images.length;
-      return next;
-    });
-  };
 
   return (
     <>
@@ -89,46 +78,16 @@ export function VehicleGallery({ images, vehicleName }: VehicleGalleryProps) {
         )}
       </div>
 
-      <Dialog open={isFullscreen} onOpenChange={setIsFullscreen}>
-        <DialogContent className="max-w-5xl p-2 sm:p-4">
-          <DialogTitle className="sr-only">
-            {vehicleName} — Bild {safeIndex + 1} von {images.length}
-          </DialogTitle>
-          <div className="relative">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={active.url}
-              alt={vehicleName}
-              className="w-full max-h-[80vh] object-contain"
-            />
-            {images.length > 1 && (
-              <>
-                <button
-                  type="button"
-                  onClick={() => step(-1)}
-                  aria-label="Vorheriges Bild"
-                  className="absolute left-1 top-1/2 -translate-y-1/2 rounded-full bg-background/80 p-2 hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                  <ChevronLeft className="h-5 w-5" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => step(1)}
-                  aria-label="Nächstes Bild"
-                  className="absolute right-1 top-1/2 -translate-y-1/2 rounded-full bg-background/80 p-2 hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                  <ChevronRight className="h-5 w-5" />
-                </button>
-              </>
-            )}
-          </div>
-          {images.length > 1 && (
-            <p className="text-center text-xs text-muted-foreground">
-              {safeIndex + 1} von {images.length}
-            </p>
-          )}
-        </DialogContent>
-      </Dialog>
+      <ImageLightbox
+        images={images.map((img) => ({
+          id: img.id,
+          url: img.url,
+          title: vehicleName,
+        }))}
+        index={isFullscreen ? safeIndex : null}
+        onIndexChange={setActiveIndex}
+        onClose={() => setIsFullscreen(false)}
+      />
     </>
   );
 }
