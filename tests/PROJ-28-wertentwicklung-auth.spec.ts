@@ -174,7 +174,11 @@ test.describe("PROJ-28: Kaufpreis & Wertentwicklung", () => {
 
     await expect(page.getByText(ERWARTET.kaufpreis)).toBeVisible({ timeout: 20000 });
     await expect(page.getByText("Überführung")).toBeVisible();
-    await expect(page.getByText(ERWARTET.nebenkosten)).toBeVisible();
+    // exact: true — „500,00 €" steckt als Teilzeichenkette auch in
+    // „18.500,00 €" und träfe sonst zwei Elemente
+    await expect(
+      page.getByText(ERWARTET.nebenkosten, { exact: true })
+    ).toBeVisible();
     await expect(page.getByText(ERWARTET.anschaffung)).toBeVisible();
   });
 
@@ -236,6 +240,10 @@ test.describe("PROJ-28: Kaufpreis & Wertentwicklung", () => {
   test("SICHERHEIT: Der Kaufpreis steht in keiner fremden Seitenantwort", async ({
     page,
   }) => {
+    // Sieben Seitenaufrufe in einem Test — die Voreinstellung von 30 s reicht
+    // dafür nicht, obwohl jeder einzelne Aufruf schnell ist.
+    test.setTimeout(180_000);
+
     // Der Kaufpreis liegt erfasst vor. Er darf ausschließlich auf dem
     // Fahrzeugprofil und in der Wertentwicklung auftauchen — nirgends sonst.
     for (const pfad of [

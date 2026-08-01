@@ -257,10 +257,21 @@ export function VehiclePurchaseForm({
               />
             </div>
 
-            {/* Nebenkosten */}
-            <div className="space-y-2">
+            {/* Nebenkosten
+                Bewusst KEIN FormLabel: Das gehört zu genau einem Feld und ruft
+                intern `useFormField()` auf — außerhalb eines `FormField` wirft
+                es, und der ganze Dialog öffnet nicht mehr (QA BUG-1). Hier wird
+                eine ganze Gruppe beschriftet, deshalb ein Gruppentitel mit
+                `aria-labelledby` statt einer Feldbeschriftung. */}
+            <div
+              className="space-y-2"
+              role="group"
+              aria-labelledby="nebenkosten-titel"
+            >
               <div className="flex items-center justify-between">
-                <FormLabel>Nebenkosten des Kaufs (optional)</FormLabel>
+                <span id="nebenkosten-titel" className="text-sm font-medium">
+                  Nebenkosten des Kaufs (optional)
+                </span>
                 <Button
                   type="button"
                   variant="outline"

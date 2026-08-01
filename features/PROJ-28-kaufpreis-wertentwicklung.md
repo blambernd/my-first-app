@@ -407,8 +407,30 @@ Im Sammellauf über vier Suiten fiel ein PROJ-27-Test aus, der isoliert grün is
 
 **Nicht produktionsreif.** BUG-1 muss vor allem Weiteren behoben werden — es ist eine Zeile, blockiert aber den gesamten Testpfad und die Nutzung des Features. Danach `/qa` erneut; die Tests liegen bereit.
 
-## Deployment
-_To be added by /deploy_
+
+---
+
+## Fehlerbehebung BUG-1 (2026-08-01)
+
+Die Abschnittsüberschrift der Nebenkosten ist kein `FormLabel` mehr. Sie beschriftet eine **Gruppe** von Feldern, nicht ein einzelnes — deshalb jetzt ein Gruppentitel mit `role="group"` und `aria-labelledby`. Das ist zugleich semantisch richtiger als vorher: `FormLabel` hätte auch dann auf kein sinnvolles Feld gezeigt, wenn es nicht abgestürzt wäre.
+
+Ein Kommentar an der Stelle nennt den Grund, damit die Zeile nicht versehentlich zurückgedreht wird. **Kontrolliert:** Die drei verbleibenden `FormLabel` im Formular liegen jeweils innerhalb ihres `FormField`.
+
+### Geprüft — diesmal mit geöffnetem Dialog
+
+| Prüfung | Ergebnis |
+|---|---|
+| E2E angemeldet | **17/17 grün** |
+| Dialog öffnet und speichert | ✅ |
+| Bilanz gegen Handrechnung | Anschaffung **19.000,00 €**, Investition **80,00 €**, aufgewendet **19.080,00 €** |
+| Kaufpreis in fremden Seitenantworten | **nirgends** — sieben Seiten geprüft |
+| Kaufpreis in der Kostenanalyse | **fließt nicht ein** — dort stehen nur die 80,00 € Unterhalt |
+| Bearbeiten und Entfernen | ✅ inklusive Entfernen einer Nebenkosten-Position |
+| Drei Bildschirmbreiten | ✅ kein waagerechter Überlauf |
+| `tsc`, `eslint`, `npm run build` | sauber |
+| Wegwerf-Fahrzeug danach | alle Tabellen 0 Zeilen |
+
+Zwei weitere Fehlschläge im Lauf waren Testfehler und wurden dort behoben: „500,00 €" steckt als Teilzeichenkette in „18.500,00 €" und traf zwei Elemente; und der Sicherheitstest ruft sieben Seiten in einem Test auf, wofür die voreingestellten 30 Sekunden nicht reichen.
 
 ## Deployment
 _To be added by /deploy_
