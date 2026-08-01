@@ -49,6 +49,7 @@ Eine SaaS-Plattform für Oldtimer-Besitzer, die es ermöglicht, die komplette Hi
 | P2 | PROJ-26: Einzelkosten | Deployed |
 | P1 | PROJ-27: Kostenanalyse | Planned |
 | P2 | PROJ-28: Kaufpreis & Wertentwicklung | Planned |
+| P1 | PROJ-29: Belastbarer Marktüberblick | Planned |
 
 ## Success Metrics
 - **Registrierungen:** 500 Nutzer in den ersten 3 Monaten
