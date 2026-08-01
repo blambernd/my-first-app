@@ -2,7 +2,15 @@ import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase-server";
 import { VehicleGallery, type GalleryImage } from "@/components/vehicle-gallery";
+import { VehiclePurchaseSection } from "@/components/vehicle-purchase-section";
 import type { VehicleWithImages } from "@/lib/validations/vehicle";
+import {
+  normalizePurchase,
+  normalizeExtraCost,
+  type PurchaseExtraCost,
+  type VehiclePurchase,
+  type VehiclePurchaseWithCosts,
+} from "@/lib/validations/vehicle-purchase";
 
 interface VehicleDetailPageProps {
   params: Promise<{ id: string }>;
@@ -97,6 +105,43 @@ export default async function VehicleDetailPage({
 
   const typedVehicle = vehicle as VehicleWithImages;
 
+  // Anschaffung: ausschließlich für den Besitzer geladen. Die Regeln in der
+  // Datenbank setzen dasselbe durch — hier wird gar nicht erst gefragt, damit
+  // der Kaufpreis auch nicht versehentlich in die Seitenantwort gerät.
+  let purchase: VehiclePurchaseWithCosts | null = null;
+  let purchaseMilestoneDate: string | null = null;
+
+  if (isOwner) {
+    const [{ data: purchaseRow }, { data: kaufMilestone }] = await Promise.all([
+      supabase.from("vehicle_purchases").select("*").eq("vehicle_id", id).maybeSingle(),
+      supabase
+        .from("vehicle_milestones")
+        .select("milestone_date")
+        .eq("vehicle_id", id)
+        .eq("category", "kauf")
+        .order("milestone_date", { ascending: true })
+        .limit(1)
+        .maybeSingle(),
+    ]);
+
+    purchaseMilestoneDate = kaufMilestone?.milestone_date ?? null;
+
+    if (purchaseRow) {
+      const normalized = normalizePurchase(purchaseRow as VehiclePurchase);
+      const { data: extraRows } = await supabase
+        .from("vehicle_purchase_costs")
+        .select("*")
+        .eq("purchase_id", normalized.id)
+        .order("created_at", { ascending: true });
+      purchase = {
+        ...normalized,
+        extraCosts: ((extraRows ?? []) as PurchaseExtraCost[]).map(
+          normalizeExtraCost
+        ),
+      };
+    }
+  }
+
   // Das Hauptbild eröffnet die Galerie, der Rest folgt in gepflegter Reihenfolge.
   const galleryImages: GalleryImage[] = [...(typedVehicle.vehicle_images ?? [])]
     .sort((a, b) => {
@@ -167,7 +212,15 @@ export default async function VehicleDetailPage({
         <VehicleGallery images={galleryImages} vehicleName={vehicleName} />
       </div>
 
-      <div className="lg:col-span-2">
+      <div className="lg:col-span-2 space-y-6">
+        {isOwner && (
+          <VehiclePurchaseSection
+            vehicleId={id}
+            purchase={purchase}
+            milestoneDate={purchaseMilestoneDate}
+          />
+        )}
+
         {groups.length > 0 ? (
           <div className="space-y-6">
             {groups.map((group) => (

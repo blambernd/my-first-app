@@ -1,6 +1,6 @@
 # PROJ-28: Kaufpreis & Wertentwicklung
 
-## Status: Architected
+## Status: In Progress
 **Created:** 2026-07-31
 **Last Updated:** 2026-07-31
 
@@ -189,18 +189,79 @@ Bewusste Abweichung vom Acceptance Criterion „gesondert steuerbar". Begründun
 
 ### F) Offene Punkte für die Umsetzung
 
-**F1 — Der Fahrzeug-Transfer braucht eine eigene Aufgabe (PROJ-30).**
+**F1 — Der Fahrzeug-Transfer braucht eine eigene Aufgabe.**
 Die Spec verlangt, dass der Kaufpreis beim Besitzerwechsel **entfernt** und nicht nur ausgeblendet wird — er würde dem Käufer sonst verraten, was der Vorbesitzer gezahlt hat. PROJ-28 kann das nicht leisten, die Änderung gehört in die Transfer-Logik von PROJ-7.
 
-Diese Aufgabe fällt mit der bereits offenen Frage aus PROJ-27 zusammen: Auch die Kostenhistorie soll beim Transfer nicht mit übergehen. **Beides gehört in dieselbe Aufgabe**, samt Hinweis und Exportangebot vor dem Löschen — sonst verliert der Vorbesitzer seine eigenen Aufzeichnungen. Vorgeschlagene ID: **PROJ-30**.
+Diese Aufgabe fällt mit der bereits offenen Frage aus PROJ-27 zusammen: Auch die Kostenhistorie soll beim Transfer nicht mit übergehen. **Beides gehört in dieselbe Aufgabe**, samt Hinweis und Exportangebot vor dem Löschen — sonst verliert der Vorbesitzer seine eigenen Aufzeichnungen. Vorgeschlagene ID: **PROJ-32** (PROJ-30 und PROJ-31 sind inzwischen anderweitig vergeben).
 
-Solange PROJ-30 offen ist, gilt: Ein übertragenes Fahrzeug nimmt den Kaufpreis des Vorbesitzers mit. Das sollte vor einer breiteren Nutzung des Transfers geschlossen sein.
+Solange diese Aufgabe offen ist, gilt: Ein übertragenes Fahrzeug nimmt den Kaufpreis des Vorbesitzers mit. Das sollte vor einer breiteren Nutzung des Transfers geschlossen sein.
 
 **F2 — Das Acceptance Criterion „Sichtbarkeit gesondert steuerbar" wird nicht umgesetzt.**
 Siehe C10. Empfehlung: Kriterium auf „nur für den Besitzer sichtbar" ändern.
 
 **F3 — Prüfen, ob der Kosten-Bereich der richtige Ort ist.**
 Die Wertentwicklung ist als vierter Reiter neben Laufende Kosten, Einzelkosten und Auswertung vorgesehen. Alternativ wäre das Fahrzeugprofil denkbar. Der Kostenbereich ist stimmiger, weil die Bilanz auf den dort berechneten Kosten aufbaut — und weil er bereits vollständig auf den Besitzer beschränkt ist.
+
+## Implementierung (Frontend)
+
+**Stand:** 2026-08-01 · Oberfläche, Rechenlogik und Schema stehen
+
+### Gebaute Dateien
+
+| Datei | Zweck |
+|---|---|
+| `supabase/migrations/20260801_create_vehicle_purchases.sql` | Zwei neue Tabellen samt Zugriffsregeln |
+| `src/lib/validations/vehicle-purchase.ts` | Schema, Typen, Normalisierung |
+| `src/lib/value-development.ts` | Bilanzlogik als reine Funktionen |
+| `src/lib/value-development.test.ts` | 23 Unit-Tests |
+| `src/components/vehicle-purchase-form.tsx` | Erfassungsdialog mit dynamischer Nebenkosten-Liste |
+| `src/components/vehicle-purchase-section.tsx` | Abschnitt „Anschaffung" im Fahrzeugprofil |
+| `src/components/value-development-view.tsx` | Bilanz-Ansicht |
+| `src/app/vehicles/[id]/kosten/wertentwicklung/page.tsx` | Besitzerprüfung, Premium-Sperre, Datenzusammenführung |
+| `src/components/cost-area-nav.tsx` | vierter Reiter |
+| `src/app/vehicles/[id]/page.tsx` | Abschnitt eingebunden, nur für den Besitzer geladen |
+
+### Umgesetzte Entscheidungen
+
+- **Zwei eigene Tabellen** statt einer Spalte an `vehicles` (C1) — der Kaufpreis ist damit strukturell unerreichbar, ohne dass eine einzige bestehende Abfrage geändert wurde
+- **Zusammengesetzter Fremdschlüssel** auf den Nebenkosten: Er erzwingt, dass Nebenkosten und Anschaffung zum selben Fahrzeug gehören. Das ist genau die Lücke, die in PROJ-26 als BUG-1 aufgefallen war — hier von Anfang an geschlossen
+- **Nebenkosten nicht als Einzelkosten** (C2) — sonst flössen sie in die Kostenkurve von PROJ-27 ein
+- **Marktwert wird gelesen, nie kopiert** (C4), mit Datum und Hinweis ab 90 Tagen Alter
+- **Median statt Durchschnitt** als Marktwert: Bei kleinen Stichproben — und Oldtimer-Inserate sind immer eine kleine Stichprobe — verschiebt ein einzelnes überteuertes Angebot den Durchschnitt spürbar, den Median kaum. Welcher Wert verwendet wurde, steht in der Karte
+- **Ohne Kaufpreis keine Bilanz** (C5) — die Kostenquellen werden dann gar nicht erst geladen
+- **Anschaffung und Investition immer getrennt** (C6), auch in der Kennzahlen-Reihe
+- **Wertverlust ohne Warnfarbe** (C7)
+- **Kosten vor dem Kaufdatum** werden mit frühestem Monat benannt (C8)
+- **Premium nur auf der Auswertung** (C9), Erfassung frei
+- **Nur der Besitzer**, ohne Schalter (C10) — auf der Seite, im Profil und in den Zugriffsregeln
+
+### Abweichung vom üblichen Ablauf
+
+**Die Migration wurde bereits hier angewendet, nicht erst in `/backend`.** Ohne die Tabellen wäre von der Oberfläche nichts prüfbar gewesen — und genau in der Sichtprüfung sind in diesem Zyklus die echten Fehler aufgetaucht, die weder `tsc` noch der Build sehen. Die Migration legt ausschließlich neue Tabellen an und kann Bestehendes nicht beeinträchtigen.
+
+**Offen für `/backend`:** die Zugriffsprüfung mit Gegenprobe (Werkstatt und Betrachter gegen Besitzer), die Security-Advisors und die Index-Kontrolle.
+
+### Geprüft
+
+| Prüfung | Ergebnis |
+|---|---|
+| Unit-Tests `value-development` | **23/23 grün** |
+| Unit gesamt | 503 grün, 4 vorbestehende Fehlschläge |
+| `npm run build` | erfolgreich, Route im Manifest |
+| `npx eslint` auf allen PROJ-28-Dateien | keine Meldung |
+| Sichtprüfung **im Produktionsbuild**, 1280 px und 375 px | Profilabschnitt, Bilanz und Mobilansicht korrekt |
+| Konsolenfehler | **0** |
+
+**Rechenprobe gegen die Oberfläche:** Kaufpreis 20.000 € + Nebenkosten 620 € = Anschaffung **20.620 €**; Investition **450 €**; aufgewendet **21.070 €**; Marktwert **24.450 €** (Median); Wertveränderung **+ 4.450 €** gegenüber dem Kaufpreis; Gesamtbilanz **+ 3.380 €**. Die Warnung wegen Kosten vor dem Kaufdatum erschien mit dem richtigen Monat.
+
+Beim Aufräumen bestätigte sich zudem das Löschverhalten: Das Entfernen der Anschaffung nahm die Nebenkosten mit, ohne dass sie einzeln gelöscht werden mussten.
+
+**Zur Einordnung einer Beobachtung:** Beim ersten Aufruf über den Entwicklungsserver erschien eine Hydration-Warnung. Sie ließ sich weder erneut auslösen noch im Produktionsbuild nachweisen — dort sind es 0 Konsolenfehler. Es handelt sich um ein Artefakt des ersten Kompilats, nicht um einen Fehler der Seite.
+
+### Offene Punkte
+
+- **AC „Sichtbarkeit gesondert steuerbar"** wird bewusst nicht umgesetzt (C10). Empfehlung: Kriterium auf „nur für den Besitzer sichtbar" ändern
+- **Transfer-Aufgabe** (Vorschlag PROJ-32): Kaufpreis und Kostenhistorie dürfen beim Besitzerwechsel nicht mit übergehen. Noch nicht umgesetzt
 
 ## QA Test Results
 _To be added by /qa_

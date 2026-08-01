@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Repeat, Receipt, ChartColumn } from "lucide-react";
+import { Repeat, Receipt, ChartColumn, TrendingUp } from "lucide-react";
 
 /**
  * Unternavigation des Kosten-Bereichs.
@@ -14,6 +14,7 @@ const tabs = [
   { label: "Laufende Kosten", href: "", icon: Repeat },
   { label: "Einzelkosten", href: "/einzelkosten", icon: Receipt },
   { label: "Auswertung", href: "/auswertung", icon: ChartColumn },
+  { label: "Wertentwicklung", href: "/wertentwicklung", icon: TrendingUp },
 ];
 
 interface CostAreaNavProps {
