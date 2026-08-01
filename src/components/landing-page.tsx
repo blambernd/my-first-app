@@ -105,7 +105,7 @@ const freePlanFeatures = [
   { text: "Fahrzeug-Timeline", included: true },
   { text: "Kurzprofil teilen", included: true },
   { text: "Verkaufsassistent", included: false },
-  { text: "Marktpreis-Analyse", included: false },
+  { text: "Marktüberblick", included: false },
 ];
 
 const premiumPlanFeatures = [
@@ -116,7 +116,7 @@ const premiumPlanFeatures = [
   { text: "Fahrzeug-Timeline", included: true },
   { text: "Kurzprofil teilen", included: true },
   { text: "Verkaufsassistent", included: true },
-  { text: "Marktpreis-Analyse", included: true },
+  { text: "Marktüberblick", included: true },
 ];
 
 export function LandingPage() {

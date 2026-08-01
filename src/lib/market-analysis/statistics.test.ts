@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { calculatePriceStatistics } from "./statistics";
+import { calculatePriceStatistics, MIN_PRICED_LISTINGS } from "./statistics";
 import type { MarketListing } from "./types";
 
 function makeListing(price: number | null, platform = "mobile.de"): MarketListing {
@@ -7,88 +7,84 @@ function makeListing(price: number | null, platform = "mobile.de"): MarketListin
     title: `Test Listing ${price}`,
     price,
     platform,
-    url: `https://example.com/${price}`,
+    url: `https://example.com/${price}-${Math.random()}`,
   };
 }
 
+function makeListings(prices: Array<number | null>): MarketListing[] {
+  return prices.map((p) => makeListing(p));
+}
+
 describe("calculatePriceStatistics", () => {
-  it("returns null when fewer than 2 priced listings", () => {
+  it("returns null below the minimum sample size", () => {
     expect(calculatePriceStatistics([])).toBeNull();
     expect(calculatePriceStatistics([makeListing(10000)])).toBeNull();
+
+    // Genau einer zu wenig
+    const tooFew = makeListings(
+      Array.from({ length: MIN_PRICED_LISTINGS - 1 }, (_, i) => 20000 + i * 100)
+    );
+    expect(calculatePriceStatistics(tooFew)).toBeNull();
   });
 
-  it("returns valid statistics for exactly 2 priced listings", () => {
-    const listings = [makeListing(10000), makeListing(20000)];
+  it("returns statistics at exactly the minimum sample size", () => {
+    const listings = makeListings(
+      Array.from({ length: MIN_PRICED_LISTINGS }, (_, i) => 20000 + i * 100)
+    );
     const stats = calculatePriceStatistics(listings)!;
+
     expect(stats).not.toBeNull();
-    expect(stats.count).toBe(2);
-    expect(stats.median).toBe(15000);
+    expect(stats.count).toBe(MIN_PRICED_LISTINGS);
   });
 
-  it("returns null when fewer than 2 listings have valid prices (rest are null)", () => {
-    const listings = [
-      makeListing(10000),
-      makeListing(null),
-      makeListing(null),
-    ];
+  it("does not count null-priced listings toward the minimum", () => {
+    const listings = makeListings([
+      ...Array.from({ length: MIN_PRICED_LISTINGS - 1 }, () => 20000),
+      null,
+      null,
+      null,
+    ]);
     expect(calculatePriceStatistics(listings)).toBeNull();
   });
 
-  it("calculates correct statistics for 3 listings", () => {
-    const listings = [
-      makeListing(10000),
-      makeListing(20000),
-      makeListing(30000),
-    ];
+  it("calculates correct basic statistics", () => {
+    const listings = makeListings([
+      16000, 18000, 20000, 22000, 24000, 26000, 28000, 30000,
+    ]);
     const stats = calculatePriceStatistics(listings)!;
 
-    expect(stats).not.toBeNull();
-    expect(stats.count).toBe(3);
-    expect(stats.average).toBe(20000);
-    expect(stats.median).toBe(20000);
-    expect(stats.lowest).toBe(10000);
+    expect(stats.count).toBe(8);
+    expect(stats.average).toBe(23000);
+    expect(stats.median).toBe(23000);
+    expect(stats.lowest).toBe(16000);
     expect(stats.highest).toBe(30000);
   });
 
-  it("calculates median correctly for even number of listings", () => {
-    const listings = [
-      makeListing(10000),
-      makeListing(20000),
-      makeListing(30000),
-      makeListing(40000),
-    ];
+  it("calculates median correctly for an even number of listings", () => {
+    const listings = makeListings([
+      20000, 25000, 30000, 35000, 40000, 45000, 50000, 55000,
+    ]);
     const stats = calculatePriceStatistics(listings)!;
 
-    expect(stats.median).toBe(25000);
-    expect(stats.count).toBe(4);
+    expect(stats.median).toBe(37500);
+    expect(stats.count).toBe(8);
   });
 
-  it("marks outliers using IQR method", () => {
-    // Tight cluster of 5 + one extreme outlier
-    const listings = [
-      makeListing(18000),
-      makeListing(20000),
-      makeListing(21000),
-      makeListing(22000),
-      makeListing(23000),
-      makeListing(100000), // outlier
-    ];
+  it("marks extreme values as outliers using the IQR method", () => {
+    const listings = makeListings([
+      18000, 19000, 20000, 20500, 21000, 21500, 22000, 23000,
+      100000, // Ausreißer
+    ]);
     const stats = calculatePriceStatistics(listings)!;
 
-    expect(stats).not.toBeNull();
     const outliers = stats.listingsWithOutliers.filter((l) => l.is_outlier);
-    expect(outliers.length).toBeGreaterThanOrEqual(1);
     expect(outliers.some((l) => l.price === 100000)).toBe(true);
   });
 
-  it("generates recommendation within non-outlier range", () => {
-    const listings = [
-      makeListing(15000),
-      makeListing(18000),
-      makeListing(20000),
-      makeListing(22000),
-      makeListing(25000),
-    ];
+  it("generates a recommendation within the non-outlier range", () => {
+    const listings = makeListings([
+      15000, 16000, 18000, 20000, 22000, 23000, 24000, 25000,
+    ]);
     const stats = calculatePriceStatistics(listings)!;
 
     expect(stats.recommendedLow).toBeGreaterThanOrEqual(15000);
@@ -96,37 +92,23 @@ describe("calculatePriceStatistics", () => {
     expect(stats.recommendedLow).toBeLessThan(stats.recommendedHigh);
   });
 
-  it("includes listings with null prices in output (not counted)", () => {
-    const listings = [
-      makeListing(10000),
-      makeListing(null),
-      makeListing(20000),
-      makeListing(30000),
-    ];
+  it("includes null-priced listings in the output but never counts them", () => {
+    const listings = makeListings([
+      16000, 18000, 20000, 22000, 24000, 26000, 28000, 30000, null,
+    ]);
     const stats = calculatePriceStatistics(listings)!;
 
-    expect(stats.count).toBe(3); // only priced ones counted
-    expect(stats.listingsWithOutliers).toHaveLength(4); // all listings included
-  });
+    expect(stats.count).toBe(8);
+    expect(stats.listingsWithOutliers).toHaveLength(9);
 
-  it("null-priced listings are never marked as outliers", () => {
-    const listings = [
-      makeListing(10000),
-      makeListing(null),
-      makeListing(20000),
-      makeListing(30000),
-    ];
-    const stats = calculatePriceStatistics(listings)!;
     const nullListing = stats.listingsWithOutliers.find((l) => l.price === null);
     expect(nullListing?.is_outlier).toBe(false);
   });
 
-  it("generates German-language reasoning text", () => {
-    const listings = [
-      makeListing(15000),
-      makeListing(20000),
-      makeListing(25000),
-    ];
+  it("generates German-language reasoning", () => {
+    const listings = makeListings([
+      16000, 18000, 20000, 22000, 24000, 26000, 28000, 30000,
+    ]);
     const stats = calculatePriceStatistics(listings)!;
 
     expect(stats.reasoning).toContain("Basierend auf");
@@ -134,34 +116,72 @@ describe("calculatePriceStatistics", () => {
     expect(stats.reasoning).toContain("€");
   });
 
-  it("mentions large price spread in reasoning", () => {
-    // Huge spread: lowest to highest > 2x median
-    const listings = [
-      makeListing(5000),
-      makeListing(20000),
-      makeListing(25000),
-      makeListing(30000),
-      makeListing(150000),
-    ];
+  it("points out that the basis is asking prices, not achieved prices", () => {
+    const listings = makeListings([
+      16000, 18000, 20000, 22000, 24000, 26000, 28000, 30000,
+    ]);
+    const stats = calculatePriceStatistics(listings)!;
+
+    expect(stats.reasoning).toContain("Angebotspreise");
+  });
+
+  it("mentions a large price spread in the reasoning", () => {
+    const listings = makeListings([
+      8000, 20000, 21000, 22000, 23000, 24000, 25000, 26000, 150000,
+    ]);
     const stats = calculatePriceStatistics(listings)!;
 
     expect(stats.reasoning).toContain("unterschiedliche Fahrzeugzustände");
   });
 
   it("handles all identical prices", () => {
-    const listings = [
-      makeListing(20000),
-      makeListing(20000),
-      makeListing(20000),
-    ];
+    const listings = makeListings(Array.from({ length: 8 }, () => 20000));
     const stats = calculatePriceStatistics(listings)!;
 
     expect(stats.average).toBe(20000);
     expect(stats.median).toBe(20000);
-    expect(stats.lowest).toBe(20000);
-    expect(stats.highest).toBe(20000);
-    // With 5% spread fallback
     expect(stats.recommendedLow).toBeLessThanOrEqual(20000);
     expect(stats.recommendedHigh).toBeGreaterThanOrEqual(20000);
+  });
+
+  describe("relative price floor", () => {
+    it("excludes spare-part prices far below the median from the calculation", () => {
+      // Acht Fahrzeuge plus vier Teile-Treffer, wie sie in der Produktion
+      // tatsächlich in die Berechnung geraten sind.
+      const listings = makeListings([
+        18000, 19000, 20000, 21000, 22000, 23000, 24000, 25000,
+        600, 650, 690, 700,
+      ]);
+      const stats = calculatePriceStatistics(listings)!;
+
+      expect(stats.count).toBe(8);
+      expect(stats.lowest).toBe(18000);
+      expect(stats.median).toBeGreaterThan(18000);
+    });
+
+    it("still reports the excluded listings, marked as outliers", () => {
+      const listings = makeListings([
+        18000, 19000, 20000, 21000, 22000, 23000, 24000, 25000,
+        600, 650, 690, 700,
+      ]);
+      const stats = calculatePriceStatistics(listings)!;
+
+      expect(stats.listingsWithOutliers).toHaveLength(12);
+      const cheap = stats.listingsWithOutliers.filter(
+        (l) => l.price !== null && l.price < 1000
+      );
+      expect(cheap).toHaveLength(4);
+      expect(cheap.every((l) => l.is_outlier)).toBe(true);
+    });
+
+    it("returns null when too few plausible listings remain after filtering", () => {
+      // Vier Fahrzeuge, vier Teile — die Mindestzahl wird erst durch den
+      // Schrott erreicht und darf deshalb nicht ausreichen.
+      const listings = makeListings([
+        18000, 19000, 20000, 21000,
+        600, 650, 690, 700,
+      ]);
+      expect(calculatePriceStatistics(listings)).toBeNull();
+    });
   });
 });

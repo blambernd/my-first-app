@@ -21,7 +21,7 @@ import { ListingPublish } from "@/components/listing-publish";
 import type { VehicleListing, PlatformEntry } from "@/lib/validations/listing";
 
 const STEPS = [
-  { id: 1, label: "Marktpreis", icon: TrendingUp },
+  { id: 1, label: "Marktüberblick", icon: TrendingUp },
   { id: 2, label: "Kurzprofil", icon: Share2 },
   { id: 3, label: "Inserat", icon: FileText },
   { id: 4, label: "Veröffentlichen", icon: Megaphone },

@@ -29,8 +29,8 @@ export default async function MarktpreisPage({ params }: MarktpreisPageProps) {
   if (!hasPremiumAccess(effectivePlan)) {
     return (
       <PremiumUpsell
-        feature="Marktpreis-Analyse"
-        description="Erfahre den aktuellen Marktwert deines Oldtimers basierend auf vergleichbaren Inseraten."
+        feature="Marktüberblick"
+        description="Sieh, in welchem Bereich vergleichbare Oldtimer aktuell angeboten werden."
       />
     );
   }

@@ -211,3 +211,65 @@ No new packages — existing stack covers everything:
 **Commit:** 4d500c2
 **Tag:** v1.11.0-PROJ-11
 **Migration:** 20260408_proj11_market_analyses.sql (applied)
+
+---
+
+## Nachbesserung 2026-08-01 — Belastbarkeit (Stufe 0)
+
+**Anlass:** Auswertung der 19 in der Produktion gespeicherten Analysen. Für
+denselben Mercedes 220 (1952) lieferte das System am selben Tag Empfehlungen von
+700–79.000 € und von 128.716–142.265 €. Ursache waren drei sich verstärkende
+Fehler, dokumentiert an echten Datensätzen.
+
+### Befund
+
+1. **Falsche Grundgesamtheit.** In der Analyse mit Median 6.200 € waren die
+   „Vergleichsfahrzeuge" überwiegend Ersatzteile: Stoßstange (643 €),
+   Einstiegsschiene, Koffersatz, Längsträger, eine Ersatzteilliste als Buch
+   (700 €), Bordwerkzeug, Lenkrad (2.500 €) und ein nacktes Fahrgestell
+   (16.660 €).
+2. **Preise aus Textschnipseln geraten.** Ein Inserat mit dem Titel
+   „Mercedes-Benz 220 Coupe (1955) angeboten für 189.220" wurde mit **54.271 €**
+   gespeichert. Die Ausbeute schwankte stark: 44 gefundene Inserate → 26 mit
+   Preis, in anderen Läufen 10 Inserate → 1 Preis. Welche Treffer einen Preis
+   liefern, ist faktisch zufällig — die Stichprobe ist verzerrt, nicht nur klein.
+3. **Zustand fehlt im Modell.** Der größte Preistreiber bei Oldtimern kommt im
+   Datenmodell nicht vor. `mileageKm` und `bodyType` werden zwar in
+   `MarketSearchParams` übergeben, in `search.ts` aber nirgends verwendet.
+
+### Behobene Fehler
+
+| # | Fehler | Fix |
+|---|---|---|
+| 1 | `calculatePriceStatistics` brach erst bei `< 2` ab, obwohl AC-9 mindestens 3 fordert. Zwei Produktionsanalysen beruhen auf genau 2 Preisen. Das QA-Protokoll führte AC-9 als PASS mit einer Begründung, die der Code nicht deckte. | Neue Konstante `MIN_PRICED_LISTINGS = 8` |
+| 2 | Die Regex `\bfür\s+(mercedes\|…)` sollte eBay-Teile erkennen. eBay schreibt „**(Für: Mercedes-Benz 1952)**" — der Doppelpunkt ließ `\s+` scheitern, es wurde kein einziger eBay-Teiletreffer aussortiert. | Zusätzliches Muster `\(\s*f(ü\|ue)r\s*:` plus optionaler Doppelpunkt im bestehenden Muster |
+| 3 | IQR über 2 Datenpunkte als „empfohlene Preisspanne" ausgegeben | Durch Fix 1 ausgeschlossen |
+| 4 | Absolute Preisuntergrenze von 1.000 € — bei einem Käfer ein Auto, bei einem 300 SL ein Scheinwerfer | Relative Untergrenze: 25 % des Stichproben-Medians (`IMPLAUSIBLE_PRICE_RATIO`) |
+
+### Weitere Änderungen
+
+- Ersatzteil-Stichwortliste um die real durchgerutschten Begriffe ergänzt
+  (Einstiegsschiene, Abdeckblech, Koffersatz, Bordwerkzeug, Längsträger,
+  Lenkrad, Fahrgestell, spare part, parts list, tool kit, bumper). **Das bleibt
+  ein Notbehelf** — eine Blacklist kann das Problem prinzipiell nicht lösen, weil
+  die Liste der Teilebezeichnungen unendlich ist. Die strukturelle Lösung
+  (positive Fahrzeug-Klassifikation) gehört in Stufe 1.
+- Umbenennung „Marktpreis-Analyse" → **„Marktüberblick"**, „Preisempfehlung" →
+  „Preisorientierung". Eine Wertermittlung ist es nicht und darf es rechtlich
+  auch nicht heißen.
+- Begründungstext weist jetzt darauf hin, dass Angebotspreise und keine
+  erzielten Verkaufspreise zugrunde liegen.
+- Hinweistext benennt offen, dass der Zustand nicht in die Berechnung eingeht.
+- Meldung bei zu dünner Datenlage nennt die konkrete Mindestzahl.
+
+### Tests
+- `statistics.test.ts` auf die neue Schwelle umgestellt, um Fälle für die
+  relative Untergrenze erweitert (u. a. „Mindestzahl darf nicht durch
+  Teile-Treffer erreicht werden")
+- `search.test.ts` um Regressionstests mit den **Original-Titeln aus der
+  Produktion** ergänzt
+- 48 Tests im Modul grün
+
+### Offen (Stufe 1, siehe PROJ-29)
+eBay Browse API statt SerpAPI-Snippets, positive Fahrzeug-Klassifikation über
+Merkmalsfelder, Zustandsnote 1–5 am Fahrzeug, Werkscode als Pflichtfeld.

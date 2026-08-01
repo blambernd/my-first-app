@@ -28,6 +28,7 @@ import type {
   MarketAnalysis,
   MarketAnalysisListing,
 } from "@/lib/validations/market-analysis";
+import { MIN_PRICED_LISTINGS } from "@/lib/market-analysis/statistics";
 
 interface MarketAnalysisProps {
   vehicleId: string;
@@ -147,7 +148,8 @@ function PriceSummaryCard({ analysis }: { analysis: MarketAnalysis }) {
         </div>
         <Separator className="my-4" />
         <p className="text-xs text-muted-foreground">
-          Basierend auf {analysis.listing_count} Inserat{analysis.listing_count !== 1 ? "en" : ""}
+          Berechnet aus {analysis.listing_count} Inserat{analysis.listing_count !== 1 ? "en" : ""} mit
+          Preisangabe
         </p>
       </CardContent>
     </Card>
@@ -167,7 +169,7 @@ function RecommendationCard({ analysis }: { analysis: MarketAnalysis }) {
       <CardHeader className="pb-3">
         <CardTitle className="text-sm font-medium flex items-center gap-2">
           <TrendingUp className="h-4 w-4 text-primary" />
-          Preisempfehlung
+          Preisorientierung
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -186,7 +188,7 @@ function RecommendationCard({ analysis }: { analysis: MarketAnalysis }) {
           </p>
         )}
         <p className="text-xs text-muted-foreground mt-4 pt-3 border-t leading-relaxed">
-          Hinweis: Diese Preisindikation basiert auf öffentlich verfügbaren Inseraten und dient nur zur Orientierung. Der tatsächliche Marktwert hängt von vielen Faktoren ab, u.a. Zustand, Laufleistung, Matching Numbers, Seltenheit, Ausstattung und Dokumentation.
+          Hinweis: Dies ist ein Überblick über aktuelle Angebotspreise, keine Wertermittlung und kein Gutachten. Der Zustand des Fahrzeugs geht nicht in die Berechnung ein — er ist zugleich der größte Preisfaktor, ebenso wie Laufleistung, Matching Numbers, Seltenheit, Ausstattung und Dokumentation. Für einen belastbaren Wert ist ein Wertgutachten erforderlich.
         </p>
       </CardContent>
     </Card>
@@ -231,10 +233,11 @@ function AnalysisResultView({ analysis }: { analysis: MarketAnalysis }) {
           <div className="flex items-start gap-3">
             <Info className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
             <div>
-              <p className="font-medium text-sm">Zu wenige Daten für eine Preisschätzung</p>
+              <p className="font-medium text-sm">Datenlage zu dünn für eine Aussage</p>
               <p className="text-sm text-muted-foreground mt-1">
-                Es wurden weniger als 2 vergleichbare Inserate mit Preisangabe gefunden.
-                Versuchen Sie es später erneut, wenn mehr Angebote verfügbar sind.
+                Für eine belastbare Einordnung werden mindestens {MIN_PRICED_LISTINGS} vergleichbare
+                Fahrzeuge mit Preisangabe benötigt. So viele wurden nicht gefunden — lieber keine
+                Zahl als eine, auf die kein Verlass ist.
               </p>
               {analysis.listings.length > 0 && (
                 <p className="text-sm text-muted-foreground mt-1">
@@ -402,7 +405,7 @@ export function MarketAnalysis({
       const newAnalysis = data.analysis as MarketAnalysis;
       setAnalyses((prev) => [newAnalysis, ...prev]);
       setSelectedAnalysis(newAnalysis);
-      toast.success("Marktpreis-Analyse abgeschlossen!");
+      toast.success("Marktüberblick aktualisiert");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Analyse fehlgeschlagen");
     } finally {
@@ -425,7 +428,7 @@ export function MarketAnalysis({
       {/* Header with vehicle info and action */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-lg font-semibold">Marktpreis-Analyse</h2>
+          <h2 className="text-lg font-semibold">Marktüberblick</h2>
           <p className="text-sm text-muted-foreground mt-0.5">
             {vehicleMake} {vehicleModel} ({vehicleYear})
             {vehicleFactoryCode && ` · ${vehicleFactoryCode}`}
@@ -456,7 +459,7 @@ export function MarketAnalysis({
               <div>
                 <p className="font-medium text-sm">Marktdaten werden durchsucht...</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  mobile.de, Classic Trader und eBay werden durchsucht. Dies kann bis zu 15 Sekunden dauern.
+                  mobile.de, Classic Trader, AutoScout24 und eBay werden durchsucht. Dies kann bis zu 15 Sekunden dauern.
                 </p>
               </div>
             </div>
@@ -473,7 +476,7 @@ export function MarketAnalysis({
               <div>
                 <p className="font-medium text-sm">Noch keine Analyse durchgeführt</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Starten Sie eine Marktpreis-Analyse, um den aktuellen Wert Ihres Fahrzeugs einzuschätzen.
+                  Starten Sie einen Marktüberblick, um zu sehen, in welchem Bereich vergleichbare Fahrzeuge angeboten werden.
                 </p>
               </div>
             </div>

@@ -48,7 +48,7 @@ export default async function VerkaufsassistentPage({
     return (
       <PremiumUpsell
         feature="Verkaufsassistent"
-        description="Der Verkaufsassistent hilft dir Schritt für Schritt beim Verkauf deines Oldtimers — von der Marktpreis-Analyse bis zur Veröffentlichung."
+        description="Der Verkaufsassistent hilft dir Schritt für Schritt beim Verkauf deines Oldtimers — vom Marktüberblick bis zur Veröffentlichung."
       />
     );
   }

@@ -85,6 +85,52 @@ describe("isSparePartListing", () => {
     expect(isSparePartListing("Werkstatthandbuch Mercedes W123")).toBe(true);
     expect(isSparePartListing("Reparaturanleitung BMW E30")).toBe(true);
   });
+
+  // Regressionstest mit den Original-Titeln, die in der Produktion als
+  // "Vergleichsfahrzeuge" in die Preisberechnung eingegangen sind und den
+  // Median für einen Mercedes 220 (1952) auf 6.200 € gedrückt haben.
+  describe("Treffer aus der Produktion, die durchgerutscht sind", () => {
+    it("erkennt eBays Kompatibilitätshinweis trotz Doppelpunkt", () => {
+      expect(
+        isSparePartListing(
+          "Stoßstange hinten Mercedes Benz 170SAC W136 220AC W187 (Für: Mercedes-Benz 1952)"
+        )
+      ).toBe(true);
+      expect(
+        isSparePartListing("Mercedes W187 model 220 bumpers (1951-1955) (Für: Mercedes-Benz 1952)")
+      ).toBe(true);
+    });
+
+    it("erkennt Teile, die nicht auf der Stichwortliste standen", () => {
+      expect(
+        isSparePartListing("Einstiegsschiene Abdeckblech Satz Mercedes Benz 170S CB 220 Cabrio B W136 W187")
+      ).toBe(true);
+      expect(
+        isSparePartListing("BAISCH Koffersatz Mercedes 170S W136 220 W187 Limo Cabrio B Oldtimer Auto Koffer")
+      ).toBe(true);
+      expect(
+        isSparePartListing("Längsträger links Mercedes Benz 170S Sb DS S-V S-D SCA SCB 220 AC BC W136 W187")
+      ).toBe(true);
+      expect(isSparePartListing("Mercedes 220 W187 Spare parts list Edition A 1952 German")).toBe(true);
+      expect(
+        isSparePartListing("Mercedes Benz Bordwerkzeug w136 w187 w186 adenauer w120 ponton 220 tool kit")
+      ).toBe(true);
+      expect(
+        isSparePartListing("NOS Mercedes Lenkrad Adenauer W186 W187 W188 300er 300 b 220 schwarz")
+      ).toBe(true);
+    });
+
+    it("erkennt ein nacktes Fahrgestell nicht als Fahrzeug", () => {
+      expect(
+        isSparePartListing("Mercedes Benz 220 W 187 komplett überholtes Fahrgestell mit Neuteilen")
+      ).toBe(true);
+    });
+
+    it("lässt das echte Fahrzeug aus derselben Stichprobe durch", () => {
+      expect(isSparePartListing("Mercedes 220 Typ W187 Oldtimer - Gebrauchtfahrzeug")).toBe(false);
+      expect(isSparePartListing("Mercedes-Benz 220 Coupe (1955) angeboten für 189.220")).toBe(false);
+    });
+  });
 });
 
 describe("isPricePlausible", () => {

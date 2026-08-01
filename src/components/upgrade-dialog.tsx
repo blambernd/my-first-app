@@ -23,7 +23,7 @@ const features = [
   "Unbegrenzte Fahrzeuge",
   "5 GB Speicher",
   "Verkaufsassistent",
-  "Marktpreis-Analyse",
+  "Marktüberblick",
   "Prioritäts-Support",
 ];
 

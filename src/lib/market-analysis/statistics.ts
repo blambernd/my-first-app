@@ -1,10 +1,30 @@
 import type { MarketListing, PriceStatistics } from "./types";
 
 /**
+ * Mindestzahl bepreister Inserate für eine belastbare Aussage.
+ *
+ * Vorher lag die Grenze bei 2. Ein Quartilsabstand über zwei Datenpunkte ist
+ * jedoch bedeutungslos, und die Produktionsdaten zeigten Empfehlungen, die aus
+ * genau zwei Treffern entstanden. Acht ist keine statistische Wahrheit, aber
+ * die Grenze, unterhalb derer eine einzelne Fehlparsung das Ergebnis kippt.
+ */
+export const MIN_PRICED_LISTINGS = 8;
+
+/**
+ * Preise unterhalb dieses Anteils des Medians gelten als Fremdkörper.
+ *
+ * Eine feste Untergrenze funktioniert nicht: 3.000 € sind bei einem Käfer ein
+ * Auto und bei einem 300 SL ein Scheinwerfer. Der Median der Stichprobe liefert
+ * den Maßstab, der zum jeweiligen Fahrzeug passt.
+ */
+const IMPLAUSIBLE_PRICE_RATIO = 0.25;
+
+/**
  * Calculate price statistics and recommendation from a list of market listings.
  * Uses IQR method for outlier detection and median-based recommendation.
  *
- * Returns null if fewer than 3 listings with valid prices are found.
+ * Returns null if fewer than MIN_PRICED_LISTINGS listings with plausible
+ * prices are found.
  */
 export function calculatePriceStatistics(
   listings: MarketListing[]
@@ -14,10 +34,20 @@ export function calculatePriceStatistics(
     (l): l is MarketListing & { price: number } => l.price !== null
   );
 
-  if (priced.length < 2) return null;
+  if (priced.length < MIN_PRICED_LISTINGS) return null;
+
+  // Grobe Vorsortierung gegen Ersatzteile und Fehlparsungen, bevor der Median
+  // berechnet wird, der die Empfehlung trägt.
+  const preliminaryMedian = calculateMedian(
+    priced.map((l) => l.price).sort((a, b) => a - b)
+  );
+  const priceFloor = preliminaryMedian * IMPLAUSIBLE_PRICE_RATIO;
+  const plausible = priced.filter((l) => l.price >= priceFloor);
+
+  if (plausible.length < MIN_PRICED_LISTINGS) return null;
 
   // Sort by price
-  const sorted = [...priced].sort((a, b) => a.price - b.price);
+  const sorted = [...plausible].sort((a, b) => a.price - b.price);
   const prices = sorted.map((l) => l.price);
 
   // Basic statistics
@@ -34,12 +64,15 @@ export function calculatePriceStatistics(
   const lowerFence = q1 - 1.5 * iqr;
   const upperFence = q3 + 1.5 * iqr;
 
-  // Mark outliers
+  // Mark outliers. Unter die Untergrenze gefallene Treffer werden ebenfalls
+  // markiert — sie bleiben sichtbar, damit erkennbar ist, was aussortiert wurde.
   const listingsWithOutliers = listings.map((listing) => ({
     ...listing,
     is_outlier:
       listing.price !== null &&
-      (listing.price < lowerFence || listing.price > upperFence),
+      (listing.price < priceFloor ||
+        listing.price < lowerFence ||
+        listing.price > upperFence),
   }));
 
   // Recommendation: based on non-outlier prices
@@ -149,6 +182,10 @@ function buildReasoning(
 
   parts.push(
     `Die empfohlene Preisspanne von ${fmt(low)} bis ${fmt(high)} spiegelt den Bereich wider, in dem die meisten vergleichbaren Fahrzeuge angeboten werden.`
+  );
+
+  parts.push(
+    "Grundlage sind Angebotspreise, keine erzielten Verkaufspreise — letztere liegen erfahrungsgemäß darunter."
   );
 
   if (highest - lowest > median * 2) {

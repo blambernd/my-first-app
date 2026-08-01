@@ -26,6 +26,11 @@ const SPARE_PARTS_KEYWORDS = [
   "modell 1:18", "modellauto", "modell 1:43",
   "schlüsselanhänger", "poster", "prospekt",
   "miniatur", "diecast",
+  // Aus den Produktionsdaten nachgetragen: diese Teile wurden als
+  // "Vergleichsfahrzeuge" in die Preisberechnung aufgenommen.
+  "einstiegsschiene", "abdeckblech", "koffersatz", "bordwerkzeug",
+  "längsträger", "laengstraeger", "lenkrad", "fahrgestell",
+  "spare part", "parts list", "tool kit", "bumper",
 ];
 
 /**
@@ -38,8 +43,15 @@ export function isSparePartListing(title: string, snippet: string = ""): boolean
     if (combined.includes(keyword)) return true;
   }
 
+  // eBay kennzeichnet Teile-Inserate mit einem Kompatibilitätshinweis der Form
+  // "(Für: Mercedes-Benz 1952)". Das Muster unten verlangte hinter "für" ein
+  // Leerzeichen und lief am Doppelpunkt vorbei — dadurch wurde kein einziger
+  // eBay-Teiletreffer aussortiert. Der Hinweis ist für sich schon eindeutig:
+  // wer Kompatibilität angibt, verkauft ein Teil, kein Fahrzeug.
+  if (/\(\s*f(?:ü|ue)r\s*:/i.test(combined)) return true;
+
   // Pattern: "für [Make]" or "passend für" — typically parts listings
-  if (/\bfür\s+(mercedes|bmw|porsche|volkswagen|vw|opel|ford|audi)\b/i.test(combined)) {
+  if (/\bf(?:ü|ue)r\s*:?\s*(mercedes|bmw|porsche|volkswagen|vw|opel|ford|audi)\b/i.test(combined)) {
     return true;
   }
 

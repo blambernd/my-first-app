@@ -16,7 +16,7 @@ interface PremiumUpsellProps {
 const benefits = [
   "Unbegrenzte Fahrzeuge anlegen",
   "5 GB Speicher für Dokumente & Fotos",
-  "Verkaufsassistent mit Marktpreis-Analyse",
+  "Verkaufsassistent mit Marktüberblick",
   "PDF-Export und Kurzprofil-Sharing",
   "Prioritäts-Support",
 ];
