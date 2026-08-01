@@ -1,6 +1,6 @@
 # PROJ-27: Kostenanalyse
 
-## Status: In Review
+## Status: Approved
 **Created:** 2026-07-31
 **Last Updated:** 2026-07-31
 
@@ -636,3 +636,56 @@ Beide Werte wurden vor der Änderung nachgerechnet, nicht nachträglich an den C
 | `npm run build` · `npx eslint` | erfolgreich · keine Meldung |
 
 Der E2E-Test rechnet die erwartete Jahresangabe aus dem heutigen Monat aus, statt sie fest einzutragen — sonst wäre er am nächsten Monatsersten rot geworden, ohne dass sich etwas geändert hätte.
+
+---
+
+## QA Test Results — dritter Durchgang (2026-08-01)
+
+**Ergebnis: produktionsreif.** Alle vier Befunde behoben und nachgeprüft, keine neuen.
+
+### Nachprüfung
+
+| Befund | Stufe | Status |
+|---|---|---|
+| BUG-1 — Standkosten gemittelt statt aktuell | Hoch | ✅ behoben (Durchgang 2) |
+| BUG-2 — künftige Einträge verschwiegen | Niedrig | ✅ behoben (Durchgang 2) |
+| BUG-3 — Jahresangabe als Monat × 12 | Mittel | ✅ **behoben** |
+| BUG-4 — Karte ohne Zeitraumbezug | Niedrig | ✅ **behoben** |
+
+**BUG-3 gegengerechnet** — Winterlager 600 € über sechs Monate:
+
+| | PROJ-27 | PROJ-25 |
+|---|---|---|
+| pro Monat | 100,00 € | 100,00 € |
+| Jahreswert | 600,00 € | 600,00 € |
+
+Beide Seiten nennen jetzt in **beiden** Zahlen denselben Wert. Der Widerspruch, der zwei Durchgänge lang bestand, ist weg.
+
+**BUG-4 gegengerechnet** — Zeitraum „2025" gewählt, Daten liegen in 2026: Die Karte zeigt „100,00 € / Monat", „600,00 € in 2026" und darunter „auch ohne zu fahren · unabhängig vom gewählten Zeitraum". Der Bezug ist an der Karte selbst ablesbar.
+
+### Weitere geprüfte Fälle
+
+| Fall | Ergebnis |
+|---|---|
+| Vertrag lief früher im Jahr, heute nicht mehr aktiv | „—" pro Monat, Jahreswert weiterhin korrekt ausgewiesen |
+| Nur ein Wertgutachten, keine laufenden Standkosten | Karte meldet „keine **laufenden** Standkosten"; der Betrag erscheint korrekt in der Stand-/Fahrt-Aufteilung. Die Formulierung trägt den Unterschied — kein Befund |
+| Sichtprüfung der geänderten Karte, 1280 px und 375 px | Umbruch sauber, keine Überlänge, Kartenhöhen im Raster ausgeglichen |
+
+### Testläufe
+
+| Ebene | Ergebnis |
+|---|---|
+| E2E PROJ-27 | **29/29 grün** |
+| Unit gesamt | **458 grün**, 4 vorbestehende Fehlschläge (`auth.test.ts` ×3, `milestone.test.ts` ×1) |
+| Regression PROJ-24 / 25 / 26 | **67/67 grün** |
+| Wegwerf-Fahrzeug nach dem Lauf | alle vier Tabellen 0 Zeilen |
+
+Sicherheitsaudit und Zugriffsprüfungen aus Durchgang 1 bleiben gültig — an Datenzugriff, Rollen und Premium-Sperre wurde seither nichts geändert.
+
+### Verbleibend
+
+**AC „Reifen zählen als Ersatzteile" ist nicht umsetzbar** und bleibt offen: Weder Scheckheft noch Einzelkosten kennen einen Reifen-Typ. Als Ersatzteil erfasst fallen Reifen ohnehin richtig an. Empfehlung unverändert: Kriterium streichen.
+
+### Empfehlung
+
+**Produktionsreif.** 21 von 22 Acceptance Criteria erfüllt, das 22. ist nicht umsetzbar. Keine Befunde der Stufen Kritisch, Hoch oder Mittel offen.
