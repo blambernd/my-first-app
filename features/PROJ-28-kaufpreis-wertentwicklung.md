@@ -263,6 +263,75 @@ Beim Aufräumen bestätigte sich zudem das Löschverhalten: Das Entfernen der An
 - **AC „Sichtbarkeit gesondert steuerbar"** wird bewusst nicht umgesetzt (C10). Empfehlung: Kriterium auf „nur für den Besitzer sichtbar" ändern
 - **Transfer-Aufgabe** (Vorschlag PROJ-32): Kaufpreis und Kostenhistorie dürfen beim Besitzerwechsel nicht mit übergehen. Noch nicht umgesetzt
 
+## Implementierung (Backend)
+
+**Stand:** 2026-08-01 · Keine API-Route — das Feature schreibt wie im Projekt üblich direkt über die Zugriffsregeln
+
+### Schema
+
+| Prüfung | Ergebnis |
+|---|---|
+| Tabellen | `vehicle_purchases`, `vehicle_purchase_costs` |
+| Row Level Security | auf beiden aktiv |
+| Regeln | **8**, ausnahmslos auf `besitzer` |
+| Indexe | 5 (Primärschlüssel, Eindeutigkeit je Fahrzeug, Eindeutigkeit für den Fremdschlüssel, Nebenkosten) |
+| Trigger | 1 (`updated_at`) |
+| Fremdschlüssel der Nebenkosten | `(purchase_id, vehicle_id) → vehicle_purchases (id, vehicle_id) ON DELETE CASCADE` |
+
+### Zugriffsprüfung — jede Rolle mit Gegenprobe
+
+| Rolle / Angriff | Ergebnis |
+|---|---|
+| Werkstatt: Anschaffung / Nebenkosten sehen | **0 / 0** |
+| Werkstatt: anlegen | **blockiert** (`42501`) |
+| Werkstatt: ändern / löschen | **0 / 0 Zeilen** |
+| Völlig fremder Nutzer: sehen | **0 / 0** |
+| **Anonym** (die Rolle hinter öffentlichen Aufrufen): sehen | **0 / 0** |
+| **Anonym: anlegen** | **blockiert** (`42501`) |
+| **Gegenprobe Besitzer: sehen / sehen / ändern** | **1 / 1 / 1** |
+
+### Datenintegrität — ebenfalls mit Gegenprobe
+
+| Prüfung | Ergebnis |
+|---|---|
+| Nebenkosten nennen ein **anderes** Fahrzeug als ihre Anschaffung | **blockiert** (`23503`) |
+| **Gegenprobe:** passendes Fahrzeug | erlaubt |
+| Zweite Anschaffung am selben Fahrzeug | **blockiert** (`23505`) |
+| Anschaffung löschen | Nebenkosten verschwinden mit (Kaskade) |
+| Negativer Kaufpreis | **blockiert** (`23514`) |
+
+Der zusammengesetzte Fremdschlüssel ist damit belegt: Genau die Lücke, die in PROJ-26 als BUG-1 auffiel und dort nachträglich geschlossen werden musste, ist hier von Anfang an dicht.
+
+### Der Kaufpreis kann nirgends nach außen gelangen
+
+Das ist die eigentliche Anforderung dieses Features, geprüft auf zwei Wegen:
+
+**Statisch** — nur **vier** Dateien fragen die Tabellen überhaupt ab, alle besitzergebunden:
+
+| Datei | Absicherung |
+|---|---|
+| `kosten/wertentwicklung/page.tsx` | `notFound()`, wenn nicht Besitzer |
+| `vehicles/[id]/page.tsx` | Abfrage liegt innerhalb von `if (isOwner)` |
+| `vehicle-purchase-form.tsx`, `vehicle-purchase-section.tsx` | werden nur für den Besitzer gerendert |
+
+Kein öffentlicher Pfad — weder Kurzprofil noch Inserat — nennt `price_cents` oder `purchased_on`. Sie fragen ausdrücklich einzelne Fahrzeugspalten ab und berühren die neuen Tabellen gar nicht.
+
+**Dynamisch** — die Rolle `anon` sieht 0 Zeilen und darf nicht schreiben, bei nachweislich vorhandenen Daten (Gegenprobe Besitzer: 1/1).
+
+Damit greift der Schutz zweifach: Selbst wenn eine künftige Abfrage versehentlich an einer öffentlichen Stelle landete, gäbe die Datenbank nichts heraus. Das ist der Gewinn aus der Entscheidung für eigene Tabellen (C1) — bei einer Spalte an `vehicles` wäre nur die erste Ebene vorhanden gewesen.
+
+### Weitere Prüfungen
+
+| Prüfung | Ergebnis |
+|---|---|
+| Abfrage der Anschaffung (`EXPLAIN ANALYZE`, Rolle `authenticated`) | Index Scan, **0,086 ms** |
+| Supabase-Security-Advisors | **keine Meldung** zu den neuen Tabellen |
+| Bestand nach allen Prüfungen | beide Tabellen 0 Zeilen, alle Testtransaktionen zurückgerollt |
+
+### Keine API-Route
+
+Wie bei PROJ-24 bis PROJ-27: Gelesen wird in Server Components, geschrieben direkt aus der Oberfläche über die Zugriffsregeln. Eine Route brächte hier keinen zusätzlichen Schutz — die Regeln in der Datenbank greifen unabhängig vom Weg, wie die Prüfung mit `anon` und Werkstatt zeigt.
+
 ## QA Test Results
 _To be added by /qa_
 
