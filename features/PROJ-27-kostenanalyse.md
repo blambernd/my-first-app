@@ -1,6 +1,6 @@
 # PROJ-27: Kostenanalyse
 
-## Status: In Progress
+## Status: In Review
 **Created:** 2026-07-31
 **Last Updated:** 2026-07-31
 
@@ -30,28 +30,28 @@ Zwei Punkte prägen den Zuschnitt: Die Auswertung muss **mit unvollständigen Da
 - Als Oldtimer-Besitzer möchte ich von einer Kostenposition zum zugrundeliegenden Eintrag springen können, damit ich Auffälligkeiten nachvollziehen kann
 
 ## Acceptance Criteria
-- [ ] Kostenanalyse ist je Fahrzeug über die Fahrzeug-Navigation erreichbar
-- [ ] Folgende Kostenarten werden ausgewiesen: Benzin, Wartung, Reparatur, Ersatzteile, Versicherung, Steuern, Unterstellung, Clubbeitrag, Wertgutachten, Sonstiges
-- [ ] Zuordnung der Scheckheft-Einträge über `entry_type`: **Wartung** = Inspektion, Ölwechsel, TÜV/HU; **Reparatur** = Reparatur, Restaurierung; **Sonstiges** = Sonstiges
-- [ ] **Reifen** zählen als Ersatzteile, nicht als Wartung — damit die Zuordnung nicht je nach Erfassungsweg schwankt
-- [ ] Die Auswertung ist zusätzlich nach **Standkosten** und **Fahrtkosten** aufteilbar: Standkosten = Versicherung, Steuer, Unterstellung, Clubbeitrag, Wertgutachten; Fahrtkosten = Benzin, Wartung, Reparatur, Ersatzteile
-- [ ] Die Standkosten beantworten sichtbar die Frage "Was kostet mich das Fahrzeug, wenn ich es nicht fahre?" — als Betrag pro Monat und pro Jahr
-- [ ] Die Kostenarten sind nicht fest verdrahtet: Eine in PROJ-25/26 ergänzte Kostenart erscheint automatisch in der Auswertung
-- [ ] Der Kaufpreis aus PROJ-28 fließt **nicht** in die Zeitreihe der laufenden Kosten ein, sondern wird getrennt ausgewiesen
-- [ ] Verteilung der Kosten nach Kostenart wird grafisch dargestellt
-- [ ] Kostenentwicklung über die Zeit wird grafisch dargestellt, aufgeschlüsselt nach Kostenart
-- [ ] Gesamtsumme für den gewählten Zeitraum wird angezeigt
-- [ ] Kosten pro Kilometer werden angezeigt, sofern ein Kilometerbezug ermittelbar ist
-- [ ] Zeitraum ist wählbar (u. a. laufendes Jahr, letztes Jahr, gesamter Zeitraum)
-- [ ] Fixkosten aus PROJ-25 gehen als monatlich umgelegte Beträge ein, nicht als Einmalbetrag im Zahlungsmonat
-- [ ] Als "bereits im Scheckheft enthalten" gekennzeichnete Ersatzteile (PROJ-26) werden **nicht** zusätzlich gezählt
-- [ ] Es ist erkennbar, ob und wie viele Beträge wegen Doppelerfassung ausgeschlossen wurden
-- [ ] Kostenarten ohne erfasste Daten werden als "nicht erfasst" gekennzeichnet und nicht als 0 € dargestellt
-- [ ] Ein Hinweis weist auf die Vollständigkeit der Datenbasis hin, wenn Kostenarten fehlen
-- [ ] Von einer Kostenposition kann zum zugrundeliegenden Eintrag navigiert werden
-- [ ] Leerer Zustand: Hinweis mit Verweis auf die Erfassungs-Features, wenn noch keinerlei Kosten vorliegen
-- [ ] Zugriff folgt den Rollen aus PROJ-6
-- [ ] Darstellung ist auf Mobile (375px), Tablet (768px) und Desktop (1440px) nutzbar
+- [x] Kostenanalyse ist je Fahrzeug über die Fahrzeug-Navigation erreichbar
+- [x] Folgende Kostenarten werden ausgewiesen: Benzin, Wartung, Reparatur, Ersatzteile, Versicherung, Steuern, Unterstellung, Clubbeitrag, Wertgutachten, Sonstiges
+- [x] Zuordnung der Scheckheft-Einträge über `entry_type`: **Wartung** = Inspektion, Ölwechsel, TÜV/HU; **Reparatur** = Reparatur, Restaurierung; **Sonstiges** = Sonstiges
+- [ ] **Reifen** zählen als Ersatzteile, nicht als Wartung — damit die Zuordnung nicht je nach Erfassungsweg schwankt  _(nicht umsetzbar, siehe QA)_
+- [x] Die Auswertung ist zusätzlich nach **Standkosten** und **Fahrtkosten** aufteilbar: Standkosten = Versicherung, Steuer, Unterstellung, Clubbeitrag, Wertgutachten; Fahrtkosten = Benzin, Wartung, Reparatur, Ersatzteile
+- [ ] Die Standkosten beantworten sichtbar die Frage "Was kostet mich das Fahrzeug, wenn ich es nicht fahre?" — als Betrag pro Monat und pro Jahr  _(BUG-1, siehe QA)_
+- [x] Die Kostenarten sind nicht fest verdrahtet: Eine in PROJ-25/26 ergänzte Kostenart erscheint automatisch in der Auswertung
+- [x] Der Kaufpreis aus PROJ-28 fließt **nicht** in die Zeitreihe der laufenden Kosten ein, sondern wird getrennt ausgewiesen
+- [x] Verteilung der Kosten nach Kostenart wird grafisch dargestellt
+- [x] Kostenentwicklung über die Zeit wird grafisch dargestellt, aufgeschlüsselt nach Kostenart
+- [x] Gesamtsumme für den gewählten Zeitraum wird angezeigt
+- [x] Kosten pro Kilometer werden angezeigt, sofern ein Kilometerbezug ermittelbar ist
+- [x] Zeitraum ist wählbar (u. a. laufendes Jahr, letztes Jahr, gesamter Zeitraum)
+- [x] Fixkosten aus PROJ-25 gehen als monatlich umgelegte Beträge ein, nicht als Einmalbetrag im Zahlungsmonat
+- [x] Als "bereits im Scheckheft enthalten" gekennzeichnete Ersatzteile (PROJ-26) werden **nicht** zusätzlich gezählt
+- [x] Es ist erkennbar, ob und wie viele Beträge wegen Doppelerfassung ausgeschlossen wurden
+- [x] Kostenarten ohne erfasste Daten werden als "nicht erfasst" gekennzeichnet und nicht als 0 € dargestellt
+- [x] Ein Hinweis weist auf die Vollständigkeit der Datenbasis hin, wenn Kostenarten fehlen
+- [x] Von einer Kostenposition kann zum zugrundeliegenden Eintrag navigiert werden
+- [x] Leerer Zustand: Hinweis mit Verweis auf die Erfassungs-Features, wenn noch keinerlei Kosten vorliegen
+- [x] Zugriff folgt den Rollen aus PROJ-6
+- [x] Darstellung ist auf Mobile (375px), Tablet (768px) und Desktop (1440px) nutzbar
 
 ## Edge Cases
 - **Gar keine Kostendaten:** Leerer Zustand mit Erklärung, welche Erfassungen die Analyse speist — keine leeren Diagramme oder Nullwerte anzeigen
@@ -355,7 +355,125 @@ Keine neuen nötig. Alle vier Abfragen laufen über bestehende Indizes auf `(veh
 `tests/PROJ-27-auswertung-smoke-auth.spec.ts` — eine Rauchprobe, dass die Seite nach der Rechteumstellung weiterhin lädt. Die vollständigen Tests folgen in `/qa`.
 
 ## QA Test Results
-_To be added by /qa_
+
+**Getestet:** 2026-08-01 · **Ergebnis: noch nicht produktionsreif** — ein Befund der Stufe Hoch
+
+### Testumfang
+
+| Ebene | Umfang | Ergebnis |
+|---|---|---|
+| Unit (Vitest) | 41 Tests zu `cost-analysis.ts` | 41/41 grün |
+| Unit gesamt | 439 Tests | 435 grün, 4 vorbestehende Fehlschläge (`auth.test.ts` ×3, `milestone.test.ts` ×1) |
+| E2E unangemeldet | 4 Tests × Chromium + Mobile Safari | 8/8 grün |
+| E2E angemeldet | 19 Tests, Chromium | 19/19 grün |
+| Regression | PROJ-24, PROJ-25, PROJ-26 vollständig | **67/67 grün** |
+| Build | `npm run build` | erfolgreich |
+
+Die angemeldeten Tests legen ihre Daten **durch die echten Erfassungsmasken** von PROJ-24, PROJ-3, PROJ-25 und PROJ-26 an — nicht per SQL. Nur so wird die eigentlich interessante Naht geprüft: vier Quellen, eine Summe. Danach wurde aufgeräumt, alle vier Tabellen stehen auf 0 Zeilen.
+
+**Die Handrechnung, gegen die geprüft wird:**
+
+| Posten | Betrag |
+|---|---|
+| Benzin (80,00 + 70,00) | 150,00 € |
+| Wartung (Inspektion) | 200,00 € |
+| Versicherung (1.200 €/Jahr, 1 Monat im Zeitraum) | 100,00 € |
+| Ersatzteile (50,00 €; der zweite Posten ist als enthalten markiert) | 50,00 € |
+| **Summe** | **500,00 €** |
+| davon ausgeschlossen | 120,00 € |
+| Fahrleistung 10.000 → 11.000 km | 1.000 km |
+| Kosten je Kilometer | 0,50 € |
+
+Die Oberfläche zeigt exakt diese Werte.
+
+### Acceptance Criteria
+
+| # | Kriterium | Ergebnis |
+|---|---|---|
+| 1 | Über die Navigation erreichbar | ✅ |
+| 2 | Alle zehn Kostenarten werden ausgewiesen | ✅ |
+| 3 | Zuordnung der Scheckheft-Typen | ✅ Inspektion → Wartung, geprüft in Unit und E2E |
+| 4 | Reifen zählen als Ersatzteile | ⛔ **nicht umsetzbar** — der Typ existiert nirgends |
+| 5 | Aufteilung Stand-/Fahrtkosten | ✅ |
+| 6 | Standkosten pro Monat und pro Jahr | ❌ **fehlerhaft — siehe BUG-1** |
+| 7 | Kostenarten nicht fest verdrahtet | ✅ aus den Listen von PROJ-25/26 abgeleitet |
+| 8 | Kaufpreis aus PROJ-28 nicht in der Zeitreihe | ✅ soweit prüfbar — PROJ-28 existiert noch nicht, es wird keine Kaufpreisquelle gelesen |
+| 9 | Verteilung grafisch | ✅ Segmente werden nachweislich gezeichnet, nicht nur die Überschrift |
+| 10 | Entwicklung über die Zeit grafisch | ✅ Balken werden nachweislich gezeichnet |
+| 11 | Gesamtsumme | ✅ 500,00 € exakt |
+| 12 | Kosten pro Kilometer | ✅ 0,50 €/km mit Angabe der Grundlage |
+| 13 | Zeitraum wählbar | ✅ drei Zeiträume, Vorjahr fällt korrekt auf 0,00 € |
+| 14 | Fixkosten monatlich umgelegt | ✅ 100,00 € statt 1.200,00 € im Zahlungsmonat |
+| 15 | Als enthalten markierte Beträge zählen nicht | ✅ **Kernfall** |
+| 16 | Ausgeschlossene Beträge erkennbar | ✅ Anzahl und Summe genannt |
+| 17 | „Nicht erfasst" statt 0 € | ✅ als Badges, keine Nullzeile in der Tabelle |
+| 18 | Hinweis auf die Vollständigkeit | ✅ |
+| 19 | Verweis zur Quelle | ✅ Benzin → Tankbuch, Wartung → Scheckheft |
+| 20 | Leerer Zustand mit Verweisen | ✅ alle vier Erfassungen, keine leeren Diagramme |
+| 21 | Zugriff nach Rollen (PROJ-6) | ✅ nur Besitzer, siehe Sicherheitsaudit |
+| 22 | Mobile, Tablet, Desktop | ✅ 375, 768 und 1440 px je mit Daten geprüft, kein waagerechter Überlauf |
+
+**20 von 22 erfüllt**, 1 fehlerhaft, 1 nicht umsetzbar.
+
+### Gefundene Fehler
+
+**BUG-1 (Hoch): Die Standkosten-Kennzahl ist um ein Vielfaches zu niedrig, wenn der Zeitraum nur teilweise abgedeckt ist**
+
+*Schritte:* Versicherung über 1.200 €/Jahr anlegen (Standardzeitraum ab dem laufenden Monat), Auswertung für das laufende Jahr öffnen.
+
+*Erwartet:* Standkosten von 100,00 € pro Monat, 1.200,00 € im Jahr.
+*Tatsächlich:* **12,50 € pro Monat, 150,00 € im Jahr** — Faktor 8 zu niedrig.
+
+*Ursache:* Die Kennzahl mittelt die Standkosten über **alle** Monate des gewählten Zeitraums, auch über Monate ohne jede Deckung. Bei Januar bis August und einem Vertrag, der im August beginnt, werden 100 € auf acht Monate verteilt.
+
+*Warum Hoch und nicht Mittel:*
+- Es ist keine Randlage, sondern der **Normalfall für jeden neuen Nutzer**: Wer heute seine Versicherung einträgt und die Auswertung öffnet, sieht als Erstes eine achtfach zu niedrige Zahl
+- Dieselben Daten ergeben auf zwei Seiten widersprüchliche Aussagen: PROJ-25 zeigt „Aktuell pro Monat **100,00 €**", PROJ-27 zeigt „**12,50 €** / Monat"
+- Die Kennzahl beantwortet ausdrücklich die in der Spec formulierte Frage „Was kostet mich das Fahrzeug, wenn ich es nicht fahre?" — eine falsche Antwort darauf ist schlimmer als gar keine
+- Die Zahl sieht plausibel aus. Genau diese Klasse Fehler hat in PROJ-25 als BUG-1 schon einmal zugeschlagen
+
+*Empfehlung:* Für „pro Monat" die aktuelle Belastung verwenden — PROJ-25 hat mit `currentMonthlyCents` bereits genau diese Funktion, was zugleich die Widersprüchlichkeit zwischen den Seiten beseitigt. Alternativ nur über Monate mit tatsächlicher Deckung mitteln und die Bezugsgröße ausdrücklich benennen.
+
+**BUG-2 (Niedrig): Künftig datierte Scheckheft-Einträge verschwinden spurlos**
+
+*Schritte:* Scheckheft-Eintrag mit Datum in der Zukunft und Kostenangabe anlegen (das Scheckheft-Formular lässt künftige Daten zu, Tankbuch und Einzelkosten nicht), Auswertung öffnen.
+
+*Erwartet:* Der Betrag zählt nicht als angefallen — das ist richtig — aber es gibt einen Hinweis darauf.
+*Tatsächlich:* Nachgewiesen mit 999,00 €: Der Betrag erscheint in **keinem** der drei wählbaren Zeiträume, auch nicht im „Gesamten Zeitraum", und die Summe bleibt bei 0,00 €. Kein Hinweis irgendwo.
+
+*Warum niedrig:* Der Ausschluss künftiger Kosten ist gewollt und in der Spec verankert. Unschön ist nur das Schweigen — die Seite weist zwei andere Lücken ausdrücklich aus („nicht erfasst", „ohne Kostenangabe"), diese dritte aber nicht.
+
+*Empfehlung:* Einen Zähler in den Datenbasis-Hinweis aufnehmen, etwa „N Einträge liegen in der Zukunft und zählen noch nicht".
+
+**Keine weiteren Produktfehler.** Zwei anfängliche Fehlschläge im E2E-Lauf waren Testfehler:
+- Die deutsche Währungsformatierung setzt ein **geschütztes** Leerzeichen vor das €-Zeichen. `getByText(RegExp)` vergleicht roh und trifft es nicht, `toContainText` normalisiert. Beides in den Tests korrigiert
+- „Standkosten" ist zugleich Kennzahl-Überschrift und Reitername (Playwright-Strict-Mode)
+
+### Sicherheitsaudit (Red Team)
+
+Alle Prüfungen mit Gegenprobe — ohne sie wäre „0 Zeilen" auch bei einer leeren Tabelle erfüllt.
+
+| Prüfung | Ergebnis |
+|---|---|
+| Fremder Nutzer: Tankbuch / Scheckheft / laufende / Einzelkosten | **0 / 0 / 0 / 0** |
+| **Gegenprobe Besitzer: dieselben vier Quellen** | **1 / 1 / 1 / 1** |
+| Werkstatt: laufende Kosten / Einzelkosten | **0 / 0** |
+| **Werkstatt: Tankbuch** | **1** — bewusst weiterhin erlaubt |
+| Werkstatt: anlegen / ändern | blockiert (`42501`) / 0 Zeilen |
+| **Premium-Sperre serverseitig** | Mit einem Posten über 7.777,00 € in der Datenbank enthält das ausgelieferte HTML **weder den Betrag noch die Bezeichnung** — nur die Werbefläche |
+| Unangemeldet: Kostendaten im HTML | nicht enthalten |
+| XSS über Nutzereingaben | **keine Angriffsfläche**: Die Auswertung rendert ausschließlich eigene Bezeichner und Zahlen — Bezeichnung, Bezugsquelle, Notiz und Anbieter kommen dort nirgends vor |
+| Supabase-Security-Advisors | keine Meldung zu den vier beteiligten Tabellen |
+
+### Grenzen dieses Testlaufs
+
+- **Firefox wurde nicht geprüft** — im Projekt ist kein Firefox-Profil konfiguriert. Geprüft wurden Chromium und Mobile Safari (WebKit, nur unangemeldet)
+- Die angemeldeten Tests laufen ausschließlich in Chromium
+- Die Zeitraum-Auswahl „letztes Jahr" wurde mit leerem Ergebnis geprüft, nicht mit echten Vorjahresdaten
+
+### Empfehlung
+
+**Noch nicht produktionsreif.** BUG-1 sollte vor dem Deployment behoben werden: Die Kennzahl steht prominent auf der Seite, betrifft jeden neuen Nutzer und widerspricht sichtbar der Anzeige in PROJ-25. BUG-2 kann danach folgen.
 
 ## Deployment
 _To be added by /deploy_
