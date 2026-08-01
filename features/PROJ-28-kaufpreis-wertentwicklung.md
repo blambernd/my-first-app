@@ -1,6 +1,6 @@
 # PROJ-28: Kaufpreis & Wertentwicklung
 
-## Status: In Progress
+## Status: In Review
 **Created:** 2026-07-31
 **Last Updated:** 2026-07-31
 
@@ -333,7 +333,82 @@ Damit greift der Schutz zweifach: Selbst wenn eine künftige Abfrage versehentli
 Wie bei PROJ-24 bis PROJ-27: Gelesen wird in Server Components, geschrieben direkt aus der Oberfläche über die Zugriffsregeln. Eine Route brächte hier keinen zusätzlichen Schutz — die Regeln in der Datenbank greifen unabhängig vom Weg, wie die Prüfung mit `anon` und Werkstatt zeigt.
 
 ## QA Test Results
-_To be added by /qa_
+
+**Getestet:** 2026-08-01 · **Ergebnis: nicht produktionsreif** — ein Befund der Stufe Hoch
+
+### BUG-1 (Hoch): Der Erfassungsdialog stürzt beim Öffnen ab
+
+*Schritte:* Fahrzeugprofil öffnen → „Anschaffung erfassen" anklicken.
+
+*Erwartet:* Der Dialog öffnet sich.
+*Tatsächlich:* Laufzeitfehler, der Dialog erscheint nicht:
+
+```
+useFormField should be used within <FormField>
+src/components/ui/form.tsx (48:11) @ useFormField
+  → FormLabel → VehiclePurchaseForm → VehiclePurchaseSection → VehicleDetailPage
+```
+
+*Ursache:* In `vehicle-purchase-form.tsx` Zeile 263 wird `FormLabel` als **Abschnitts­überschrift** für die Nebenkosten verwendet — außerhalb jedes `FormField`. `FormLabel` ruft intern `useFormField()` auf und wirft ohne den zugehörigen Kontext. Die drei übrigen `FormLabel` im Formular liegen korrekt innerhalb ihrer Felder; es ist genau diese eine Stelle.
+
+*Empfehlung:* Die Überschrift durch ein einfaches Textelement ersetzen — sie beschriftet kein Eingabefeld, sondern einen Abschnitt.
+
+*Warum Hoch:* Der Dialog ist der **einzige** Weg, eine Anschaffung zu erfassen. Ohne ihn kann kein Nutzer das Feature in Betrieb nehmen. Die Anzeigeseite funktioniert mit vorhandenen Daten nachweislich korrekt — aber es gibt keinen Weg, an diese Daten zu kommen.
+
+**Zur Herkunft des Fehlers, offen gesagt:** Die Sichtprüfung während `/frontend` hat Profilabschnitt und Bilanzseite geprüft, den Dialog aber **nie geöffnet**. Die Daten waren dort per SQL angelegt. Genau deshalb blieb der Fehler stehen — die Verifikation deckte die Anzeige ab, nicht die Eingabe. Weder `tsc` noch `npm run build` sehen so etwas; erst der E2E-Test durch die echte Oberfläche hat ihn gefunden.
+
+### Testläufe
+
+| Ebene | Ergebnis |
+|---|---|
+| E2E unangemeldet | **10/10 grün** (5 Tests × Chromium + Mobile Safari) |
+| E2E angemeldet | 4 grün, dann **Abbruch an BUG-1** — die Folgetests setzen eine erfasste Anschaffung voraus |
+| Unit `value-development` | **23/23 grün** |
+| Unit gesamt | 503 grün, 4 vorbestehende Fehlschläge |
+| Regression PROJ-24 / 25 / 26 / 27 | **80/81** — der eine Fehlschlag lief im Sammellauf auf, isoliert ist PROJ-27 **21/21 grün**. Kein Zusammenhang mit PROJ-28 |
+
+### Acceptance Criteria
+
+| # | Kriterium | Ergebnis |
+|---|---|---|
+| 1 | Kaufpreis und Kaufdatum hinterlegen | ❌ **BUG-1** — Dialog nicht bedienbar |
+| 2 | Kauf-Nebenkosten erfassen | ❌ BUG-1 |
+| 3 | Beträge in Cent, Eingabe in Euro | ⚠️ in Unit-Tests und mit angelegten Daten belegt, über das Formular nicht prüfbar |
+| 4 | Beide Angaben optional, Profil bleibt funktionsfähig | ✅ E2E |
+| 5 | Kauf-Meilenstein als Vorbelegung | ❌ BUG-1 |
+| 6 | Bilanz stellt vier Größen gegenüber | ⚠️ mit angelegten Daten geprüft (siehe Frontend-Abschnitt), nicht per E2E |
+| 7 | Wertveränderung gegen den Kaufpreis | ⚠️ dito, zusätzlich 23 Unit-Tests |
+| 8 | Gesamtbilanz | ⚠️ dito |
+| 9 | Marktwert als Schätzung kenntlich | ⚠️ dito |
+| 10 | Ohne Marktpreis-Analyse nur die Kostenseite | ❌ BUG-1 — E2E kam nicht so weit |
+| 11 | Ohne Kaufpreis Hinweis statt Bilanz | ✅ **E2E**, inklusive Gegenprobe, dass keine Bilanz erscheint |
+| 12 | Sichtbarkeit gesondert steuerbar | ⛔ **bewusst nicht umgesetzt** (Tech Design C10) |
+| 13 | Zugriff nach Rollen | ✅ siehe Sicherheitsaudit |
+| 14 | Drei Bildschirmbreiten | ⚠️ mit angelegten Daten geprüft, per E2E blockiert |
+
+**Nur 2 von 14 vollständig per E2E belegt** — nicht weil das Feature schlecht wäre, sondern weil BUG-1 den Testpfad an der zweiten Station blockiert. Sobald der Dialog öffnet, laufen die übrigen Tests durch; sie sind bereits geschrieben und liegen in `tests/PROJ-28-wertentwicklung-auth.spec.ts`.
+
+### Sicherheitsaudit
+
+Die Prüfungen aus dem Backend-Abschnitt bleiben gültig — an Schema und Zugriffsregeln hat sich nichts geändert. Ergänzend aus QA-Sicht:
+
+| Prüfung | Ergebnis |
+|---|---|
+| Unangemeldet: „Kaufpreis", „Anschaffung", „Gesamtbilanz" im HTML | **nicht enthalten** |
+| Unangemeldet: Fahrzeugprofil | **nicht enthalten** |
+| Angemeldet: Kaufpreis in fremden Seitenantworten (Scheckheft, Dokumente, Tankbuch, Kosten, Einzelkosten, Auswertung, Dashboard) | E2E geschrieben, wegen BUG-1 noch nicht gelaufen |
+| Werkstatt / fremder Nutzer / anonym gegen Besitzer | **0/0/0 gegen 1/1** (Backend-Durchgang, mit Gegenprobe) |
+
+### Beobachtung ohne Befundcharakter
+
+Im Sammellauf über vier Suiten fiel ein PROJ-27-Test aus, der isoliert grün ist. Alle Suiten teilen sich dasselbe Wegwerf-Fahrzeug; bei langen Läufen entstehen Zeitfenster, in denen eine Liste kurz anders aussieht als erwartet. Kein Produktfehler, aber die Testbasis ist an dieser Stelle empfindlich.
+
+### Empfehlung
+
+**Nicht produktionsreif.** BUG-1 muss vor allem Weiteren behoben werden — es ist eine Zeile, blockiert aber den gesamten Testpfad und die Nutzung des Features. Danach `/qa` erneut; die Tests liegen bereit.
+
+## Deployment
+_To be added by /deploy_
 
 ## Deployment
 _To be added by /deploy_
