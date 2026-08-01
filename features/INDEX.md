@@ -40,7 +40,7 @@
 | PROJ-24 | Tankbuch & Verbrauch | Deployed | [PROJ-24-tankbuch.md](PROJ-24-tankbuch.md) | 2026-07-31 |
 | PROJ-25 | Wiederkehrende Kosten | Deployed | [PROJ-25-wiederkehrende-kosten.md](PROJ-25-wiederkehrende-kosten.md) | 2026-07-31 |
 | PROJ-26 | Einzelkosten | Deployed | [PROJ-26-einzelkosten.md](PROJ-26-einzelkosten.md) | 2026-07-31 |
-| PROJ-27 | Kostenanalyse | Approved | [PROJ-27-kostenanalyse.md](PROJ-27-kostenanalyse.md) | 2026-07-31 |
+| PROJ-27 | Kostenanalyse | Deployed | [PROJ-27-kostenanalyse.md](PROJ-27-kostenanalyse.md) | 2026-07-31 |
 | PROJ-28 | Kaufpreis & Wertentwicklung | Planned | [PROJ-28-kaufpreis-wertentwicklung.md](PROJ-28-kaufpreis-wertentwicklung.md) | 2026-07-31 |
 | PROJ-29 | Belastbarer Marktüberblick | Planned | [PROJ-29-belastbarer-marktueberblick.md](PROJ-29-belastbarer-marktueberblick.md) | 2026-08-01 |
 

@@ -47,7 +47,7 @@ Eine SaaS-Plattform für Oldtimer-Besitzer, die es ermöglicht, die komplette Hi
 | P1 | PROJ-24: Tankbuch & Verbrauch | Deployed |
 | P1 | PROJ-25: Wiederkehrende Kosten | Deployed |
 | P2 | PROJ-26: Einzelkosten | Deployed |
-| P1 | PROJ-27: Kostenanalyse | Planned |
+| P1 | PROJ-27: Kostenanalyse | Deployed |
 | P2 | PROJ-28: Kaufpreis & Wertentwicklung | Planned |
 | P1 | PROJ-29: Belastbarer Marktüberblick | Planned |
 

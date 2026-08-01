@@ -1,6 +1,6 @@
 # PROJ-27: Kostenanalyse
 
-## Status: Approved
+## Status: Deployed
 **Created:** 2026-07-31
 **Last Updated:** 2026-07-31
 
@@ -689,3 +689,62 @@ Sicherheitsaudit und Zugriffsprüfungen aus Durchgang 1 bleiben gültig — an D
 ### Empfehlung
 
 **Produktionsreif.** 21 von 22 Acceptance Criteria erfüllt, das 22. ist nicht umsetzbar. Keine Befunde der Stufen Kritisch, Hoch oder Mittel offen.
+
+---
+
+## Deployment
+
+- **Deployed:** 2026-08-01
+- **Commits:** `7fd70d3` Frontend · `96d946d` Backend · `3ca98e6` BUG-1/BUG-2 · `179bbef` BUG-3/BUG-4
+- **Produktion:** https://www.oldtimer-docs.com/vehicles/[id]/kosten/auswertung
+- **Migrationen:** `20260801_restrict_cost_tables_to_owner.sql` — bereits während `/backend` angewendet und verifiziert
+- **Neue Env-Variablen:** keine
+- **Neue Abhängigkeiten:** keine
+
+### Vor dem Deployment geprüft
+
+| Punkt | Ergebnis |
+|---|---|
+| `npm run build` | erfolgreich, Route im Manifest |
+| `npm run lint` | 2 Fehler — dieselben zwei vorbestehenden wie zu Beginn des Zyklus (`cookie-consent-banner`, `landing-page`), keine PROJ-27-Datei |
+| QA | Approved nach drei Durchgängen, alle vier Befunde behoben |
+| Migrationen | alle sechs angewendet |
+| Secret-Scan je Commit | sauber |
+
+### Mit ausgeliefert: vier Commits außerhalb von PROJ-27
+
+Der Push nach `main` hat vier Commits des Nutzers mitgenommen, die nicht Teil dieses Features sind. Nach Rückfrage bewusst so entschieden, mit erweiterter Nachprüfung:
+
+| Commit | Inhalt |
+|---|---|
+| `abe5cf0` | PROJ-2: überarbeitetes Layout der Fahrzeug-Übersicht |
+| `a6e0b94` | PROJ-11: Marktpreis-Analyse ehrlicher zur Datenbasis |
+| `0aa9d61` | Haftungs-Disclaimer ins Impressum überführt, `/haftung` leitet dauerhaft weiter |
+| `3f99240` | PROJ-29: Feature-Spezifikation |
+
+### Nachprüfung in der Produktion
+
+Der neue Build wurde daran erkannt, dass `/haftung` von 200 auf 308 umschlug — die Weiterleitung stammt aus `next.config.ts` und damit aus demselben Build.
+
+**Erst zeigte die Produktion die Premium-Sperre.** Anders als lokal ist dort kein Beta-Modus aktiv, und der Testnutzer hat `plan = 'free'`. Das ist zugleich der Beleg, dass die Sperre in der Produktion greift — verhinderte aber die Prüfung der Auswertung selbst. Für die Dauer der Prüfung wurde der Testnutzer auf `premium` gesetzt und danach exakt auf `free / active` zurückgesetzt; Stripe-Felder blieben unberührt (nachweislich weiterhin leer).
+
+| Prüfung | Ergebnis |
+|---|---|
+| Premium-Sperre ohne Premium | greift, keine Kostenzahlen im HTML |
+| Gesamtkosten mit echten Daten | **450,00 €** wie berechnet |
+| Standkosten aktuell | **100,00 € / Monat**, **600,00 € in 2026** — der BUG-3-Fall live bestätigt |
+| Zeitraum-Hinweis in der Karte | „unabhängig vom gewählten Zeitraum" sichtbar |
+| Kosten pro Kilometer | **0,45 € / km** |
+| Verteilungsdiagramm | Segmente werden gezeichnet |
+| PROJ-2 Fahrzeug-Übersicht (Fremdcommit) | lädt, **0 Konsolenfehler** |
+| PROJ-11 Marktpreis (Fremdcommit) | lädt, leitet wie vorgesehen zum Verkaufsassistenten, **0 Konsolenfehler** |
+| Impressum und `/haftung`-Weiterleitung (Fremdcommit) | Weiterleitung greift, Haftungsinhalt vorhanden, **0 Konsolenfehler** |
+| Konsolenfehler gesamt außerhalb `/dashboard` | **keine** |
+
+Testdaten nach der Prüfung entfernt, alle vier Tabellen des Wegwerf-Fahrzeugs auf 0 Zeilen.
+
+### Offene Punkte
+
+- **AC „Reifen zählen als Ersatzteile"** — nicht umsetzbar, den Typ gibt es nirgends. Empfehlung: Kriterium streichen
+- **Vorbestehender Hydration-Fehler auf `/dashboard`** (React #418) — unabhängig von PROJ-27, über den ganzen Zyklus mehrfach per Gegenprobe eingegrenzt
+- **PROJ-29 (Transfer-Verhalten der Kostendaten)** — die Entscheidung „Kosten bleiben beim Vorbesitzer" ist noch nicht umgesetzt; sie gehört in die Transfer-Logik von PROJ-7 und braucht einen Hinweis samt Export vor dem Löschen
