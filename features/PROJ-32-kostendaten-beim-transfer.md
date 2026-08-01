@@ -1,6 +1,6 @@
 # PROJ-32: Kostendaten beim Fahrzeug-Transfer
 
-## Status: Planned
+## Status: Architected
 **Created:** 2026-08-01
 **Last Updated:** 2026-08-01
 
@@ -97,7 +97,124 @@ Ein Scheckheft-Eintrag „Vergaser überholt, 82.000 km, Werkstatt Müller" wand
 <!-- Sections below are added by subsequent skills -->
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture_
+
+### Entscheidungen des Nutzers (2026-08-01)
+
+| Frage | Entscheidung |
+|---|---|
+| Exportformat | **CSV-Tabelle** — zum Weiterrechnen, nicht zum Vorzeigen |
+| Exportumfang | **Nur, was entfernt wird** — der Export ist das Gegenstück zum Verlust |
+
+### A) Komponenten-Struktur
+
+```
+Transfer-Seite  (/vehicles/[id]/transfer)
++-- Bestehendes Formular „Fahrzeug übertragen"
++-- [Abschnitt „Kostendaten"]                     ← neu, nur wenn Kosten vorhanden
+|   +-- Auflistung, was beim Annehmen entfernt wird, mit Anzahlen
+|   |   +-- Kaufpreis und Nebenkosten
+|   |   +-- N laufende Kosten
+|   |   +-- N Einzelkosten
+|   |   +-- Beträge aus N Scheckheft-Einträgen
+|   |   +-- Beträge aus N Tankvorgängen
+|   +-- Hinweis: Einträge und Historie bleiben, nur die Beträge gehen
+|   +-- Hinweis: gilt auch, wenn du als Betrachter im Fahrzeug bleibst
+|   +-- Schaltfläche „Kostendaten als Tabelle sichern"
+|
++-- [Abschnitt bei bereits offenem Transfer]      ← neu
+    +-- derselbe Export, solange nicht angenommen wurde
+
+Kosten-Bereich des neuen Besitzers
++-- [Hinweis] „Beim Besitzerwechsel am TT.MM.JJJJ wurden die Kostenangaben
+    des Vorbesitzers entfernt."                   ← neu, statt leerem Zustand ohne Erklärung
+```
+
+### B) Datenmodell
+
+**Keine neue Tabelle.** Das Feature entfernt Daten und merkt sich, dass es das getan hat.
+
+```
+Am Fahrzeug wird ein Zeitpunkt vermerkt:
+- Wann die Kostendaten wegen eines Besitzerwechsels entfernt wurden
+- Leer, solange das nie geschehen ist
+
+Vollständig gelöscht werden beim Annehmen:
+- Anschaffung samt Nebenkosten (PROJ-28)
+- Alle laufenden Kosten (PROJ-25)
+- Alle Einzelkosten (PROJ-26)
+
+Nur geleert — die Zeilen selbst bleiben:
+- Kostenangabe der Scheckheft-Einträge (PROJ-3)
+- Betrag der Tankvorgänge (PROJ-24)
+
+Unberührt:
+- Datum, Typ, Beschreibung, Kilometerstand, Werkstatt, Notizen
+- Liter, Volltank-Kennzeichen, Kraftstoffart
+- Dokumente, Bilder, Meilensteine
+```
+
+### C) Technische Entscheidungen
+
+**C1 — Das Entfernen gehört in die bestehende Übergabe-Funktion.**
+Der Besitzerwechsel läuft heute schon vollständig in **einer** Datenbankfunktion ab: Eigentümer umsetzen, Mitgliedschaften anpassen, Meilenstein anlegen, Transfer als angenommen markieren. Das Entfernen der Beträge dort einzufügen löst zwei Anforderungen auf einmal:
+
+- **Alles oder nichts.** Eine Funktion ist eine Transaktion. Ein halb entfernter Zustand — Fahrzeug übertragen, Kosten noch da oder umgekehrt — kann gar nicht erst entstehen. Das ist die schärfste Anforderung der Spec und hier geschenkt
+- **Der Richtige darf es tun.** Angenommen wird vom **neuen** Besitzer, gelöscht werden aber Daten des **alten**. Über die normalen Zugriffsregeln ginge das nicht. Die Übergabe-Funktion läuft bereits mit erhöhten Rechten, weil sie schon heute fremde Daten anfassen muss
+
+Eine Lösung außerhalb dieser Funktion — etwa ein nachgelagerter Aufruf — hätte beide Eigenschaften nicht.
+
+**C2 — Leeren statt Löschen bei Scheckheft und Tankbuch.**
+Die Zeilen bleiben, nur die Betragsfelder werden geleert. Damit bleibt die Wartungshistorie vollständig, die Verbrauchsberechnung des Tankbuchs funktioniert unverändert weiter (sie rechnet mit Litern und Kilometern, nicht mit Geld), und verknüpfte Dokumente behalten ihren Bezugspunkt.
+
+Der Unterschied zu den drei gelöschten Bereichen ist inhaltlich, nicht technisch: Ein Scheckheft-Eintrag ist ein Ereignis am Fahrzeug, das zufällig Geld gekostet hat. Ein Einzelkosten-Eintrag **ist** die Ausgabe — ohne Betrag bliebe eine leere Hülle.
+
+**C3 — Die Verknüpfung zwischen Einzelkosten und Scheckheft darf nicht mitreißen.**
+Einzelkosten können auf einen Scheckheft-Eintrag zeigen (PROJ-26). Beim Löschen der Einzelkosten muss der Wartungseintrag stehen bleiben. Das Löschverhalten dieser Verknüpfung zeigt bereits in die richtige Richtung — es ist beim Bau ausdrücklich zu prüfen, weil ein Fehler hier die Wartungshistorie zerstören würde, also genau das, was dieses Feature schützen soll.
+
+**C4 — Ein Zeitpunkt am Fahrzeug statt einer Kennzeichnung je Eintrag.**
+Der neue Besitzer soll erkennen, dass Beträge entfernt wurden und nicht etwa nie gepflegt waren. Dafür genügt **ein** Vermerk am Fahrzeug; jeden einzelnen Eintrag zu markieren wäre viel Aufwand für dieselbe Aussage.
+
+Die Frage, ob eine Angabe am Fahrzeug problematisch ist, stellt sich hier anders als in PROJ-28: Dort ging es um den Kaufpreis, der Mitgliedern nicht zugänglich sein darf. Ein Datum, an dem der Besitzer gewechselt hat, ist keine schützenswerte Angabe — der Besitzerwechsel steht ohnehin als Meilenstein in der Fahrzeug-Historie.
+
+**C5 — Der Export ist eine Datei-Auslieferung und damit ein begründeter Sonderfall.**
+Das Projekt kommt sonst ohne eigene Schnittstellen aus. Für Dateien gibt es bereits drei Ausnahmen — Dokumenten-Archiv, Inserats-PDF und Timeline-PDF. Der Export reiht sich dort ein.
+
+Er ist ausschließlich für den **aktuellen Besitzer** erreichbar. Das ist keine Formalie: Ein Export ist genau der Weg, über den Kostendaten das System verlassen sollen — er darf nicht zugleich ein Weg werden, über den sie es unbefugt tun.
+
+**C6 — CSV, und zwar so, dass es in deutschem Excel aufgeht.**
+Kostendaten hebt man auf, um damit weiterzurechnen — für die Steuererklärung, eine eigene Aufstellung, ein anderes Werkzeug. Ein PDF kann das nicht.
+
+Zwei Details entscheiden darüber, ob die Datei beim Nutzer funktioniert oder als Zeichensalat in einer einzigen Spalte landet: Semikolon als Trennzeichen und eine Kennung am Dateianfang, an der Excel die Zeichenkodierung erkennt. Beides ist ohne diese Erfahrung leicht zu übersehen und danach schwer zu erklären.
+
+**C7 — Der Export muss vor dem Annehmen laufen.**
+Nach dem Annehmen sind die Daten weg; ein Export danach hätte nichts mehr zu liefern. Deshalb ist er auf der Transfer-Seite verankert und bleibt verfügbar, solange ein Transfer offen ist.
+
+**C8 — Nichts geschieht vor dem Annehmen.**
+Ein abgelehnter, stornierter oder abgelaufener Transfer lässt die Kostendaten unberührt. Das ergibt sich aus C1 von selbst: Was in der Annahme-Funktion steht, läuft nur bei der Annahme.
+
+### D) Abhängigkeiten
+
+**Keine neuen Pakete.** CSV ist Text und braucht keine Bibliothek — eine für den Zweck genügt nicht, sondern schafft nur eine weitere Abhängigkeit für ein paar Zeilen Zeichenketten.
+
+### E) Was dieses Feature bewusst NICHT tut
+
+- **Keine Änderung an der Übergabe selbst.** Ablauf, Einladung, Fristen und Rollen bleiben, wie sie sind
+- **Kein Export für den neuen Besitzer.** Er bekommt nichts, was er nicht ohnehin sieht
+- **Keine Wiederherstellung.** Entfernt ist entfernt — deshalb der Export davor
+- **Keine Rückwirkung.** Fahrzeuge, die vor diesem Feature übertragen wurden, tragen die Kosten des Vorbesitzers weiterhin. Sie nachträglich zu bereinigen wäre ein Eingriff in fremde Daten ohne Anlass
+
+### F) Offene Punkte für die Umsetzung
+
+**F1 — Der Hinweis braucht echte Zahlen, und die kosten eine Abfrage.**
+„14 laufende Kosten, 23 Einzelkosten" ist ungleich wirksamer als „deine Kostendaten". Dafür müssen auf der Transfer-Seite fünf Bestände gezählt werden. Das ist vertretbar, sollte aber nicht bei jedem Seitenaufruf des Fahrzeugs geschehen, sondern nur dort, wo der Transfer tatsächlich vorbereitet wird.
+
+**F2 — Der Fall „nichts zu verlieren" braucht eine eigene Antwort.**
+Hat ein Fahrzeug keinerlei Kostenerfassung, darf der Abschnitt nicht so wirken, als stünde ein Verlust bevor. Dann erscheint er gar nicht.
+
+**F3 — Prüfen, ob der Hinweis für den neuen Besitzer an der richtigen Stelle sitzt.**
+Vorgesehen ist der Kosten-Bereich, weil dort die Lücke auffällt. Denkbar wäre auch die Fahrzeug-Historie, wo der Besitzerwechsel ohnehin steht. Entscheidung in `/frontend`, wenn die Wirkung sichtbar ist.
+
+**F4 — Diese Aufgabe schließt zugleich zwei ältere offene Punkte:** die Transfer-Frage aus PROJ-27 (Kostenhistorie) und die aus PROJ-28 (Kaufpreis). Beide verweisen auf genau diese Spec.
 
 ## QA Test Results
 _To be added by /qa_
