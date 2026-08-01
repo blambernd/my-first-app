@@ -22,42 +22,25 @@ export default async function KostenPage({ params }: KostenPageProps) {
     redirect("/login");
   }
 
-  // Zugriff prüfen: Besitzer oder Mitglied, daraus die Rechte ableiten
-  let canEdit = true;
-  let canDelete = true;
-
+  // Der gesamte Kostenbereich ist dem Besitzer vorbehalten (PROJ-27, C10).
+  // Kosten sind sensibler als die Wartungshistorie: Eine eingeladene Werkstatt
+  // soll nicht sehen, was der Besitzer anderswo bezahlt hat. Die Regeln in der
+  // Datenbank setzen dasselbe durch — diese Prüfung sorgt nur dafür, dass ein
+  // Mitglied eine klare Absage bekommt statt einer leeren Liste.
   const { data: ownedVehicle } = await supabase
     .from("vehicles")
     .select("id, insurance_company")
     .eq("id", id)
     .eq("user_id", user.id)
-    .single();
-
-  let insuranceCompany: string | null = ownedVehicle?.insurance_company ?? null;
+    .maybeSingle();
 
   if (!ownedVehicle) {
-    const { data: membership } = await supabase
-      .from("vehicle_members")
-      .select("vehicle_id, role")
-      .eq("vehicle_id", id)
-      .eq("user_id", user.id)
-      .single();
-
-    if (!membership) {
-      notFound();
-    }
-
-    canEdit = membership.role !== "betrachter";
-    // Löschen bleibt dem Besitzer vorbehalten, analog zum Tankbuch
-    canDelete = false;
-
-    const { data: sharedVehicle } = await supabase
-      .from("vehicles")
-      .select("insurance_company")
-      .eq("id", id)
-      .single();
-    insuranceCompany = sharedVehicle?.insurance_company ?? null;
+    notFound();
   }
+
+  const insuranceCompany: string | null = ownedVehicle.insurance_company ?? null;
+  const canEdit = true;
+  const canDelete = true;
 
   const { data: costs } = await supabase
     .from("recurring_costs")

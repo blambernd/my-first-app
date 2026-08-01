@@ -344,3 +344,17 @@ Durchgeführt im Rahmen von `/backend`, hier zusammengefasst:
 
 - **Kein Feature-Test in der Produktion.** Die 22 E2E-Tests liefen gegen `localhost`. Verifiziert ist, dass die Produktion erreichbar ist und der Build durchlief — nicht, dass der Kosten-Bereich dort im eingeloggten Zustand funktioniert.
 - **Kein Lighthouse-Lauf**, keine Änderung an Security-Headern oder Fehler-Tracking — bereits eingerichtet und von diesem Feature nicht berührt.
+
+---
+
+## Nachtrag: Zugriff auf den Besitzer beschränkt (2026-08-01)
+
+Im Rahmen von PROJ-27 entschieden und umgesetzt: **Laufende Kosten sind nur noch für den Besitzer sichtbar und bearbeitbar** — Mitglieder, auch Werkstätten, haben keinen Zugriff mehr.
+
+Grund: Kosten sind sensibler als die Wartungshistorie. Eine eingeladene Werkstatt soll nicht sehen, was der Besitzer anderswo bezahlt hat. Die Beschränkung nur auf die Auswertung in PROJ-27 zu legen wäre wirkungslos gewesen, weil die Beträge hier eine Klickebene tiefer offenstanden.
+
+- Migration: `20260801_restrict_cost_tables_to_owner.sql` — alle vier Regeln auf `recurring_costs` auf `besitzer`
+- Seite: Mitglieder bekommen `notFound()` statt einer leeren Liste
+- **Tankbuch und Scheckheft bleiben unberührt** — dafür existiert die Werkstatt-Rolle
+- Zum Zeitpunkt der Umstellung gab es in der Produktion keine einzige Mitgliedschaft; kein Nutzer hat einen Zugriff verloren
+- Verifiziert: Werkstatt sieht 0 Zeilen und kann nicht schreiben, Gegenprobe Besitzer 1/1/1; E2E von PROJ-25 und PROJ-26 danach 45/45 grün

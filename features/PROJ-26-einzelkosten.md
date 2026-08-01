@@ -404,3 +404,17 @@ Die Weiterleitung einer unangemeldeten Anfrage auf `/login` beweist **nichts** �
 **Performance-Advisors:** Der neue Fremdschlüssel wird **nicht** als unindiziert gemeldet — der angepasste Index `(service_entry_id, vehicle_id)` deckt ihn ab. Die verbleibenden Meldungen (`auth_rls_init_plan` auf allen Policies, `created_by` ohne Index) bestehen projektweit seit Anlage der Tabellen und stammen nicht aus dieser Änderung.
 
 **Hinweis zum Wirkzeitpunkt:** Es gibt nur eine Datenbank. Die Migration war mit dem Anwenden sofort in der Produktion wirksam, unabhängig vom Vercel-Deployment. Die Produktion wurde danach erneut angemeldet nachgeprüft.
+
+---
+
+## Nachtrag: Zugriff auf den Besitzer beschränkt (2026-08-01)
+
+Im Rahmen von PROJ-27 entschieden und umgesetzt: **Einzelkosten sind nur noch für den Besitzer sichtbar und bearbeitbar** — Mitglieder, auch Werkstätten, haben keinen Zugriff mehr.
+
+Grund und Vorgehen wie bei PROJ-25: Kosten sind sensibler als die Wartungshistorie, und eine Beschränkung allein auf die Auswertung in PROJ-27 wäre Fassade geblieben, solange diese Liste für Mitglieder offensteht.
+
+- Migration: `20260801_restrict_cost_tables_to_owner.sql` — alle vier Regeln auf `one_off_costs` auf `besitzer`
+- Seite: Mitglieder bekommen `notFound()` statt einer leeren Liste
+- Die Rollenlogik der Seite entfällt damit; `canEdit` und `canDelete` sind für den Besitzer stets wahr
+- Zum Zeitpunkt der Umstellung gab es in der Produktion keine einzige Mitgliedschaft
+- Verifiziert: Werkstatt sieht 0 Zeilen und kann nicht schreiben, Gegenprobe Besitzer 1/1/1; E2E von PROJ-25 und PROJ-26 danach 45/45 grün

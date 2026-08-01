@@ -35,32 +35,22 @@ export default async function EinzelkostenPage({ params }: EinzelkostenPageProps
     redirect("/login");
   }
 
-  let canEdit = true;
-  let canDelete = true;
-
+  // Der gesamte Kostenbereich ist dem Besitzer vorbehalten (PROJ-27, C10).
+  // Die Regeln in der Datenbank setzen dasselbe durch — diese Prüfung sorgt nur
+  // dafür, dass ein Mitglied eine klare Absage bekommt statt einer leeren Liste.
   const { data: ownedVehicle } = await supabase
     .from("vehicles")
     .select("id")
     .eq("id", id)
     .eq("user_id", user.id)
-    .single();
+    .maybeSingle();
 
   if (!ownedVehicle) {
-    const { data: membership } = await supabase
-      .from("vehicle_members")
-      .select("vehicle_id, role")
-      .eq("vehicle_id", id)
-      .eq("user_id", user.id)
-      .single();
-
-    if (!membership) {
-      notFound();
-    }
-
-    canEdit = membership.role !== "betrachter";
-    // Löschen bleibt dem Besitzer vorbehalten, wie bei Tankbuch und laufenden Kosten
-    canDelete = false;
+    notFound();
   }
+
+  const canEdit = true;
+  const canDelete = true;
 
   const { data: costs, count } = await supabase
     .from("one_off_costs")

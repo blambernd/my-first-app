@@ -300,6 +300,60 @@ Ob PROJ-25 und PROJ-26 mit auf "nur Besitzer" umgestellt werden, sollte vor dem 
 
 Die Sichtprüfung lief gegen das Wegwerf-Fahrzeug mit eigens angelegten Daten; diese wurden danach wieder entfernt (alle vier Tabellen zurück auf 0 Zeilen).
 
+## Implementierung (Backend)
+
+**Stand:** 2026-08-01 · Keine neue Tabelle, keine API-Route — die Backend-Arbeit war Zugriff und Performance
+
+### Keine neue Tabelle, keine API-Route
+
+Wie im Tech Design festgelegt: Das Feature liest ausschließlich. Die Aggregation läuft in der Server Component über die geprüften Bausteine aus PROJ-24/25/26. Damit gibt es kein Schema und keine Route zu bauen — und nichts, was zwischen zwei Quellen der Wahrheit auseinanderlaufen könnte.
+
+### Zugriff: gesamter Kostenbereich auf den Besitzer beschränkt
+
+Entscheidung des Nutzers vom 2026-08-01 nach ausdrücklicher Rückfrage (Änderungen an RLS-Regeln brauchen laut Projektregeln Freigabe).
+
+Die Beschränkung **musste** über PROJ-27 hinausgehen: Die Auswertung zeigt nichts, was nicht schon in den Listen von PROJ-25 und PROJ-26 stünde, und deren Lesepolicies erlaubten jedem Mitglied den Zugriff. Nur die Auswertung zu sperren wäre Fassade gewesen.
+
+- Migration: `20260801_restrict_cost_tables_to_owner.sql`
+- Betroffen: `recurring_costs` und `one_off_costs`, alle vier Regeln je Tabelle auf `besitzer`
+- **Tankbuch und Scheckheft bleiben unberührt** — Verbrauch und Wartungshistorie sind genau das, wofür die Werkstatt-Rolle existiert
+- Seiten von PROJ-25 und PROJ-26 nachgezogen: Mitglieder bekommen eine klare Absage statt einer leeren Liste
+- **Zeitpunkt bewusst gewählt:** In der Produktion existiert derzeit **keine einzige Mitgliedschaft**. Kein bestehender Nutzer verliert einen Zugriff; später wäre dieselbe Änderung eine spürbare Einschränkung laufender Freigaben
+
+**Gegen die Datenbank verifiziert** (zurückgerollte Transaktion, jeweils mit Gegenprobe):
+
+| Prüfung | Ergebnis |
+|---|---|
+| Werkstatt: laufende Kosten sehen | **0 Zeilen** |
+| Werkstatt: Einzelkosten sehen | **0 Zeilen** |
+| **Werkstatt: Tankbuch sehen** | **1 Zeile** — bewusst weiterhin erlaubt |
+| Werkstatt: Einzelkosten anlegen | **blockiert** (`42501`) |
+| Werkstatt: laufende Kosten ändern | **0 Zeilen** |
+| **Gegenprobe Besitzer: sehen / sehen / ändern** | **1 / 1 / 1** |
+
+### Performance
+
+Die Spec verlangt unter 500 ms bei mehreren hundert Einträgen. Gemessen mit **868 Datensätzen** über sieben Jahre (320 Tankvorgänge, 220 Scheckheft-Einträge, 28 laufende Kosten, 300 Einzelkosten):
+
+| Messung | Ergebnis |
+|---|---|
+| Reine Aggregation, alle drei Zeiträume | **3,8 ms** Median, 13,0 ms schlechtester von 30 Läufen |
+| Datenbankabfragen einzeln (`EXPLAIN ANALYZE`, Rolle `authenticated`) | 4,8–7,0 ms, alle über Indizes |
+| Seitenzeit gesamt, Produktionsbuild, 9 Läufe | **363 ms** Median (341–518 ms) |
+| Vergleichswert Einzelkosten-Seite, gleicher Lauf | 467 ms Median |
+
+Die Rechnung selbst ist also vernachlässigbar; die Seitenzeit besteht fast vollständig aus Netzwerkwegen zur Datenbank. Deshalb wurde dort optimiert: Besitzprüfung und Abo-Status laufen jetzt gemeinsam statt nacheinander — drei Wege statt vier.
+
+**Einordnung der Messung, damit sie nicht überinterpretiert wird:** Eine erste Messung ergab 1752 ms Median, allerdings direkt nach dem Start gegen einen kalten Server und mit nur fünf Läufen. Wie viel der Verbesserung auf die Parallelisierung und wie viel auf das Aufwärmen entfällt, lässt sich daraus **nicht sauber trennen**. Belastbar ist: Die Aggregation liegt bei 3,8 ms, und die Seite liegt im warmen Zustand unter dem Budget — auf einer Seite, die vier Quellen liest, gegenüber 467 ms für eine Seite, die eine liest.
+
+### Indizes
+
+Keine neuen nötig. Alle vier Abfragen laufen über bestehende Indizes auf `(vehicle_id, datum)`; die Pläne zeigen Index- bzw. Bitmap-Index-Scans, keine sequenziellen Scans.
+
+### Vorläufiger Test
+
+`tests/PROJ-27-auswertung-smoke-auth.spec.ts` — eine Rauchprobe, dass die Seite nach der Rechteumstellung weiterhin lädt. Die vollständigen Tests folgen in `/qa`.
+
 ## QA Test Results
 _To be added by /qa_
 
