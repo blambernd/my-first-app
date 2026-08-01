@@ -1,6 +1,16 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  async redirects() {
+    return [
+      {
+        // Haftungs-Disclaimer ist ins Impressum gewandert
+        source: "/haftung",
+        destination: "/impressum",
+        permanent: true,
+      },
+    ];
+  },
   async headers() {
     return [
       {

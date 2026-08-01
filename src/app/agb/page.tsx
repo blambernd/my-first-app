@@ -18,7 +18,7 @@ export default function AGBPage() {
         </h1>
 
         <div className="prose prose-neutral dark:prose-invert max-w-none space-y-6">
-          <p className="text-sm text-muted-foreground">Stand: 10. April 2026</p>
+          <p className="text-sm text-muted-foreground">Stand: 1. August 2026</p>
 
           <section>
             <h2 className="text-xl font-semibold mb-3">§ 1 Geltungsbereich</h2>
@@ -210,6 +210,12 @@ export default function AGBPage() {
               (4) Der Betreiber übernimmt keine Haftung für den Verlust von
               Daten, soweit der Nutzer es versäumt hat, eigene Sicherungskopien
               zu erstellen.
+            </p>
+            <p>
+              (5) Die Plattform ersetzt keine rechtlich verbindlichen Dokumente
+              wie Fahrzeugbriefe, TÜV-Berichte oder Gutachten. Die Nutzung der
+              Plattform und der darin gespeicherten Informationen erfolgt auf
+              eigene Verantwortung.
             </p>
           </section>
 
