@@ -35,7 +35,7 @@ Zwei Punkte prägen den Zuschnitt: Die Auswertung muss **mit unvollständigen Da
 - [x] Zuordnung der Scheckheft-Einträge über `entry_type`: **Wartung** = Inspektion, Ölwechsel, TÜV/HU; **Reparatur** = Reparatur, Restaurierung; **Sonstiges** = Sonstiges
 - [ ] **Reifen** zählen als Ersatzteile, nicht als Wartung — damit die Zuordnung nicht je nach Erfassungsweg schwankt  _(nicht umsetzbar, siehe QA)_
 - [x] Die Auswertung ist zusätzlich nach **Standkosten** und **Fahrtkosten** aufteilbar: Standkosten = Versicherung, Steuer, Unterstellung, Clubbeitrag, Wertgutachten; Fahrtkosten = Benzin, Wartung, Reparatur, Ersatzteile
-- [ ] Die Standkosten beantworten sichtbar die Frage "Was kostet mich das Fahrzeug, wenn ich es nicht fahre?" — als Betrag pro Monat und pro Jahr  _(BUG-1, siehe QA)_
+- [x] Die Standkosten beantworten sichtbar die Frage "Was kostet mich das Fahrzeug, wenn ich es nicht fahre?" — als Betrag pro Monat und pro Jahr  _(BUG-1 behoben; Jahresangabe bei unterjährigen Verträgen noch fehlerhaft, siehe BUG-3)_
 - [x] Die Kostenarten sind nicht fest verdrahtet: Eine in PROJ-25/26 ergänzte Kostenart erscheint automatisch in der Auswertung
 - [x] Der Kaufpreis aus PROJ-28 fließt **nicht** in die Zeitreihe der laufenden Kosten ein, sondern wird getrennt ausgewiesen
 - [x] Verteilung der Kosten nach Kostenart wird grafisch dargestellt
@@ -524,3 +524,66 @@ Die Regressionstests decken beide Befunde ausdrücklich ab — mit der Begründu
 
 ## Deployment
 _To be added by /deploy_
+
+---
+
+## QA Test Results — zweiter Durchgang (2026-08-01)
+
+**Ergebnis: BUG-1 und BUG-2 bestätigt behoben.** Zwei neue Befunde der Stufe Mittel bzw. Niedrig, beide in der soeben geänderten Kennzahl.
+
+### Nachprüfung der Behebungen
+
+| Befund | Status | Nachweis |
+|---|---|---|
+| BUG-1 (Hoch) — Standkosten gemittelt statt aktuell | ✅ **behoben** | Versicherung 1.200 €/Jahr zeigt 100,00 €/Monat; eigener E2E-Test prüft, dass PROJ-25 und PROJ-27 denselben Wert nennen |
+| BUG-2 (Niedrig) — künftige Einträge verschwiegen | ✅ **behoben** | drei Unit-Tests für den Hinweis, ein E2E-Test für die Gegenprobe |
+
+| Testlauf | Ergebnis |
+|---|---|
+| E2E PROJ-27 | **29/29 grün** |
+| Unit gesamt | 456 grün, 4 vorbestehende Fehlschläge |
+| Regression PROJ-24 / 25 / 26 | **67/67 grün** |
+| Wegwerf-Fahrzeug nach dem Lauf | alle vier Tabellen 0 Zeilen |
+
+### Neue Befunde
+
+Beide stammen aus einer gezielt misstrauischen Prüfung der Behebung selbst — nicht aus den grünen Tests.
+
+**BUG-3 (Mittel): Die Jahresangabe ist bei unterjährigen Verträgen zu hoch**
+
+*Schritte:* Unterstellung über 600 € für sechs Monate anlegen (Winterlager, in den Edge Cases dieser Spec ausdrücklich als Normalfall genannt), Auswertung öffnen.
+
+| | Wert |
+|---|---|
+| PROJ-27 „pro Monat" | 100,00 € ✅ richtig |
+| PROJ-27 „im Jahr" | **1.200,00 €** ❌ |
+| PROJ-25 „Kosten 2026" | 600,00 € |
+| Tatsächlicher Vertragswert | 600,00 € |
+
+*Ursache:* Die Jahresangabe rechnet die Monatsbelastung schlicht mal zwölf. Bei einem Vertrag, der nur sechs Monate läuft, ist das doppelt so viel wie tatsächlich anfällt.
+
+*Was daran unangenehm ist:* PROJ-25 hat für genau diesen Fall `yearlyTotalCents` und dokumentiert dort ausdrücklich, warum „Monatsbelastung mal zwölf" falsch ist. Bei der Behebung von BUG-1 habe ich die Monatsangabe an PROJ-25 angeglichen, die Jahresangabe aber nicht — und damit dieselbe Falle an der Nachbarkennzahl wieder aufgestellt. Die beiden Seiten widersprechen sich erneut, nur an anderer Stelle.
+
+*Empfehlung:* Für „im Jahr" `yearlyTotalCents` verwenden, auf Standkosten eingeschränkt. Dann stimmen beide Seiten in beiden Zahlen überein.
+
+**BUG-4 (Niedrig): Die Standkosten-Karte ignoriert den gewählten Zeitraum**
+
+*Schritte:* Zeitraum „letztes Jahr" wählen, für das keine Daten vorliegen.
+
+*Tatsächlich:* „Gesamtkosten 0,00 €" neben „Standkosten aktuell 100,00 € / Monat · 1.200,00 € im Jahr".
+
+Die Karte ist mit „aktuell" beschriftet und meint das auch so — sie steht aber zwischen zwei Kennzahlen, die sich sehr wohl auf den gewählten Zeitraum beziehen. Ein flüchtiger Blick liest daraus Standkosten für ein Jahr, in dem gar keine anfielen.
+
+*Empfehlung:* In der Karte kenntlich machen, dass sie zeitraumunabhängig ist — etwa „unabhängig vom gewählten Zeitraum" als Zusatz.
+
+### Bewertung
+
+Nach der Severity-Regel des Prozesses (blockierend ab Hoch) steht dem Deployment nichts im Weg. Meine Empfehlung ist trotzdem, **BUG-3 vorher zu beheben**:
+
+- Es ist derselbe Widerspruch zwischen zwei Seiten, den wir gerade erst beseitigt haben — nur an der Nachbarkennzahl
+- Winterlager über sechs Monate ist bei Oldtimern der Normalfall, nicht die Ausnahme
+- Die Behebung ist klein: `yearlyTotalCents` existiert bereits und wird nur eingebunden
+
+BUG-4 kann danach oder später folgen.
+
+**Status bleibt In Review.** Soll stattdessen jetzt ausgeliefert werden, ist das vertretbar — dann setze ich auf Approved.
