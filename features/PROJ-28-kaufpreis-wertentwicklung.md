@@ -1,6 +1,6 @@
 # PROJ-28: Kaufpreis & Wertentwicklung
 
-## Status: Approved
+## Status: Deployed
 **Created:** 2026-07-31
 **Last Updated:** 2026-07-31
 
@@ -516,3 +516,52 @@ Diese Pfade brauchen eine Marktpreis-Analyse bzw. einen Meilenstein und sind üb
 ### Empfehlung
 
 **Produktionsreif.** Keine offenen Befunde der Stufen Kritisch, Hoch oder Mittel.
+
+---
+
+## Deployment
+
+- **Deployed:** 2026-08-01
+- **Commits:** `d81642a` Frontend · `37b5d9b` Backend · `0430a88` BUG-1 · `ca4d249` Abnahme
+- **Produktion:** https://www.oldtimer-docs.com/vehicles/[id]/kosten/wertentwicklung
+- **Migration:** `20260801_create_vehicle_purchases.sql` — bereits während `/frontend` angewendet und im Backend-Durchgang verifiziert
+- **Neue Env-Variablen:** keine · **Neue Abhängigkeiten:** keine
+
+### Vor dem Deployment geprüft
+
+| Punkt | Ergebnis |
+|---|---|
+| `npm run build` | erfolgreich, Route im Manifest |
+| `npm run lint` | 2 Fehler — dieselben zwei vorbestehenden (`cookie-consent-banner`, `landing-page`), keine PROJ-28-Datei |
+| QA | Approved nach zwei Durchgängen |
+| Migrationen | alle sieben angewendet |
+| Secret-Scan je Commit | sauber |
+
+### Mit ausgeliefert
+
+`99a9e80 feat(PROJ-4): Restructure documents tab around tabs and one shared grid` — ein Commit des Nutzers. Nach der beim vorherigen Deployment getroffenen Entscheidung mitgeliefert und in der Produktion mitgeprüft.
+
+### Nachprüfung in der Produktion
+
+**Der erste Anlauf schlug fehl — und das war richtig so.** Die Route lieferte einen 404, weil Vercel noch baute. Eine unangemeldete Abfrage hatte zuvor HTTP 200 gemeldet, was **nichts** beweist: Der Proxy leitet jede `/vehicles/*`-Route auf `/login`, bevor überhaupt geroutet wird. Erst der angemeldete Aufruf zeigt, ob die Route existiert. Nach kurzem Warten lief die Prüfung durch.
+
+Wie bei PROJ-27 greift in der Produktion die Premium-Sperre, weil dort kein Beta-Modus aktiv ist. Der Testnutzer wurde für die Dauer der Prüfung auf `premium` gesetzt und danach exakt auf `free / active` zurückgesetzt; die Stripe-Felder blieben nachweislich leer.
+
+| Prüfung | Ergebnis |
+|---|---|
+| Anschaffung | **20.500,00 €** (Kaufpreis 20.000 + Nebenkosten 500) |
+| Geschätzter Marktwert | **24.450,00 €** |
+| Wertveränderung | **+ 4.450,00 €** |
+| Gesamtbilanz | **+ 3.950,00 €** |
+| Schätzhinweis | vorhanden |
+| Abschnitt im Fahrzeugprofil | sichtbar, als „privat" gekennzeichnet, Kaufpreis korrekt |
+| PROJ-4 Dokumente-Reiter (Fremdcommit) | lädt, **0 Konsolenfehler** |
+| Konsolenfehler gesamt | **keine** |
+
+Testdaten nach der Prüfung entfernt: Anschaffung, Nebenkosten und Probe-Analyse auf 0 Zeilen.
+
+### Offene Punkte
+
+- **AC „Sichtbarkeit gesondert steuerbar"** — bewusst nicht umgesetzt (Tech Design C10). Empfehlung: Kriterium auf „nur für den Besitzer sichtbar" ändern
+- **Transfer-Aufgabe** (Vorschlag PROJ-32): Kaufpreis **und** Kostenhistorie dürfen beim Besitzerwechsel nicht mit übergehen. Bis dahin nimmt ein übertragenes Fahrzeug beides mit — die einzige Datenschutzlücke, die PROJ-28 nicht selbst schließen kann. Sollte vor breiterer Nutzung des Transfers geschlossen sein
+- **Premium-Verfügbarkeit:** Die Wertentwicklung ist wie die Kostenanalyse hinter der Premium-Sperre und für echte Nutzer erst erreichbar, wenn Premium verfügbar ist
