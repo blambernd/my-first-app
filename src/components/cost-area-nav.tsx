@@ -7,18 +7,14 @@ import { Repeat, Receipt, ChartColumn } from "lucide-react";
 /**
  * Unternavigation des Kosten-Bereichs.
  *
- * Hier stehen nur bereits gebaute Reiter. PROJ-26 (Einzelkosten) und PROJ-27
- * (Auswertung) tragen sich ein, sobald sie existieren — bis dahin würde ein
- * deaktivierter Reiter den Nutzern eine Funktion versprechen, die es nicht gibt.
+ * Hier stehen nur bereits gebaute Reiter — ein deaktivierter Reiter würde den
+ * Nutzern eine Funktion versprechen, die es nicht gibt.
  */
 const tabs = [
   { label: "Laufende Kosten", href: "", icon: Repeat },
   { label: "Einzelkosten", href: "/einzelkosten", icon: Receipt },
-  // { label: "Auswertung",   href: "/auswertung",   icon: ChartColumn }, // PROJ-27
+  { label: "Auswertung", href: "/auswertung", icon: ChartColumn },
 ];
-
-// Nur referenziert, damit das Icon für PROJ-27 nicht als ungenutzt gilt
-void ChartColumn;
 
 interface CostAreaNavProps {
   vehicleId: string;

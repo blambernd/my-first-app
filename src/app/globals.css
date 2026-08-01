@@ -29,6 +29,15 @@
     --chart-3: 197 37% 24%;
     --chart-4: 40 70% 55%;
     --chart-5: 0 60% 55%;
+    /* PROJ-27: Die Kostenanalyse führt bis zu zehn Kostenarten in einem
+       Diagramm. Farbton und Helligkeit variieren gemeinsam, damit die Reihen
+       auch bei Farbfehlsichtigkeit auseinanderzuhalten sind — verlassen darf
+       sich die Darstellung darauf trotzdem nicht, jede Reihe ist beschriftet. */
+    --chart-6: 280 55% 55%;
+    --chart-7: 130 45% 40%;
+    --chart-8: 25 75% 50%;
+    --chart-9: 205 15% 50%;
+    --chart-10: 320 50% 50%;
     --sidebar-background: 220 60% 22%;
     --sidebar-foreground: 220 15% 90%;
     --sidebar-primary: 40 30% 96%;
@@ -64,6 +73,11 @@
     --chart-3: 30 80% 55%;
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
+    --chart-6: 190 65% 55%;
+    --chart-7: 100 50% 55%;
+    --chart-8: 45 85% 60%;
+    --chart-9: 210 20% 65%;
+    --chart-10: 0 65% 60%;
     --sidebar-background: 220 30% 10%;
     --sidebar-foreground: 220 15% 90%;
     --sidebar-primary: 220 50% 65%;

@@ -1,6 +1,6 @@
 # PROJ-27: Kostenanalyse
 
-## Status: Architected
+## Status: In Progress
 **Created:** 2026-07-31
 **Last Updated:** 2026-07-31
 
@@ -239,6 +239,66 @@ Ob PROJ-25 und PROJ-26 mit auf "nur Besitzer" umgestellt werden, sollte vor dem 
 
 **F4 — Aufteilung nach Stand- und Fahrtkosten bei "Sonstiges".**
 "Sonstiges" ist in PROJ-25 und PROJ-26 bewusst nicht eingeordnet. Solche Beträge erscheinen in der Gesamtsumme, aber in keinem der beiden Töpfe. In der Aufteilung wird das als eigener Posten "ohne Zuordnung" ausgewiesen, damit die Summe der Töpfe nachvollziehbar unter der Gesamtsumme liegt.
+
+## Implementierung (Frontend)
+
+**Stand:** 2026-08-01 · Oberfläche und Rechenlogik fertig, Datenzugriff über Server Components
+
+### Gebaute Dateien
+
+| Datei | Zweck |
+|---|---|
+| `src/lib/cost-analysis.ts` | Gesamte Rechenlogik als reine Funktionen — Verzeichnis der Kostenarten, Zeiträume, Fahrleistung, Aggregation |
+| `src/lib/cost-analysis.test.ts` | 41 Unit-Tests |
+| `src/components/cost-analysis-view.tsx` | Ansicht: Kennzahlen, Datenbasis-Hinweis, Filter, Tabelle, leerer Zustand |
+| `src/components/cost-charts.tsx` | Die beiden Diagramme, getrennt wegen des Nachladens im Browser |
+| `src/app/vehicles/[id]/kosten/auswertung/page.tsx` | Besitzerprüfung, Premium-Sperre, Laden und Aggregation auf dem Server |
+| `src/components/cost-area-nav.tsx` | Reiter „Auswertung" freigeschaltet |
+| `src/app/globals.css` | `--chart-6` bis `--chart-10` ergänzt, hell und dunkel |
+
+### Umgesetzte Entscheidungen
+
+- **Keine eigene Tabelle**, keine gespeicherten Summen (C1)
+- **Aggregation auf dem Server**: Die Seite rechnet alle drei Zeiträume vor und übergibt fertige Summen. Das Umschalten in der Oberfläche braucht keinen weiteren Serveraufruf, und es wandert kein einziger Einzeleintrag in den Browser (C2)
+- **Verzeichnis abgeleitet statt wiederholt**: Kostenarten aus PROJ-25 und PROJ-26 werden aus deren eigenen Listen aufgebaut. Eine dort ergänzte Art erscheint automatisch (C3). Die Zuordnung der Scheckheft-Typen ist bewusst vollständig ausgeschrieben — kommt in PROJ-3 ein Typ hinzu, meldet TypeScript einen Fehler, statt ihn stillschweigend unter „Sonstiges" abzulegen
+- **„Nicht erfasst" ≠ „0 €"** (C4): Der Zustand wird über **alle** Daten bestimmt, nicht nur über den Zeitraum. Wer Tankbelege hat, aber keinen im gewählten Jahr, gilt als erfasst mit 0 € — das ist etwas anderes als nie erfasst
+- **Fixkosten monatlich umgelegt** über `prorate` aus PROJ-25, ohne Nachbau (C5). Noch nicht angebrochene Monate zählen nicht; der **laufende** Monat zählt mit, weil er begonnen hat
+- **Doppelzählungsschutz** über `countsTowardTotal` aus PROJ-26, ohne Nachbau (C6). Anzahl und Summe der ausgeschlossenen Beträge stehen sichtbar auf der Seite
+- **Fahrleistung** aus Tankbuch und Scheckheft zusammen; Abschnitte mit Tacho-Korrektur oder sinkendem Stand werden übersprungen, unter zwei Ablesungen lautet das Ergebnis „nicht berechenbar" (C7)
+- **Diagramme** mit dem seit PROJ-24 vorhandenen Recharts; keine neue Abhängigkeit (C8)
+- **Premium-Sperre** nach dem Muster von Marktpreis und Verkaufsassistent (C9)
+- **Nur der Besitzer** sieht die Seite (C10)
+- **Lücken bleiben Lücken**: Monate ohne Kosten werden im Diagramm ausgelassen (C11)
+- **Verweis zur Quelle** je Kostenart in der Tabelle (C12)
+
+### Nicht umgesetzt
+
+- **„Reifen zählen als Ersatzteile"** — nicht umsetzbar. Weder Scheckheft noch Einzelkosten kennen einen Reifen-Typ; Reifen sind heute eine Beschreibung. Als Ersatzteil erfasst fallen sie ohnehin richtig an. Empfehlung: Kriterium streichen
+- **Umstellung von PROJ-25 und PROJ-26 auf „nur Besitzer"** — bewusst nicht in diesem Feature. Solange die Listen dort für alle Mitglieder sichtbar sind, ist die Beschränkung der Auswertung nur eine Fassade (siehe F3). Eigene Entscheidung, eigene Aufgabe
+
+### Beim Bauen gefunden
+
+**Ungültiges HTML im Datenbasis-Hinweis.** `Badge` rendert ein `div`, das ich in einen Absatz gesetzt hatte. Ergebnis: ein Hydration-Fehler, den weder `tsc` noch `npm run build` sieht — beide übersetzen fehlerfrei. Gefunden erst beim Rendern im Browser. Behoben.
+
+**Diagramme müssen im Browser nachgeladen werden.** Recharts misst den Container aus, bevor es zeichnet; serverseitig gibt es keine Maße. Deshalb liegen die Diagramme in einer eigenen Datei, die über `next/dynamic` mit `ssr: false` geladen wird, mit Platzhalter in gleicher Höhe gegen Layout-Sprünge.
+
+**Eine Fehlspur, die ich offenlegen sollte:** Zwischenzeitlich sahen beide Diagramme leer aus, und ich hielt die Farbangabe für die Ursache. Eine Messung im DOM zeigte das Gegenteil — 19 Balken mit echter Höhe, Farbe aufgelöst zu `rgb(40, 90, 189)`. Die Diagramme waren die ganze Zeit in Ordnung; der `fullPage`-Screenshot skaliert das Fenster um und startet dadurch Rechartsʼ Einblend-Animation neu, sodass die Flächen im Bild bei Höhe null standen. Die Umstellung auf `var(--color-<schlüssel>)` bleibt trotzdem drin, weil sie dem Muster von shadcn und PROJ-24 entspricht — sie war aber **nicht** die Behebung eines Fehlers.
+
+### Geprüft
+
+| Prüfung | Ergebnis |
+|---|---|
+| Unit-Tests `cost-analysis` | **41/41 grün** |
+| Unit-Tests gesamt | 435 grün, 4 vorbestehende Fehlschläge (`auth.test.ts` ×3, `milestone.test.ts` ×1) |
+| `npm run build` | erfolgreich, Route im Manifest |
+| `npx eslint` auf allen PROJ-27-Dateien | keine Meldung |
+| Sichtprüfung leerer Zustand | vier Verweise auf die Erfassungs-Features |
+| Sichtprüfung mit Daten (1280 px und 375 px) | Kennzahlen, Hinweise, beide Diagramme, Tabelle korrekt |
+| Konsolenfehler auf der Auswertungsseite | **0** (der beobachtete Hydration-Fehler liegt per Gegenprobe auf `/dashboard` und ist vorbestehend) |
+| Rechenprobe gegen die Oberfläche | Summe 2.667,00 € = 237 + 200 + 500 + 50 + 800 + 600 + 250 + 30; ausgeschlossen 120,00 €; Standkosten 1.650 / 8 Monate = 206,25 €/Monat; 2.667 € / 1.000 km = 2,67 €/km |
+| Verhalten über die Monatsgrenze | Beim Tageswechsel auf den 1.8. stieg die Versicherung korrekt von 700 auf 800 € — der laufende Monat zählt mit, spätere nicht |
+
+Die Sichtprüfung lief gegen das Wegwerf-Fahrzeug mit eigens angelegten Daten; diese wurden danach wieder entfernt (alle vier Tabellen zurück auf 0 Zeilen).
 
 ## QA Test Results
 _To be added by /qa_
