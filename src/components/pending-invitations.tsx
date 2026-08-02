@@ -1,5 +1,6 @@
 "use client";
 
+import { useOrigin } from "@/hooks/use-origin";
 import { useState } from "react";
 import { toast } from "sonner";
 import {
@@ -39,6 +40,9 @@ export function PendingInvitations({
   invitations,
   onUpdate,
 }: PendingInvitationsProps) {
+  // Hydration-sicher: window.location.origin waehrend des Renderings zu lesen
+  // ergibt auf dem Server "" und im Browser die echte Adresse (React #418).
+  const origin = useOrigin();
   const [revokingId, setRevokingId] = useState<string | null>(null);
   const [resendingId, setResendingId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -118,7 +122,7 @@ export function PendingInvitations({
                     (expiresAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24)
                   )
                 );
-                const inviteLink = `${typeof window !== "undefined" ? window.location.origin : ""}/invite/${invitation.token}`;
+                const inviteLink = `${origin}/invite/${invitation.token}`;
 
                 return (
                   <div key={invitation.id} className="py-4 space-y-3">

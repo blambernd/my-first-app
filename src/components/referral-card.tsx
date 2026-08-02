@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useOrigin } from "@/hooks/use-origin";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -21,7 +22,7 @@ function MvpReferralCard() {
   const [copied, setCopied] = useState(false);
   const [email, setEmail] = useState("");
 
-  const siteUrl = typeof window !== "undefined" ? window.location.origin : "";
+  const siteUrl = useOrigin();
 
   async function handleCopy() {
     try {
@@ -99,6 +100,9 @@ export function ReferralCard() {
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
   const [email, setEmail] = useState("");
+  // Vor den frühen Rückgabepfaden weiter unten — Hooks müssen bei jedem
+  // Rendering in derselben Reihenfolge aufgerufen werden.
+  const origin = useOrigin();
 
   useEffect(() => {
     if (isBetaMode || isMvpMode) {
@@ -140,7 +144,7 @@ export function ReferralCard() {
 
   if (!data) return null;
 
-  const referralLink = `${typeof window !== "undefined" ? window.location.origin : ""}/r/${data.referralCode}`;
+  const referralLink = `${origin}/r/${data.referralCode}`;
 
   async function handleCopy() {
     try {

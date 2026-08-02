@@ -1,5 +1,6 @@
 "use client";
 
+import { useOrigin } from "@/hooks/use-origin";
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 import {
@@ -39,6 +40,8 @@ export function ProfileConfigurator({
   milestones,
   documents,
 }: ProfileConfiguratorProps) {
+  // Siehe hooks/use-origin.ts — nicht durch window.location ersetzen.
+  const origin = useOrigin();
   const [profile, setProfile] = useState<VehicleProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -209,7 +212,7 @@ export function ProfileConfigurator({
     );
   }
 
-  const profileUrl = `${typeof window !== "undefined" ? window.location.origin : ""}/profil/${profile.token}`;
+  const profileUrl = `${origin}/profil/${profile.token}`;
 
   return (
     <div className="space-y-6">

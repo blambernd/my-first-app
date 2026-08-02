@@ -1,5 +1,6 @@
 "use client";
 
+import { useOrigin } from "@/hooks/use-origin";
 import { useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -96,6 +97,8 @@ export function SalesWizard({
   marketPrice,
   initialCompletion,
 }: SalesWizardProps) {
+  // Siehe hooks/use-origin.ts — nicht durch window.location ersetzen.
+  const origin = useOrigin();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -248,7 +251,7 @@ export function SalesWizard({
               vehicleId={vehicleId}
               kurzprofilUrl={
                 hasKurzprofil && kurzprofilToken
-                  ? `${typeof window !== "undefined" ? window.location.origin : ""}/profil/${kurzprofilToken}`
+                  ? `${origin}/profil/${kurzprofilToken}`
                   : null
               }
               onPlatformUpdate={handlePlatformUpdate}

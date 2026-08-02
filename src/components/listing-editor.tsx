@@ -1,5 +1,6 @@
 "use client";
 
+import { useOrigin } from "@/hooks/use-origin";
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 import {
@@ -96,6 +97,8 @@ export function ListingEditor({
   wizardMode = false,
   onListingReady,
 }: ListingEditorProps) {
+  // Siehe hooks/use-origin.ts — nicht durch window.location ersetzen.
+  const origin = useOrigin();
   const [listing, setListing] = useState<VehicleListing | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -606,7 +609,7 @@ export function ListingEditor({
               vehicleId={vehicleId}
               kurzprofilUrl={
                 hasKurzprofil && kurzprofilToken
-                  ? `${typeof window !== "undefined" ? window.location.origin : ""}/profil/${kurzprofilToken}`
+                  ? `${origin}/profil/${kurzprofilToken}`
                   : null
               }
               onPlatformUpdate={handlePlatformUpdate}
@@ -626,7 +629,7 @@ export function ListingEditor({
               vehicleData={vehicleData}
               kurzprofilUrl={
                 hasKurzprofil && kurzprofilToken
-                  ? `${typeof window !== "undefined" ? window.location.origin : ""}/profil/${kurzprofilToken}`
+                  ? `${origin}/profil/${kurzprofilToken}`
                   : null
               }
               contactInfo={{
