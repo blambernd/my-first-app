@@ -22,13 +22,26 @@ export interface MarketAnalysisRow {
   created_at: string;
 }
 
+/** Selbst eingetragener Marktwert aus `vehicle_market_values` */
+export interface ManualMarketValueRow {
+  value_cents: number | string;
+  valued_on: string;
+  note: string | null;
+}
+
 export interface MarketValue {
   cents: number;
-  /** Woraus der Wert stammt — für die Beschriftung */
-  basis: "median" | "average";
+  /**
+   * Woraus der Wert stammt — für die Beschriftung.
+   * "manuell" ist eine Selbsteinschätzung des Besitzers und muss als solche
+   * gekennzeichnet werden; sie darf nicht wie ein erhobener Marktwert wirken.
+   */
+  basis: "median" | "average" | "manuell";
   analysedOn: string;
   /** Tage seit der Analyse; ab einer gewissen Zahl weist die Oberfläche darauf hin */
   ageInDays: number;
+  /** Nur bei manueller Eingabe: Vermerk des Besitzers */
+  note?: string | null;
 }
 
 export interface ValueDevelopment {
@@ -76,6 +89,35 @@ function daysBetween(from: string, to: Date): number {
  * Fehlt der Median, dient der Durchschnitt als Rückfall; welcher Wert
  * verwendet wurde, wird mitgeführt und angezeigt.
  */
+/**
+ * Nimmt den zuletzt vom Besitzer eingetragenen Marktwert.
+ *
+ * Er hat Vorrang vor jeder automatischen Analyse: Wer den Wert selbst
+ * einträgt, kennt Zustand, Ausstattung und Historie seines Fahrzeugs — die
+ * Suche kennt davon nichts.
+ */
+export function pickManualMarketValue(
+  values: ManualMarketValueRow[],
+  today: Date
+): MarketValue | null {
+  const sorted = [...values].sort((a, b) =>
+    a.valued_on < b.valued_on ? 1 : a.valued_on > b.valued_on ? -1 : 0
+  );
+
+  for (const entry of sorted) {
+    const cents = Number(entry.value_cents);
+    if (!Number.isFinite(cents) || cents <= 0) continue;
+    return {
+      cents: Math.round(cents),
+      basis: "manuell",
+      analysedOn: entry.valued_on,
+      ageInDays: daysBetween(entry.valued_on, today),
+      note: entry.note,
+    };
+  }
+  return null;
+}
+
 export function pickMarketValue(
   analyses: MarketAnalysisRow[],
   today: Date

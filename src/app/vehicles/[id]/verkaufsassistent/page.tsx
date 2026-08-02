@@ -2,16 +2,30 @@ import { redirect, notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase-server";
 import { SalesWizard } from "@/components/sales-wizard";
 import { PremiumUpsell } from "@/components/premium-upsell";
+import { VERKAUFSASSISTENT_AKTIV } from "@/lib/feature-flags";
 import { getEffectivePlan, hasPremiumAccess, isBetaMode } from "@/lib/subscription";
 
 interface VerkaufsassistentPageProps {
   params: Promise<{ id: string }>;
 }
 
+/**
+ * Verkaufsassistent — vorübergehend deaktiviert (2026-08-02).
+ *
+ * Schritt 1 ist der Marktüberblick; dessen Datenbeschaffung liefert
+ * nachweislich keine belastbaren Preise (siehe PROJ-29). Die Route wird
+ * geschlossen und nicht nur aus der Navigation genommen, damit gespeicherte
+ * Verweise nicht doch noch zu unzuverlässigen Zahlen führen.
+ */
 export default async function VerkaufsassistentPage({
   params,
 }: VerkaufsassistentPageProps) {
   const { id } = await params;
+
+  if (!VERKAUFSASSISTENT_AKTIV) {
+    redirect(`/vehicles/${id}`);
+  }
+
   const supabase = await createClient();
   const {
     data: { user },

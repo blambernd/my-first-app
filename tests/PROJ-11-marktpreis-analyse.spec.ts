@@ -4,7 +4,11 @@ import { test, expect } from "@playwright/test";
 // Tests verify page rendering, API auth/authorization, rate limiting, responsive behavior.
 // Full CRUD with real SerpAPI data is not tested here (requires live API key + DB).
 
-test.describe("PROJ-11: Marktpreis-Analyse", () => {
+// Ausgesetzt am 2026-08-02: Die Marktpreis-Analyse liefert nachweislich keine
+// belastbaren Ergebnisse (siehe features/PROJ-29-belastbarer-marktueberblick.md)
+// und ist ueber die Oberflaeche nicht mehr erreichbar.
+// Siehe src/lib/feature-flags.ts (VERKAUFSASSISTENT_AKTIV).
+test.describe.skip("PROJ-11: Marktpreis-Analyse", () => {
   // AC: Nutzer kann eine Marktpreis-Analyse für ein Fahrzeug starten
   test("Marktpreis page renders without server error", async ({ page }) => {
     const response = await page.goto(

@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase-server";
 import { getEffectivePlan, hasPremiumAccess, isBetaMode } from "@/lib/subscription";
 import { PremiumUpsell } from "@/components/premium-upsell";
+import { VERKAUFSASSISTENT_AKTIV } from "@/lib/feature-flags";
 
 interface MarktpreisPageProps {
   params: Promise<{ id: string }>;
@@ -9,6 +10,14 @@ interface MarktpreisPageProps {
 
 export default async function MarktpreisPage({ params }: MarktpreisPageProps) {
   const { id } = await params;
+
+  // Kurzverweis auf Schritt 1 (Marktüberblick) des Verkaufsassistenten.
+  // Die Premium-Prüfung darunter entfällt bewusst: Wer die Funktion gar nicht
+  // bekommt, soll auch keine Kaufaufforderung dafür sehen.
+  if (!VERKAUFSASSISTENT_AKTIV) {
+    redirect(`/vehicles/${id}`);
+  }
+
   const supabase = await createClient();
   const {
     data: { user },

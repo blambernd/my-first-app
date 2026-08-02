@@ -53,6 +53,7 @@ describe("registerSchema", () => {
       email: "test@example.com",
       password: "password123",
       confirmPassword: "password123",
+      acceptTerms: true,
     });
     expect(result.success).toBe(true);
   });
@@ -79,6 +80,9 @@ describe("registerSchema", () => {
       email: "test@example.com",
       password: "password123",
       confirmPassword: "different456",
+      // Ohne Zustimmung scheitert bereits die Objektprüfung, und der
+      // .refine()-Vergleich der beiden Passwörter läuft gar nicht erst an.
+      acceptTerms: true,
     });
     expect(result.success).toBe(false);
     if (!result.success) {
@@ -103,6 +107,7 @@ describe("registerSchema", () => {
       email: "test@example.com",
       password: "12345678",
       confirmPassword: "12345678",
+      acceptTerms: true,
     });
     expect(result.success).toBe(true);
   });

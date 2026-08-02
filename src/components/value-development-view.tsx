@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { format, parse } from "date-fns";
 import { de } from "date-fns/locale";
@@ -12,6 +13,7 @@ import {
   STALE_ANALYSIS_DAYS,
   type ValueDevelopment,
 } from "@/lib/value-development";
+import { MarketValueForm } from "@/components/market-value-form";
 
 interface ValueDevelopmentViewProps {
   vehicleId: string;
@@ -39,6 +41,9 @@ export function ValueDevelopmentView({
   result,
   costsBefore,
 }: ValueDevelopmentViewProps) {
+  // Vor dem frühen Rückgabepfad, damit die Hook-Reihenfolge stabil bleibt.
+  const [formOpen, setFormOpen] = useState(false);
+
   if (!result) {
     return (
       <Card>
@@ -196,24 +201,35 @@ export function ValueDevelopmentView({
             <Info className="h-4 w-4" />
             <AlertDescription className="space-y-1">
               <p>
-                Der Marktwert ist eine <strong>Schätzung</strong> aus
-                Vergleichsangeboten, kein erzielter Verkaufserlös. Was ein
+                Der Marktwert ist deine <strong>eigene Schätzung</strong>, kein
+                erhobener Marktpreis und kein erzielter Verkaufserlös. Was ein
                 Fahrzeug tatsächlich bringt, hängt von Zustand, Papieren und
                 Käufer ab.
               </p>
-              <p className="flex items-center gap-1.5">
+              {market.note && (
+                <p className="italic">„{market.note}“</p>
+              )}
+              <p className="flex flex-wrap items-center gap-1.5">
                 <Clock className="h-3.5 w-3.5 shrink-0" />
-                Zugrunde liegende Analyse vom{" "}
+                Stand vom{" "}
                 {format(new Date(market.analysedOn), "dd.MM.yyyy", {
                   locale: de,
                 })}
                 {market.ageInDays > STALE_ANALYSIS_DAYS && (
                   <>
                     {" "}
-                    — das ist über {STALE_ANALYSIS_DAYS} Tage her, eine neue
-                    Analyse wäre aussagekräftiger.
+                    — das ist über {STALE_ANALYSIS_DAYS} Tage her, eine
+                    aktualisierte Schätzung wäre aussagekräftiger.
                   </>
                 )}
+                <Button
+                  variant="link"
+                  size="sm"
+                  className="h-auto p-0"
+                  onClick={() => setFormOpen(true)}
+                >
+                  Wert aktualisieren
+                </Button>
               </p>
             </AlertDescription>
           </Alert>
@@ -223,18 +239,29 @@ export function ValueDevelopmentView({
           <Info className="h-4 w-4" />
           <AlertDescription className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <span>
-              Für den Vergleich mit dem Marktwert wird eine Marktpreis-Analyse
-              gebraucht. Die Kostenseite oben gilt auch ohne sie.
+              Für den Vergleich fehlt der Marktwert. Trage ihn selbst ein — aus
+              einem Gutachten, aus Vergleichsangeboten oder nach eigener
+              Einschätzung. Die Kostenseite oben gilt auch ohne ihn.
             </span>
-            <Button variant="outline" size="sm" asChild className="shrink-0">
-              <Link href={`/vehicles/${vehicleId}/marktpreis`}>
-                Marktpreis ermitteln
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Link>
+            <Button
+              variant="outline"
+              size="sm"
+              className="shrink-0"
+              onClick={() => setFormOpen(true)}
+            >
+              Marktwert eintragen
+              <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </AlertDescription>
         </Alert>
       )}
+
+      <MarketValueForm
+        vehicleId={vehicleId}
+        open={formOpen}
+        onOpenChange={setFormOpen}
+        currentValueCents={market?.cents ?? null}
+      />
     </div>
   );
 }
