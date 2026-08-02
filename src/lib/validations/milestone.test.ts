@@ -147,7 +147,11 @@ describe("getCategoryLabel", () => {
     expect(getCategoryLabel("sonstiges")).toBe("Sonstiges");
   });
 
-  it("returns raw string for unknown category", () => {
-    expect(getCategoryLabel("unknown")).toBe("unknown");
+  it("fällt bei unbekannter Kategorie auf „Sonstiges“ zurück", () => {
+    // Der Test verlangte früher den rohen Wert zurück. Seit es
+    // normalizeCategory gibt, wird jede unbekannte Kategorie bewusst auf
+    // "sonstiges" abgebildet — damit in der Oberfläche nie ein technischer
+    // Bezeichner erscheint.
+    expect(getCategoryLabel("unknown")).toBe("Sonstiges");
   });
 });

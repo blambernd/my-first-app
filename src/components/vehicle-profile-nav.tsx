@@ -3,7 +3,7 @@
 import { useRef, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BookOpen, Clock, FileText, Car, Workflow, Lock, Fuel, Wallet } from "lucide-react";
+import { BookOpen, Clock, FileText, Car, Lock, Fuel, Wallet, type LucideIcon } from "lucide-react";
 import { useSubscription } from "@/hooks/use-subscription";
 import { Badge } from "@/components/ui/badge";
 
@@ -12,7 +12,17 @@ interface VehicleProfileNavProps {
   isOwner?: boolean;
 }
 
-const navItems = [
+interface NavItem {
+  label: string;
+  href: string;
+  icon: LucideIcon;
+  /** Nur mit Premium-Zugang nutzbar; ohne ihn erscheint ein Schloss */
+  premium?: boolean;
+}
+
+// Explizit typisiert, damit das Auskommentieren einzelner Einträge die
+// Eigenschaften des Arrays nicht verändert.
+const navItems: NavItem[] = [
   {
     label: "Übersicht",
     href: "",
@@ -49,12 +59,18 @@ const navItems = [
   //   href: "/ersatzteile",
   //   icon: Cog,
   // },
-  {
-    label: "Verkaufsassistent",
-    href: "/verkaufsassistent",
-    icon: Workflow,
-    premium: true,
-  },
+  // Verkaufsassistent vorübergehend deaktiviert (2026-08-02).
+  // Schritt 1 des Assistenten ist der Marktüberblick, und dessen
+  // Datenbeschaffung liefert nachweislich keine belastbaren Preise — siehe
+  // features/PROJ-29-belastbarer-marktueberblick.md. Kurzprofil, Inserat und
+  // Veröffentlichung sind Schritte desselben Assistenten und damit ebenfalls
+  // nicht erreichbar.
+  // {
+  //   label: "Verkaufsassistent",
+  //   href: "/verkaufsassistent",
+  //   icon: Workflow,
+  //   premium: true,
+  // },
 ];
 
 export function VehicleProfileNav({ vehicleId }: VehicleProfileNavProps) {
@@ -95,7 +111,7 @@ export function VehicleProfileNav({ vehicleId }: VehicleProfileNavProps) {
             {showLock ? (
               <Lock className="h-3 w-3 text-amber-500" />
             ) : (
-              "premium" in item && item.premium && (
+              item.premium && (
                 <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
                   Premium
                 </Badge>

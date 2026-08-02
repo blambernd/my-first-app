@@ -18,8 +18,8 @@ import {
 import {
   calculateValueDevelopment,
   costsBeforePurchase,
-  pickMarketValue,
-  type MarketAnalysisRow,
+  pickManualMarketValue,
+  type ManualMarketValueRow,
 } from "@/lib/value-development";
 import {
   normalizePurchase,
@@ -130,10 +130,10 @@ export default async function WertentwicklungPage({
       .eq("purchase_id", purchase.id)
       .order("created_at", { ascending: true }),
     supabase
-      .from("market_analyses")
-      .select("status, median_price, average_price, created_at")
+      .from("vehicle_market_values")
+      .select("value_cents, valued_on, note")
       .eq("vehicle_id", id)
-      .order("created_at", { ascending: false })
+      .order("valued_on", { ascending: false })
       .limit(10),
     supabase
       .from("fuel_entries")
@@ -187,8 +187,10 @@ export default async function WertentwicklungPage({
   const periods = buildPeriods(input, today);
   const gesamt = analyzeCosts(input, periods[periods.length - 1], today);
 
-  const market = pickMarketValue(
-    (marketResult.data ?? []) as MarketAnalysisRow[],
+  // Der selbst eingetragene Wert ist seit dem Aussetzen der Marktanalyse
+  // (2026-08-02) die einzige Quelle für den Marktwert.
+  const market = pickManualMarketValue(
+    (marketResult.data ?? []) as ManualMarketValueRow[],
     today
   );
 

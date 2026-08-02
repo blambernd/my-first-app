@@ -3,7 +3,9 @@ import { test, expect } from "@playwright/test";
 // E2E tests for PROJ-16: Verkaufsassistent
 // Tests verify wizard page, redirects, auth, responsive design, and security.
 
-test.describe("PROJ-16: Verkaufsassistent", () => {
+// Ausgesetzt am 2026-08-02 zusammen mit dem Marktueberblick, mit dem der
+// Assistent beginnt. Siehe src/lib/feature-flags.ts (VERKAUFSASSISTENT_AKTIV).
+test.describe.skip("PROJ-16: Verkaufsassistent", () => {
   // AC: Verkaufsassistent page requires authentication
   test("Verkaufsassistent page redirects unauthenticated user to login", async ({
     page,

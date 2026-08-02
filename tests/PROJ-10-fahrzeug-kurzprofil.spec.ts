@@ -4,7 +4,11 @@ import { test, expect } from "@playwright/test";
 // Tests verify public profile page rendering, API auth, deactivation behavior,
 // responsive design, and security aspects.
 
-test.describe("PROJ-10: Fahrzeug-Kurzprofil", () => {
+// Ausgesetzt am 2026-08-02: Das Kurzprofil ist Schritt 2 des
+// Verkaufsassistenten, der samt Marktueberblick deaktiviert wurde.
+// Siehe src/lib/feature-flags.ts (VERKAUFSASSISTENT_AKTIV).
+// Wieder aktivieren, sobald der Assistent zurueckkehrt.
+test.describe.skip("PROJ-10: Fahrzeug-Kurzprofil", () => {
   // AC: Public profile page loads without authentication
   test("Public profile page loads without auth for valid token format", async ({
     page,

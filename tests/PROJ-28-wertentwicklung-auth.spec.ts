@@ -267,7 +267,7 @@ test.describe("PROJ-28: Kaufpreis & Wertentwicklung", () => {
     );
   });
 
-  test("AC: Ohne Marktpreis-Analyse wird nur die Kostenseite gezeigt", async ({
+  test("AC: Ohne Marktwert wird nur die Kostenseite gezeigt", async ({
     page,
   }) => {
     await page.goto(WERTENTWICKLUNG);
@@ -276,11 +276,27 @@ test.describe("PROJ-28: Kaufpreis & Wertentwicklung", () => {
     await expect(page.getByText("Gesamtbilanz")).not.toBeVisible();
     await expect(page.getByText("Wertveränderung")).not.toBeVisible();
     await expect(
-      page.getByText(/Für den Vergleich mit dem Marktwert/)
+      page.getByText(/Für den Vergleich fehlt der Marktwert/)
     ).toBeVisible();
+    // Seit dem Aussetzen der Marktanalyse (2026-08-02) trägt der Besitzer den
+    // Wert selbst ein — es ist eine Schaltfläche, kein Verweis mehr.
     await expect(
-      page.getByRole("link", { name: /Marktpreis ermitteln/ })
+      page.getByRole("button", { name: /Marktwert eintragen/ })
     ).toBeVisible();
+  });
+
+  test("AC: Der Marktwert lässt sich selbst eintragen", async ({ page }) => {
+    await page.goto(WERTENTWICKLUNG);
+    await expect(karte(page, "Anschaffung")).toBeVisible({ timeout: 30000 });
+
+    await page.getByRole("button", { name: /Marktwert eintragen/ }).click();
+    await expect(
+      page.getByRole("dialog").getByText("Marktwert schätzen")
+    ).toBeVisible();
+
+    // Pflichtfeld: ohne Betrag wird nicht gespeichert
+    await page.getByRole("button", { name: "Speichern" }).click();
+    await expect(page.getByText("Bitte gib einen Wert an")).toBeVisible();
   });
 
   test("AC: Keine Warnung, wenn alle Kosten nach dem Kaufdatum liegen", async ({

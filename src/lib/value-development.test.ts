@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  pickManualMarketValue,
   pickMarketValue,
   calculateValueDevelopment,
   costsBeforePurchase,
@@ -289,5 +290,55 @@ describe("costsBeforePurchase", () => {
     const r = costsBeforePurchase(null, "2024-05-10");
     expect(r.affected).toBe(false);
     expect(r.earliestMonth).toBeNull();
+  });
+});
+
+describe("pickManualMarketValue (Ersatz für die Marktanalyse)", () => {
+  const heute = new Date("2026-08-02T00:00:00Z");
+
+  it("nimmt den jüngsten Eintrag", () => {
+    const result = pickManualMarketValue(
+      [
+        { value_cents: 1_500_000, valued_on: "2026-01-15", note: null },
+        { value_cents: 1_850_000, valued_on: "2026-07-01", note: "Gutachten" },
+        { value_cents: 1_600_000, valued_on: "2026-03-10", note: null },
+      ],
+      heute
+    );
+    expect(result?.cents).toBe(1_850_000);
+    expect(result?.basis).toBe("manuell");
+    expect(result?.note).toBe("Gutachten");
+  });
+
+  it("rechnet das Alter in Tagen aus", () => {
+    const result = pickManualMarketValue(
+      [{ value_cents: 1_000_000, valued_on: "2026-07-03", note: null }],
+      heute
+    );
+    expect(result?.ageInDays).toBe(30);
+  });
+
+  it("verkraftet NUMERIC als Zeichenkette", () => {
+    // Der Postgres-Treiber liefert BIGINT je nach Fall als String
+    const result = pickManualMarketValue(
+      [{ value_cents: "1850000", valued_on: "2026-07-01", note: null }],
+      heute
+    );
+    expect(result?.cents).toBe(1_850_000);
+  });
+
+  it("überspringt unbrauchbare Einträge statt sie zu übernehmen", () => {
+    const result = pickManualMarketValue(
+      [
+        { value_cents: 0, valued_on: "2026-07-02", note: null },
+        { value_cents: 1_200_000, valued_on: "2026-07-01", note: null },
+      ],
+      heute
+    );
+    expect(result?.cents).toBe(1_200_000);
+  });
+
+  it("liefert null ohne Einträge", () => {
+    expect(pickManualMarketValue([], heute)).toBeNull();
   });
 });
