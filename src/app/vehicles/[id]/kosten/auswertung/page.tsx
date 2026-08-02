@@ -6,7 +6,6 @@ import {
   isBetaMode,
 } from "@/lib/subscription";
 import { PremiumUpsell } from "@/components/premium-upsell";
-import { CostAreaNav } from "@/components/cost-area-nav";
 import { CostAnalysisView } from "@/components/cost-analysis-view";
 import {
   analyzeCosts,
@@ -83,7 +82,6 @@ export default async function AuswertungPage({ params }: AuswertungPageProps) {
   if (!hasPremiumAccess(effectivePlan)) {
     return (
       <div className="space-y-6">
-        <CostAreaNav vehicleId={id} />
         <PremiumUpsell
           feature="Kostenanalyse"
           description="Alle Kosten deines Fahrzeugs an einer Stelle: Verteilung nach Kostenart, Entwicklung über die Zeit, Kosten pro Kilometer und die Antwort auf die Frage, was das Fahrzeug kostet, wenn es nur steht."
@@ -158,7 +156,6 @@ export default async function AuswertungPage({ params }: AuswertungPageProps) {
 
   return (
     <div className="space-y-6">
-      <CostAreaNav vehicleId={id} />
       <CostAnalysisView
         vehicleId={id}
         results={results}

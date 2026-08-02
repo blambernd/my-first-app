@@ -21,9 +21,24 @@ import { createClient } from "@/lib/supabase";
 interface DeleteVehicleButtonProps {
   vehicleId: string;
   vehicleName: string;
+  /**
+   * Gesteuerter Betrieb ohne eigene Schaltfläche (PROJ-30).
+   *
+   * Im Überlaufmenü des Fahrzeugkopfs kann der Dialog nicht innerhalb des
+   * Menüs liegen: Das Menü schließt beim Klick und nimmt den Dialog mit.
+   * Deshalb steht der Dialog außerhalb und wird von dort geöffnet.
+   */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export function DeleteVehicleButton({ vehicleId, vehicleName }: DeleteVehicleButtonProps) {
+export function DeleteVehicleButton({
+  vehicleId,
+  vehicleName,
+  open,
+  onOpenChange,
+}: DeleteVehicleButtonProps) {
+  const gesteuert = open !== undefined;
   const router = useRouter();
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -61,13 +76,15 @@ export function DeleteVehicleButton({ vehicleId, vehicleName }: DeleteVehicleBut
   }
 
   return (
-    <AlertDialog>
-      <AlertDialogTrigger asChild>
-        <Button variant="destructive" size="sm">
-          <Trash2 className="h-3.5 w-3.5 mr-1.5" />
-          Löschen
-        </Button>
-      </AlertDialogTrigger>
+    <AlertDialog open={open} onOpenChange={onOpenChange}>
+      {!gesteuert && (
+        <AlertDialogTrigger asChild>
+          <Button variant="destructive" size="sm">
+            <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+            Löschen
+          </Button>
+        </AlertDialogTrigger>
+      )}
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Fahrzeug löschen?</AlertDialogTitle>

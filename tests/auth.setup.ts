@@ -35,9 +35,13 @@ setup("Testnutzer anmelden", async ({ page }) => {
 
   // Die Anmeldung leitet per window.location auf das Dashboard weiter
   await page.waitForURL("**/dashboard**", { timeout: 30000 });
-  await expect(page.getByRole("heading", { name: /Fahrzeuge/i })).toBeVisible({
-    timeout: 15000,
-  });
+  // Ausdrücklich "Meine Fahrzeuge": Sobald der Testnutzer ein geteiltes
+  // Fahrzeug hat, steht auf dem Dashboard zusätzlich "Geteilte Fahrzeuge" —
+  // ein Muster auf /Fahrzeuge/i trifft dann zwei Überschriften und die
+  // Anmeldung scheitert, womit alle angemeldeten Tests ausfallen.
+  await expect(
+    page.getByRole("heading", { name: "Meine Fahrzeuge" })
+  ).toBeVisible({ timeout: 15000 });
 
   // Cookie-Zustimmung direkt in den localStorage schreiben statt sie
   // wegzuklicken. Das Banner liegt fixiert am unteren Rand und fängt dort alle

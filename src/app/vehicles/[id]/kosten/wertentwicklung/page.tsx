@@ -6,7 +6,6 @@ import {
   isBetaMode,
 } from "@/lib/subscription";
 import { PremiumUpsell } from "@/components/premium-upsell";
-import { CostAreaNav } from "@/components/cost-area-nav";
 import { ValueDevelopmentView } from "@/components/value-development-view";
 import {
   analyzeCosts,
@@ -84,7 +83,6 @@ export default async function WertentwicklungPage({
   if (!hasPremiumAccess(effectivePlan)) {
     return (
       <div className="space-y-6">
-        <CostAreaNav vehicleId={id} />
         <PremiumUpsell
           feature="Wertentwicklung"
           description="Kaufpreis, aufgelaufene Unterhaltskosten und geschätzter Marktwert nebeneinander — die Antwort auf die Frage, was dich das Fahrzeug unterm Strich gekostet hat."
@@ -104,7 +102,6 @@ export default async function WertentwicklungPage({
   if (!purchaseRow) {
     return (
       <div className="space-y-6">
-        <CostAreaNav vehicleId={id} />
         <ValueDevelopmentView
           vehicleId={id}
           result={null}
@@ -203,7 +200,6 @@ export default async function WertentwicklungPage({
 
   return (
     <div className="space-y-6">
-      <CostAreaNav vehicleId={id} />
       <ValueDevelopmentView
         vehicleId={id}
         result={result}

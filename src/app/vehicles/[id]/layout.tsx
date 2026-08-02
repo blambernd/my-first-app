@@ -1,14 +1,17 @@
 import { redirect, notFound } from "next/navigation";
-import Link from "next/link";
+import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase-server";
-import { Button } from "@/components/ui/button";
 import { AccountHeader } from "@/components/account-header";
 import { MobileBottomNav } from "@/components/mobile-bottom-nav";
-import { DeleteVehicleButton } from "@/components/delete-vehicle-button";
 import { LeaveVehicleButton } from "@/components/leave-vehicle-button";
-import { VehicleProfileNav } from "@/components/vehicle-profile-nav";
-import { ProfileStatusToggle } from "@/components/profile-status-toggle";
-import { Pencil, Shield, ArrowRightLeft } from "lucide-react";
+import { VehicleSidebar } from "@/components/vehicle-sidebar";
+import { VehicleHeaderActions } from "@/components/vehicle-header-actions";
+import type { SwitchableVehicle } from "@/components/vehicle-switcher";
+import {
+  SidebarInset,
+  SidebarProvider,
+  SidebarTrigger,
+} from "@/components/ui/sidebar";
 import { Toaster } from "@/components/ui/sonner";
 import type { VehicleWithImages } from "@/lib/validations/vehicle";
 import type { MemberRole } from "@/lib/validations/member";
@@ -65,79 +68,92 @@ export default async function VehicleLayout({
 
   const isOwner = userRole === "besitzer";
 
+  // Fahrzeugliste für den Wechsler — serverseitig, weil Fahrzeug und Rolle
+  // hier ohnehin geladen werden. So steht der Name sofort da, statt erst als
+  // Platzhalter zu erscheinen und nachgeladen zu werden.
+  const [{ data: eigene }, { data: geteilte }] = await Promise.all([
+    supabase
+      .from("vehicles")
+      .select("id, make, model")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: true }),
+    supabase
+      .from("vehicle_members")
+      .select("vehicles(id, make, model)")
+      .eq("user_id", user.id),
+  ]);
+
+  const switchableVehicles: SwitchableVehicle[] = [
+    ...(eigene ?? []).map((v) => ({
+      id: v.id as string,
+      make: v.make as string,
+      model: v.model as string,
+      shared: false,
+    })),
+    ...(geteilte ?? [])
+      .map((m) => m.vehicles as unknown as { id: string; make: string; model: string } | null)
+      .filter((v): v is { id: string; make: string; model: string } => Boolean(v))
+      .map((v) => ({ id: v.id, make: v.make, model: v.model, shared: true })),
+  ];
+
+  // Der Klappzustand steht im Cookie, nicht im Browser-Speicher: Der Server
+  // kennt ihn dadurch schon beim Ausliefern und baut die Seite gleich richtig
+  // auf. Über localStorage entstünde ein sichtbares Zusammenklappen nach dem
+  // Laden — dieselbe Ursache wie beim Hydration-Fehler vom 2026-08-02.
+  const cookieStore = await cookies();
+  const sidebarOffen = cookieStore.get("sidebar_state")?.value !== "false";
+
+  const vehicleName = `${typedVehicle.make} ${typedVehicle.model}`;
+
   return (
-    <div className="bg-background">
-      <AccountHeader email={user.email || ""} />
+    <SidebarProvider defaultOpen={sidebarOffen}>
+      <VehicleSidebar
+        vehicleId={id}
+        isOwner={isOwner}
+        vehicles={switchableVehicles}
+      />
 
-      {/* Vehicle identity + actions + nav */}
-      <div className="border-b border-border/30">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-5xl">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pt-5 pb-1">
-            <h1 className="text-xl font-medium tracking-tight">
-              {typedVehicle.make} {typedVehicle.model}
-              <span className="text-muted-foreground font-light ml-2">
-                {typedVehicle.first_registration_date
-                  ? new Date(typedVehicle.first_registration_date).toLocaleDateString("de-DE")
-                  : typedVehicle.year}
-              </span>
-            </h1>
-            {isOwner ? (
-              <div className="flex items-center gap-1 flex-wrap">
-                <ProfileStatusToggle vehicleId={id} />
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-muted-foreground hover:text-foreground h-8 text-xs"
-                  asChild
-                >
-                  <Link href={`/vehicles/${id}/transfer`}>
-                    <ArrowRightLeft className="h-3.5 w-3.5 mr-1" />
-                    Transfer
-                  </Link>
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-muted-foreground hover:text-foreground h-8 text-xs"
-                  asChild
-                >
-                  <Link href={`/vehicles/${id}/mitglieder`}>
-                    <Shield className="h-3.5 w-3.5 mr-1" />
-                    Freigabe
-                  </Link>
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-muted-foreground hover:text-foreground h-8 text-xs"
-                  asChild
-                >
-                  <Link href={`/vehicles/${id}/edit`}>
-                    <Pencil className="h-3.5 w-3.5 mr-1" />
-                    Bearbeiten
-                  </Link>
-                </Button>
-                <DeleteVehicleButton
-                  vehicleId={id}
-                  vehicleName={`${typedVehicle.make} ${typedVehicle.model}`}
-                />
+      <SidebarInset className="bg-background min-w-0">
+        <AccountHeader email={user.email || ""} />
+
+        <div className="border-b border-border/30">
+          <div className="px-4 sm:px-6 lg:px-8">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 py-4">
+              <div className="flex items-center gap-2 min-w-0">
+                {/* Auf schmalen Bildschirmen der einzige Weg in die
+                    Fahrzeugnavigation — sie liegt dort als Panel überlagert. */}
+                <SidebarTrigger className="-ml-1" />
+                <h1 className="text-xl font-medium tracking-tight truncate">
+                  {typedVehicle.make} {typedVehicle.model}
+                  <span className="text-muted-foreground font-light ml-2">
+                    {typedVehicle.first_registration_date
+                      ? new Date(
+                          typedVehicle.first_registration_date
+                        ).toLocaleDateString("de-DE")
+                      : typedVehicle.year}
+                  </span>
+                </h1>
               </div>
-            ) : (
-              <LeaveVehicleButton
-                vehicleId={id}
-                vehicleName={`${typedVehicle.make} ${typedVehicle.model}`}
-              />
-            )}
-          </div>
-          <VehicleProfileNav vehicleId={id} isOwner={isOwner} />
-        </div>
-      </div>
 
-      <main className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-5xl">
-        <div className="py-6 sm:py-10 pb-20 md:pb-10">{children}</div>
-      </main>
-      <MobileBottomNav />
-      <Toaster />
-    </div>
+              {isOwner ? (
+                <VehicleHeaderActions vehicleId={id} vehicleName={vehicleName} />
+              ) : (
+                <LeaveVehicleButton vehicleId={id} vehicleName={vehicleName} />
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Bewusst ein div: SidebarInset rendert selbst bereits ein <main>.
+            Zwei verschachtelte <main> sind ungültiges HTML und melden
+            Screenreadern zwei Hauptinhalte. */}
+        <div className="px-4 sm:px-6 lg:px-8">
+          <div className="py-6 sm:py-10 pb-20 md:pb-10">{children}</div>
+        </div>
+
+        <MobileBottomNav />
+        <Toaster />
+      </SidebarInset>
+    </SidebarProvider>
   );
 }
