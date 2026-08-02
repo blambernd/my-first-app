@@ -1,5 +1,6 @@
 "use client";
 
+import { useOrigin } from "@/hooks/use-origin";
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 import { Share2, Copy, Check, ExternalLink, Loader2 } from "lucide-react";
@@ -16,6 +17,8 @@ interface ProfileStatusToggleProps {
 }
 
 export function ProfileStatusToggle({ vehicleId }: ProfileStatusToggleProps) {
+  // Siehe hooks/use-origin.ts — nicht durch window.location ersetzen.
+  const origin = useOrigin();
   const [isActive, setIsActive] = useState(false);
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -76,7 +79,7 @@ export function ProfileStatusToggle({ vehicleId }: ProfileStatusToggleProps) {
   if (loading || !hasProfile) return null;
 
   const profileUrl = token
-    ? `${typeof window !== "undefined" ? window.location.origin : ""}/profil/${token}`
+    ? `${origin}/profil/${token}`
     : "";
 
   return (

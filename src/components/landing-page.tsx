@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -119,20 +119,63 @@ const premiumPlanFeatures = [
   { text: "Marktüberblick", included: true },
 ];
 
+/**
+ * Merker "in dieser Sitzung registriert" als externer Speicher.
+ *
+ * sessionStorage gibt es auf dem Server nicht. useSyncExternalStore trennt
+ * Server-Schnappschuss (immer false) und Client-Wert, sodass Server-HTML und
+ * erstes Client-Rendering übereinstimmen.
+ */
+function subscribeRegistered(onChange: () => void): () => void {
+  window.addEventListener("registered-change", onChange);
+  return () => window.removeEventListener("registered-change", onChange);
+}
+
+function getRegisteredSnapshot(): boolean {
+  try {
+    return sessionStorage.getItem("registered") === "true";
+  } catch {
+    return false;
+  }
+}
+
+function getRegisteredServerSnapshot(): boolean {
+  return false;
+}
+
 export function LandingPage() {
   const searchParams = useSearchParams();
   const registeredParam = searchParams.get("registered") === "true";
-  const [isRegistered, setIsRegistered] = useState(() => {
-    try { return sessionStorage.getItem("registered") === "true"; } catch { return false; }
-  });
+  // Bewusst NICHT im useState-Initialisierer aus sessionStorage gelesen:
+  // Der Initialisierer läuft beim Rendern, und den gibt es auf dem Server
+  // auch. Dort schlägt der Zugriff fehl (→ false), im Browser kann er true
+  // ergeben — das Markup wiche voneinander ab und React bräche die Hydration
+  // ab. Der Wert kommt deshalb über useSyncExternalStore.
+  const gespeichertRegistriert = useSyncExternalStore(
+    subscribeRegistered,
+    getRegisteredSnapshot,
+    getRegisteredServerSnapshot
+  );
   const [isYearly, setIsYearly] = useState(false);
 
   useEffect(() => {
-    if (registeredParam && !isRegistered) {
-      sessionStorage.setItem("registered", "true");
-      setIsRegistered(true);
+    // Merkt die Registrierung für die Dauer der Sitzung, damit ein Neuladen
+    // ohne Parameter den Hinweis nicht verliert.
+    if (registeredParam && !gespeichertRegistriert) {
+      try {
+        sessionStorage.setItem("registered", "true");
+        window.dispatchEvent(new Event("registered-change"));
+      } catch {
+        // Ohne sessionStorage bleibt es beim Parameter — kein Grund zu scheitern
+      }
     }
-  }, [registeredParam, isRegistered]);
+  }, [registeredParam, gespeichertRegistriert]);
+
+  // Allein aus dem Store — nicht zusätzlich aus dem URL-Parameter. Der stammt
+  // aus useSearchParams und steht beim Server-Rendering nicht verlässlich zur
+  // Verfügung; er würde den Unterschied nur verlagern. Der Effekt oben schreibt
+  // ihn in den Store, das Ereignis löst ein erneutes Lesen aus.
+  const isRegistered = gespeichertRegistriert;
 
   return (
     <div className="flex flex-col">

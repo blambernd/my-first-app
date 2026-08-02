@@ -1,5 +1,6 @@
 "use client";
 
+import { useOrigin } from "@/hooks/use-origin";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Copy, Check, Clock, XCircle, CheckCircle, Ban, Mail, Loader2 } from "lucide-react";
@@ -35,6 +36,8 @@ const STATUS_CONFIG = {
 };
 
 export function TransferStatus({ transfer, vehicleName, onUpdate }: TransferStatusProps) {
+  // Siehe hooks/use-origin.ts — nicht durch window.location ersetzen.
+  const origin = useOrigin();
   const [cancelling, setCancelling] = useState(false);
   const [copied, setCopied] = useState(false);
   const [resending, setResending] = useState(false);
@@ -44,7 +47,7 @@ export function TransferStatus({ transfer, vehicleName, onUpdate }: TransferStat
   const isExpired = new Date(transfer.expires_at) < new Date();
   const isActive = transfer.status === "offen" && !isExpired;
 
-  const transferLink = `${typeof window !== "undefined" ? window.location.origin : ""}/transfer/${transfer.token}`;
+  const transferLink = `${origin}/transfer/${transfer.token}`;
 
   const copyLink = async () => {
     await navigator.clipboard.writeText(transferLink);

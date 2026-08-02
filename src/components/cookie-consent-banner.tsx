@@ -63,9 +63,14 @@ export function CookieConsentBanner() {
     useState<CookiePreferences>(DEFAULT_PREFERENCES);
 
   useEffect(() => {
+    // Bewusst erst nach dem Mounten: localStorage gibt es auf dem Server
+    // nicht. Würde `visible` schon beim Rendern daraus abgeleitet, wiche das
+    // Server-HTML vom ersten Client-Rendering ab und React bräche die
+    // Hydration ab. Einmaliges Setzen beim Mounten löst hier keine
+    // Renderschleife aus — die Abhängigkeitsliste ist leer.
     const stored = getCookiePreferences();
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!stored) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setVisible(true);
     }
   }, []);
