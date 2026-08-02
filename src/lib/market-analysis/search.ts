@@ -1,6 +1,90 @@
 import { getJson } from "serpapi";
-import type { MarketSearchParams, MarketListing, MarketSearchResult } from "./types";
-import { isSparePartListing, parsePrice, isPricePlausible, matchesFactoryCode, extractRichSnippetPrice } from "./filters";
+import type {
+  MarketSearchParams,
+  MarketListing,
+  MarketSearchResult,
+  RejectedListing,
+} from "./types";
+import {
+  isSparePartListing,
+  parseAnchoredPrice,
+  isPricePlausible,
+  matchesFactoryCode,
+  extractRichSnippetPrice,
+  hasForeignCurrency,
+} from "./filters";
+import { canonicalListingKey, hostMatchesSite } from "./urls";
+import {
+  isAggregatePage,
+  hasVehicleAttributes,
+  type Ablehnungsgrund,
+} from "./classification";
+
+/**
+ * Wie viele verworfene Treffer gespeichert werden. Die Zählung je Grund ist
+ * vollständig; die Einzeltreffer sind gedeckelt, damit ein Analysedatensatz
+ * nicht unbegrenzt wächst.
+ */
+export const MAX_REJECTED_STORED = 50;
+
+/**
+ * Zeitlimit je Einzelabfrage (BUG-11).
+ *
+ * Die Anforderung lautet: Ergebnis in höchstens 15 Sekunden. Gemessen wurden
+ * 15,1 s — genau am Limit, weil das alte Limit selbst bei 15 s lag und die
+ * Abfragen zwar parallel laufen, das Einsammeln aber noch Zeit kostet.
+ */
+const QUERY_TIMEOUT_MS = 10_000;
+
+/**
+ * Quellen, die eine zweite Ergebnisseite bekommen (BUG-5).
+ *
+ * Aus der Messung an 396 echten Treffern: mobile.de (141) und AutoScout24 (60)
+ * lieferten über die Google-Suche **keine einzige** Fahrzeug-Detailseite,
+ * ausschließlich Suchergebnisseiten. Classic Trader stellte 99 von 100
+ * verwertbaren Treffern. Zusätzliche Tiefe lohnt daher nur dort.
+ */
+const DEEP_SEARCH_SITES = new Set(["classic-trader.com"]);
+
+/**
+ * Höchstzahl gespeicherter Beispiele **je Grund** (BUG-10).
+ *
+ * Ein globaler Deckel allein füllte sich nach der Plattformreihenfolge: 50 von
+ * 275 Ablehnungen, fast alle vom ersten Anbieter. Wer sich ansieht, was
+ * aussortiert wurde, bekam damit ein verzerrtes Bild. Pro Grund zu deckeln
+ * sorgt dafür, dass jeder Grund mit Beispielen vertreten ist.
+ */
+const MAX_REJECTED_PER_REASON = 6;
+
+/**
+ * Sammelt verworfene Treffer und zählt die Gründe.
+ *
+ * Die Zählung ist immer vollständig; gedeckelt sind nur die Beispiele.
+ */
+class RejectionLog {
+  readonly items: RejectedListing[] = [];
+  readonly counts: Partial<Record<Ablehnungsgrund, number>> = {};
+
+  add(listing: Omit<RejectedListing, "reason">, reason: Ablehnungsgrund): void {
+    this.counts[reason] = (this.counts[reason] ?? 0) + 1;
+    this.push({ ...listing, reason });
+  }
+
+  private push(item: RejectedListing): void {
+    if (this.items.length >= MAX_REJECTED_STORED) return;
+    const jeGrund = this.items.filter((i) => i.reason === item.reason).length;
+    if (jeGrund >= MAX_REJECTED_PER_REASON) return;
+    this.items.push(item);
+  }
+
+  merge(other: RejectionLog): void {
+    for (const [reason, count] of Object.entries(other.counts)) {
+      const key = reason as Ablehnungsgrund;
+      this.counts[key] = (this.counts[key] ?? 0) + (count ?? 0);
+    }
+    for (const item of other.items) this.push(item);
+  }
+}
 
 /**
  * Build multiple Google Search query variants for a vehicle.
@@ -43,7 +127,9 @@ function buildQueryVariants(params: MarketSearchParams): string[] {
 function extractListings(
   organicResults: Record<string, unknown>[],
   params: MarketSearchParams,
-  platformLabel: string
+  platformLabel: string,
+  rejections: RejectionLog,
+  site: string
 ): MarketListing[] {
   const listings: MarketListing[] = [];
   const makeLower = params.make.toLowerCase();
@@ -56,33 +142,108 @@ function extractListings(
     const title = String(item.title || "");
     const snippet = String(item.snippet || "");
     const link = String(item.link || "");
+    const treffer = { title, url: link, platform: platformLabel };
 
-    // Filter: skip spare parts listings
-    if (isSparePartListing(title, snippet)) continue;
+    // BUG-3: Google nimmt `site:` als Wunsch, nicht als Bedingung. Eine Suche
+    // auf autoscout24.de lieferte de.wikipedia.org — und der Treffer trug
+    // anschließend das Etikett "AutoScout24".
+    if (!hostMatchesSite(link, site)) {
+      rejections.add(treffer, "fremde_seite");
+      continue;
+    }
 
-    // Relevance filter: title should mention the make
+    if (isSparePartListing(title, snippet)) {
+      rejections.add(treffer, "ersatzteil");
+      continue;
+    }
+
+    // Größter Einzelposten der Fehltreffer: Suchergebnis- und Übersichtsseiten.
+    // Muss vor der Merkmalsprüfung stehen — solche Seiten nennen durchaus
+    // Jahreszahlen ("10 gebrauchte Mercedes-Benz 220 aus dem Jahr 1960").
+    if (isAggregatePage(link, title)) {
+      rejections.add(treffer, "uebersichtsseite");
+      continue;
+    }
+
     const titleLower = title.toLowerCase();
-    const isMakeRelevant = makeAliases.some((a) => titleLower.includes(a));
-    if (!isMakeRelevant) continue;
+    if (!makeAliases.some((a) => titleLower.includes(a))) {
+      rejections.add(treffer, "falsche_marke");
+      continue;
+    }
 
-    // Filter: check factory code match (e.g. reject W124 when searching W123)
-    if (params.factoryCode && !matchesFactoryCode(title, snippet, params.factoryCode)) continue;
+    if (params.factoryCode && !matchesFactoryCode(title, snippet, params.factoryCode)) {
+      rejections.add(treffer, "falscher_typcode");
+      continue;
+    }
 
-    // Try to extract price from rich snippet, title, then snippet
-    const price = extractRichSnippetPrice(item) ?? parsePrice(title) ?? parsePrice(snippet);
+    // Ein Vergleichsfahrzeug muss mindestens ein Fahrzeugmerkmal nennen
+    // (Baujahr, Laufleistung, Leistung oder Hubraum).
+    if (!hasVehicleAttributes(title, snippet)) {
+      rejections.add(treffer, "keine_fahrzeugmerkmale");
+      continue;
+    }
 
-    // Validate price plausibility
-    if (price !== null && !isPricePlausible(price, title, snippet)) continue;
+    // BUG-2: Fremdwährung verwerfen statt umrechnen. Muss vor der
+    // Preisermittlung stehen — sonst landet ein CHF-Betrag als Euro in der
+    // Auswertung, wie im Live-Lauf geschehen.
+    if (hasForeignCurrency(title, snippet)) {
+      rejections.add(treffer, "fremdwaehrung");
+      continue;
+    }
 
-    listings.push({
-      title,
-      price,
-      platform: platformLabel,
-      url: link,
-    });
+    // Preis nur noch aus dem Titel oder strukturierten Feldern — das Snippet
+    // wird nicht mehr ausgelesen, dort standen die Ab-Preise der Trefferlisten.
+    //
+    // Titel vor Rich-Snippet, entgegen der bisherigen Reihenfolge: in den
+    // Produktionsdaten wurde "Mercedes-Benz 220 Coupe (1954) angeboten für
+    // 218.000" als 119.000 € gespeichert und "... angeboten für 189.220" als
+    // 54.271 €. Wenn der Verkäufer den Preis im Titel ausschreibt, ist das die
+    // belastbarere Angabe.
+    const price = parseAnchoredPrice(title) ?? extractRichSnippetPrice(item);
+
+    // BUG-6: Ohne Preis ist es kein Vergleichsfahrzeug. Bisher landeten solche
+    // Treffer in der Liste und wurden dem Nutzer als Vergleichsfahrzeug
+    // vorgeführt, obwohl sie in keine Berechnung eingingen.
+    if (price === null) {
+      rejections.add(treffer, "kein_preis");
+      continue;
+    }
+
+    if (!isPricePlausible(price, title, snippet)) {
+      rejections.add(treffer, "preis_unplausibel");
+      continue;
+    }
+
+    listings.push({ title, price, platform: platformLabel, url: link });
   }
 
   return listings;
+}
+
+/**
+ * Entdoppelt über den kanonischen Inseratsschlüssel (BUG-1).
+ *
+ * Der frühere Vergleich der vollen URL ließ dieselbe Classic-Trader-Anzeige
+ * unter /de/, /at/ und /ch/ dreimal durch — im Live-Lauf waren das alle drei
+ * bepreisten "Vergleichsfahrzeuge".
+ */
+function deduplicate(
+  listings: MarketListing[],
+  rejections: RejectionLog
+): MarketListing[] {
+  const seen = new Set<string>();
+  return listings.filter((l) => {
+    const key = canonicalListingKey(l.url);
+    if (seen.has(key)) {
+      rejections.add(
+        { title: l.title, url: l.url, platform: l.platform },
+        "doppelt"
+      );
+      return false;
+    }
+    seen.add(key);
+    return true;
+  });
 }
 
 /**
@@ -91,7 +252,8 @@ function extractListings(
 async function runGoogleQuery(
   query: string,
   site: string,
-  apiKey: string
+  apiKey: string,
+  start = 0
 ): Promise<Record<string, unknown>[]> {
   const fullQuery = `${query} site:${site}`;
 
@@ -102,10 +264,11 @@ async function runGoogleQuery(
       gl: "de",
       hl: "de",
       num: 20,
+      start,
       api_key: apiKey,
     }),
     new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error("Timeout")), 15000)
+      setTimeout(() => reject(new Error("Timeout")), QUERY_TIMEOUT_MS)
     ),
   ]);
 
@@ -121,17 +284,24 @@ async function searchPlatform(
   params: MarketSearchParams,
   site: string,
   platformLabel: string
-): Promise<{ listings: MarketListing[]; error?: string }> {
+): Promise<{ listings: MarketListing[]; error?: string; rejections: RejectionLog }> {
+  const rejections = new RejectionLog();
   const apiKey = process.env.SERPAPI_API_KEY;
-  if (!apiKey) return { listings: [], error: "SERPAPI_API_KEY nicht konfiguriert" };
+  if (!apiKey) {
+    return { listings: [], error: "SERPAPI_API_KEY nicht konfiguriert", rejections };
+  }
 
   try {
     const queries = buildQueryVariants(params);
 
-    // Run all query variants in parallel
-    const results = await Promise.allSettled(
-      queries.map((q) => runGoogleQuery(q, site, apiKey))
-    );
+    // Run all query variants in parallel. Für die einzige Quelle, die
+    // Detailseiten liefert, zusätzlich die zweite Ergebnisseite (BUG-5).
+    const abfragen = queries.map((q) => runGoogleQuery(q, site, apiKey));
+    if (DEEP_SEARCH_SITES.has(site)) {
+      abfragen.push(...queries.map((q) => runGoogleQuery(q, site, apiKey, 20)));
+    }
+
+    const results = await Promise.allSettled(abfragen);
 
     // Collect all organic results
     const allResults: Record<string, unknown>[] = [];
@@ -142,21 +312,22 @@ async function searchPlatform(
     }
 
     // Extract and filter listings
-    const listings = extractListings(allResults, params, platformLabel);
+    const listings = extractListings(
+      allResults,
+      params,
+      platformLabel,
+      rejections,
+      site
+    );
 
-    // Deduplicate by URL
-    const seen = new Set<string>();
-    const unique = listings.filter((l) => {
-      if (seen.has(l.url)) return false;
-      seen.add(l.url);
-      return true;
-    });
+    const unique = deduplicate(listings, rejections);
 
-    return { listings: unique };
+    return { listings: unique, rejections };
   } catch (error) {
     return {
       listings: [],
       error: error instanceof Error ? error.message : "Unbekannter Fehler",
+      rejections,
     };
   }
 }
@@ -164,9 +335,14 @@ async function searchPlatform(
 /**
  * Search eBay via the dedicated eBay SerpAPI engine with multiple query variants.
  */
-async function searchEbay(params: MarketSearchParams): Promise<{ listings: MarketListing[]; error?: string }> {
+async function searchEbay(
+  params: MarketSearchParams
+): Promise<{ listings: MarketListing[]; error?: string; rejections: RejectionLog }> {
+  const rejections = new RejectionLog();
   const apiKey = process.env.SERPAPI_API_KEY;
-  if (!apiKey) return { listings: [], error: "SERPAPI_API_KEY nicht konfiguriert" };
+  if (!apiKey) {
+    return { listings: [], error: "SERPAPI_API_KEY nicht konfiguriert", rejections };
+  }
 
   try {
     // Build eBay query variants
@@ -200,7 +376,7 @@ async function searchEbay(params: MarketSearchParams): Promise<{ listings: Marke
             api_key: apiKey,
           }),
           new Promise<never>((_, reject) =>
-            setTimeout(() => reject(new Error("Timeout")), 15000)
+            setTimeout(() => reject(new Error("Timeout")), QUERY_TIMEOUT_MS)
           ),
         ])
       )
@@ -213,38 +389,68 @@ async function searchEbay(params: MarketSearchParams): Promise<{ listings: Marke
       const organicResults = (result.value.organic_results || []) as Record<string, unknown>[];
       for (const item of organicResults) {
         const title = String(item.title || "");
+        const url = String(item.link || "");
         const priceInfo = item.price as Record<string, unknown> | undefined;
         const price = priceInfo?.extracted ? Number(priceInfo.extracted) : null;
+        const treffer = { title, url, platform: "eBay" };
 
-        if (isSparePartListing(title)) continue;
-        if (price !== null && (price < 1000 || price > 5_000_000)) continue;
+        if (isSparePartListing(title)) {
+          rejections.add(treffer, "ersatzteil");
+          continue;
+        }
+        if (isAggregatePage(url, title)) {
+          rejections.add(treffer, "uebersichtsseite");
+          continue;
+        }
+        if (hasForeignCurrency(title)) {
+          rejections.add(treffer, "fremdwaehrung");
+          continue;
+        }
+        // BUG-6: ohne Preis kein Vergleichsfahrzeug
+        if (price === null) {
+          rejections.add(treffer, "kein_preis");
+          continue;
+        }
+        // BUG-9: getrennt ausweisen. Unter 1.000 € sind es praktisch immer
+        // Teile, die die Stichwortliste nicht erfasst hat — nicht "unplausibel".
+        if (price < 1000) {
+          rejections.add(treffer, "preis_zu_niedrig");
+          continue;
+        }
+        if (price > 5_000_000) {
+          rejections.add(treffer, "preis_unplausibel");
+          continue;
+        }
 
         const titleLower = title.toLowerCase();
-        if (!makeAliases.some((a) => titleLower.includes(a))) continue;
-        if (params.factoryCode && !matchesFactoryCode(title, "", params.factoryCode)) continue;
+        if (!makeAliases.some((a) => titleLower.includes(a))) {
+          rejections.add(treffer, "falsche_marke");
+          continue;
+        }
+        if (params.factoryCode && !matchesFactoryCode(title, "", params.factoryCode)) {
+          rejections.add(treffer, "falscher_typcode");
+          continue;
+        }
+        // eBay-Autotitel nennen fast immer das Baujahr; fehlt jedes Merkmal,
+        // ist der Treffer meist Literatur oder Zubehör, das die Teileliste
+        // nicht erwischt hat.
+        if (!hasVehicleAttributes(title)) {
+          rejections.add(treffer, "keine_fahrzeugmerkmale");
+          continue;
+        }
 
-        allListings.push({
-          title,
-          price,
-          platform: "eBay",
-          url: String(item.link || ""),
-        });
+        allListings.push({ title, price, platform: "eBay", url });
       }
     }
 
-    // Deduplicate by URL
-    const seen = new Set<string>();
-    const unique = allListings.filter((l) => {
-      if (seen.has(l.url)) return false;
-      seen.add(l.url);
-      return true;
-    });
+    const unique = deduplicate(allListings, rejections);
 
-    return { listings: unique };
+    return { listings: unique, rejections };
   } catch (error) {
     return {
       listings: [],
       error: error instanceof Error ? error.message : "Unbekannter Fehler",
+      rejections,
     };
   }
 }
@@ -268,11 +474,13 @@ export async function searchMarketListings(
   const allListings: MarketListing[] = [];
   const platformErrors: Array<{ platform: string; error: string }> = [];
   const platformNames = ["mobile.de", "Classic Trader", "AutoScout24", "eBay"];
+  const rejections = new RejectionLog();
 
   for (let i = 0; i < results.length; i++) {
     const result = results[i];
     if (result.status === "fulfilled") {
       allListings.push(...result.value.listings);
+      rejections.merge(result.value.rejections);
       if (result.value.error) {
         platformErrors.push({ platform: platformNames[i], error: result.value.error });
       }
@@ -284,13 +492,14 @@ export async function searchMarketListings(
     }
   }
 
-  // Final deduplication across platforms (same URL from different queries)
-  const seen = new Set<string>();
-  const deduplicated = allListings.filter((l) => {
-    if (seen.has(l.url)) return false;
-    seen.add(l.url);
-    return true;
-  });
+  // Abschließende Entdopplung über Plattformgrenzen hinweg — dasselbe Inserat
+  // kann über mehrere Quellen gefunden werden und darf nur einmal zählen.
+  const deduplicated = deduplicate(allListings, rejections);
 
-  return { listings: deduplicated, platformErrors };
+  return {
+    listings: deduplicated,
+    platformErrors,
+    rejected: rejections.items,
+    rejectedCounts: rejections.counts,
+  };
 }

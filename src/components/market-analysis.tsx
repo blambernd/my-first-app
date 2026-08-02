@@ -32,6 +32,10 @@ import type {
   MarketAnalysisListing,
 } from "@/lib/validations/market-analysis";
 import { MIN_PRICED_LISTINGS } from "@/lib/market-analysis/statistics";
+import {
+  ABLEHNUNGSGRUND_LABELS,
+  type Ablehnungsgrund,
+} from "@/lib/market-analysis/classification";
 
 interface MarketAnalysisProps {
   vehicleId: string;
@@ -160,7 +164,102 @@ function PriceSummaryCard({ analysis }: { analysis: MarketAnalysis }) {
         <p className="text-xs text-muted-foreground">
           Berechnet aus {analysis.listing_count} Inserat{analysis.listing_count !== 1 ? "en" : ""} mit
           Preisangabe
+          {/* Das Ergebnis muss nennen, auf welchen Zustand es sich bezieht —
+              eine später geänderte Note darf die Aussage nicht rückwirkend
+              verschieben. */}
+          {analysis.condition_grade != null &&
+            ` · bezogen auf Zustandsnote ${analysis.condition_grade}`}
         </p>
+        <p className="text-xs text-muted-foreground mt-1">
+          Erhoben am{" "}
+          {new Date(analysis.created_at).toLocaleString("de-DE", {
+            dateStyle: "medium",
+            timeStyle: "short",
+          })}{" "}
+          · Quellen: {quellenListe(analysis)}
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
+/**
+ * Die Quellen, aus denen die eingeflossenen Fahrzeuge stammen.
+ * Wird aus den Inseraten abgeleitet, damit sie zum tatsächlichen Ergebnis
+ * passt und nicht zur Liste der abgefragten Plattformen.
+ */
+function quellenListe(analysis: MarketAnalysis): string {
+  const quellen = Array.from(
+    new Set((analysis.listings ?? []).map((l) => l.platform).filter(Boolean))
+  );
+  return quellen.length > 0 ? quellen.join(", ") : "keine";
+}
+
+/**
+ * Was aussortiert wurde und warum (PROJ-29).
+ *
+ * Ohne diese Aufstellung ist nicht nachvollziehbar, warum aus 280 Treffern
+ * eine Handvoll Fahrzeuge wird — die Zahl allein wirkt wie ein Fehler.
+ */
+function RejectedListingsCard({ analysis }: { analysis: MarketAnalysis }) {
+  const counts = analysis.rejected_counts ?? {};
+  const eintraege = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  if (eintraege.length === 0) return null;
+
+  const gesamt = eintraege.reduce((s, [, n]) => s + n, 0);
+  const beispiele = analysis.rejected_listings ?? [];
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm font-medium">
+          Aussortierte Treffer ({gesamt})
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <details>
+          <summary className="text-sm text-muted-foreground cursor-pointer">
+            Aufschlüsselung anzeigen
+          </summary>
+
+          <ul className="mt-3 space-y-1 text-sm">
+            {eintraege.map(([grund, anzahl]) => (
+              <li key={grund} className="flex justify-between gap-4">
+                <span className="text-muted-foreground">
+                  {ABLEHNUNGSGRUND_LABELS[grund as Ablehnungsgrund] ?? grund}
+                </span>
+                <span className="tabular-nums font-medium">{anzahl}</span>
+              </li>
+            ))}
+          </ul>
+
+          {beispiele.length > 0 && (
+            <div className="mt-4 pt-3 border-t">
+              <p className="text-xs text-muted-foreground mb-2">
+                Beispiele (bis zu sechs je Grund):
+              </p>
+              <ul className="space-y-1.5">
+                {beispiele.map((l, i) => (
+                  <li key={`${l.url}-${i}`} className="text-xs">
+                    <span className="text-muted-foreground">
+                      {ABLEHNUNGSGRUND_LABELS[l.reason as Ablehnungsgrund] ??
+                        l.reason}
+                      {": "}
+                    </span>
+                    <a
+                      href={l.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="hover:underline break-all"
+                    >
+                      {l.title || l.url}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </details>
       </CardContent>
     </Card>
   );
@@ -180,9 +279,24 @@ function RecommendationCard({ analysis }: { analysis: MarketAnalysis }) {
         <CardTitle className="text-sm font-medium flex items-center gap-2">
           <TrendingUp className="h-4 w-4 text-primary" />
           Preisorientierung
+          {analysis.confidence === "orientierend" && (
+            <Badge variant="outline" className="ml-auto text-xs font-normal">
+              Schmale Datenbasis
+            </Badge>
+          )}
         </CardTitle>
       </CardHeader>
       <CardContent>
+        {analysis.confidence === "orientierend" && (
+          <Alert className="mb-3">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              Diese Spanne beruht auf nur {analysis.listing_count}{" "}
+              Vergleichsfahrzeugen. Sie ist eine grobe Orientierung — schon ein
+              einzelnes ungewöhnliches Angebot verschiebt das Ergebnis spürbar.
+            </AlertDescription>
+          </Alert>
+        )}
         <div className="flex items-baseline gap-2 mb-3">
           <span className="text-2xl font-bold text-primary">
             {formatPrice(analysis.recommended_price_low)}
@@ -198,7 +312,13 @@ function RecommendationCard({ analysis }: { analysis: MarketAnalysis }) {
           </p>
         )}
         <p className="text-xs text-muted-foreground mt-4 pt-3 border-t leading-relaxed">
-          Hinweis: Dies ist ein Überblick über aktuelle Angebotspreise, keine Wertermittlung und kein Gutachten. Der Zustand des Fahrzeugs geht nicht in die Berechnung ein — er ist zugleich der größte Preisfaktor, ebenso wie Laufleistung, Matching Numbers, Seltenheit, Ausstattung und Dokumentation. Für einen belastbaren Wert ist ein Wertgutachten erforderlich.
+          Hinweis: Dies ist ein Überblick über aktuelle Angebotspreise, keine
+          Wertermittlung und kein Gutachten. Deine Zustandsnote wird zur Analyse
+          festgehalten, die Vergleichsinserate lassen sich jedoch nicht nach
+          Zustand filtern — der Zustand ist zugleich der größte Preisfaktor,
+          ebenso wie Laufleistung, Matching Numbers, Seltenheit, Ausstattung und
+          Dokumentation. Für einen belastbaren Wert ist ein Wertgutachten
+          erforderlich.
         </p>
       </CardContent>
     </Card>
@@ -269,6 +389,7 @@ function AnalysisResultView({ analysis }: { analysis: MarketAnalysis }) {
     <div className="space-y-4">
       <PriceSummaryCard analysis={analysis} />
       <RecommendationCard analysis={analysis} />
+      <RejectedListingsCard analysis={analysis} />
 
       {analysis.listings.length > 0 && (
         <Card>
@@ -371,6 +492,8 @@ export function MarketAnalysis({
   const hasConditionGrade =
     vehicleConditionGrade !== null && vehicleConditionGrade !== undefined;
   const [analyses, setAnalyses] = useState<MarketAnalysis[]>([]);
+  /** Wie viele Analysen aus der Zeit vor der Umstellung ausgeblendet sind. */
+  const [hiddenLegacyCount, setHiddenLegacyCount] = useState(0);
   const [selectedAnalysis, setSelectedAnalysis] = useState<MarketAnalysis | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isFetching, setIsFetching] = useState(true);
@@ -382,6 +505,7 @@ export function MarketAnalysis({
       if (!res.ok) throw new Error("Fehler beim Laden");
       const data = await res.json();
       setAnalyses(data.analyses || []);
+      setHiddenLegacyCount(data.hiddenLegacyCount ?? 0);
       if (data.analyses?.length > 0 && !selectedAnalysis) {
         setSelectedAnalysis(data.analyses[0]);
       }
@@ -416,9 +540,19 @@ export function MarketAnalysis({
 
       const data = await res.json();
       const newAnalysis = data.analysis as MarketAnalysis;
-      setAnalyses((prev) => [newAnalysis, ...prev]);
       setSelectedAnalysis(newAnalysis);
-      toast.success("Marktüberblick aktualisiert");
+
+      // BUG-7: Die Route liefert innerhalb von 24 Stunden das vorhandene
+      // Ergebnis zurück, statt erneut zu suchen. Ohne Hinweis wirkt das wie
+      // eine frische Analyse, die zufällig dasselbe ergeben hat.
+      if (data.reused) {
+        toast.info(
+          "Es gibt bereits einen Marktüberblick aus den letzten 24 Stunden — dieser wird angezeigt."
+        );
+      } else {
+        setAnalyses((prev) => [newAnalysis, ...prev]);
+        toast.success("Marktüberblick aktualisiert");
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Analyse fehlgeschlagen");
     } finally {
@@ -483,6 +617,23 @@ export function MarketAnalysis({
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
             </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* BUG-4: Altanalysen werden nicht mehr angezeigt. Ohne Erklärung wäre
+          die plötzlich leere Historie für den Nutzer ein Datenverlust. */}
+      {hiddenLegacyCount > 0 && analyses.length === 0 && !isLoading && (
+        <Alert>
+          <Info className="h-4 w-4" />
+          <AlertDescription>
+            {hiddenLegacyCount === 1
+              ? "Ein früherer Marktüberblick wird nicht mehr angezeigt."
+              : `${hiddenLegacyCount} frühere Marktüberblicke werden nicht mehr angezeigt.`}{" "}
+            Sie stammen aus einem Verfahren, das Suchergebnisseiten
+            fälschlich als Vergleichsfahrzeuge gezählt hat — ihre Preisspannen
+            waren dadurch zu breit. Starte eine neue Analyse für ein geprüftes
+            Ergebnis.
           </AlertDescription>
         </Alert>
       )}

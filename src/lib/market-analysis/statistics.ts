@@ -11,6 +11,28 @@ import type { MarketListing, PriceStatistics } from "./types";
 export const MIN_PRICED_LISTINGS = 8;
 
 /**
+ * Untergrenze, unterhalb derer gar keine Preisspanne mehr ausgewiesen wird.
+ *
+ * Hintergrund (PROJ-29): Nach dem Aussortieren von Übersichtsseiten,
+ * Ersatzteilen und merkmalslosen Treffern blieben in den echten
+ * Produktionsdaten je Analyse nur 0–7 Vergleichsfahrzeuge übrig — keine
+ * einzige der 20 gespeicherten Analysen erreichte 8. Eine harte Grenze bei 8
+ * hieße: das Feature liefert nie wieder ein Ergebnis.
+ *
+ * Deshalb wird gestaffelt statt abgeschnitten. Zwischen 4 und 7 Fahrzeugen
+ * gibt es eine Spanne, aber ausdrücklich als Orientierung gekennzeichnet.
+ * Unter 4 gibt es keine Zahl — nur die gefundenen Inserate zum Selbstansehen.
+ */
+export const MIN_ORIENTATION_LISTINGS = 4;
+
+/**
+ * Wie belastbar das Ergebnis ist. Das Feature heißt "Belastbarer
+ * Marktüberblick" — die Belastbarkeit gehört deshalb ins Ergebnis, nicht in
+ * eine Fußnote.
+ */
+export type Belastbarkeit = "belastbar" | "orientierend";
+
+/**
  * Preise unterhalb dieses Anteils des Medians gelten als Fremdkörper.
  *
  * Eine feste Untergrenze funktioniert nicht: 3.000 € sind bei einem Käfer ein
@@ -34,7 +56,7 @@ export function calculatePriceStatistics(
     (l): l is MarketListing & { price: number } => l.price !== null
   );
 
-  if (priced.length < MIN_PRICED_LISTINGS) return null;
+  if (priced.length < MIN_ORIENTATION_LISTINGS) return null;
 
   // Grobe Vorsortierung gegen Ersatzteile und Fehlparsungen, bevor der Median
   // berechnet wird, der die Empfehlung trägt.
@@ -44,7 +66,10 @@ export function calculatePriceStatistics(
   const priceFloor = preliminaryMedian * IMPLAUSIBLE_PRICE_RATIO;
   const plausible = priced.filter((l) => l.price >= priceFloor);
 
-  if (plausible.length < MIN_PRICED_LISTINGS) return null;
+  if (plausible.length < MIN_ORIENTATION_LISTINGS) return null;
+
+  const confidence: Belastbarkeit =
+    plausible.length >= MIN_PRICED_LISTINGS ? "belastbar" : "orientierend";
 
   // Sort by price
   const sorted = [...plausible].sort((a, b) => a.price - b.price);
@@ -111,7 +136,8 @@ export function calculatePriceStatistics(
     recommendedHigh,
     outlierCount,
     lowest,
-    highest
+    highest,
+    confidence
   );
 
   return {
@@ -124,6 +150,7 @@ export function calculatePriceStatistics(
     recommendedHigh,
     reasoning,
     listingsWithOutliers,
+    confidence,
   };
 }
 
@@ -152,7 +179,8 @@ function buildReasoning(
   high: number,
   outlierCount: number,
   lowest: number,
-  highest: number
+  highest: number,
+  confidence: Belastbarkeit
 ): string {
   const fmt = (n: number) =>
     new Intl.NumberFormat("de-DE", {
@@ -163,6 +191,14 @@ function buildReasoning(
     }).format(n);
 
   const parts: string[] = [];
+
+  // Steht bewusst zuerst: wer nur den ersten Satz liest, muss die Einschränkung
+  // mitbekommen — nicht erst nach der Preisspanne.
+  if (confidence === "orientierend") {
+    parts.push(
+      `Achtung: Diese Auswertung stützt sich auf nur ${count} Vergleichsfahrzeuge und ist daher eine grobe Orientierung, keine belastbare Bewertung. Ab ${MIN_PRICED_LISTINGS} Fahrzeugen gilt das Ergebnis als belastbar.`
+    );
+  }
 
   parts.push(
     `Basierend auf ${count} vergleichbaren Inseraten liegt der Medianpreis bei ${fmt(median)}.`

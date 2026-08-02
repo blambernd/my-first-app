@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { calculatePriceStatistics, MIN_PRICED_LISTINGS } from "./statistics";
+import {
+  calculatePriceStatistics,
+  MIN_PRICED_LISTINGS,
+  MIN_ORIENTATION_LISTINGS,
+} from "./statistics";
 import type { MarketListing } from "./types";
 
 function makeListing(price: number | null, platform = "mobile.de"): MarketListing {
@@ -16,15 +20,29 @@ function makeListings(prices: Array<number | null>): MarketListing[] {
 }
 
 describe("calculatePriceStatistics", () => {
-  it("returns null below the minimum sample size", () => {
+  it("returns null below the orientation threshold", () => {
     expect(calculatePriceStatistics([])).toBeNull();
     expect(calculatePriceStatistics([makeListing(10000)])).toBeNull();
 
-    // Genau einer zu wenig
+    // Genau einer zu wenig für eine Orientierung
     const tooFew = makeListings(
-      Array.from({ length: MIN_PRICED_LISTINGS - 1 }, (_, i) => 20000 + i * 100)
+      Array.from({ length: MIN_ORIENTATION_LISTINGS - 1 }, (_, i) => 20000 + i * 100)
     );
     expect(calculatePriceStatistics(tooFew)).toBeNull();
+  });
+
+  it("liefert zwischen Orientierungs- und Belastbarkeitsgrenze ein markiertes Ergebnis", () => {
+    // Kernfall aus PROJ-29: nach dem Aussortieren der Übersichtsseiten bleiben
+    // real 4–7 Fahrzeuge übrig. Diese Spanne muss ein Ergebnis liefern —
+    // aber ausdrücklich als "orientierend" gekennzeichnet.
+    const listings = makeListings(
+      Array.from({ length: MIN_PRICED_LISTINGS - 1 }, (_, i) => 20000 + i * 100)
+    );
+    const stats = calculatePriceStatistics(listings)!;
+
+    expect(stats).not.toBeNull();
+    expect(stats.confidence).toBe("orientierend");
+    expect(stats.reasoning).toContain("grobe Orientierung");
   });
 
   it("returns statistics at exactly the minimum sample size", () => {
@@ -35,11 +53,14 @@ describe("calculatePriceStatistics", () => {
 
     expect(stats).not.toBeNull();
     expect(stats.count).toBe(MIN_PRICED_LISTINGS);
+    expect(stats.confidence).toBe("belastbar");
+    // Der Warnhinweis darf hier NICHT erscheinen
+    expect(stats.reasoning).not.toContain("grobe Orientierung");
   });
 
   it("does not count null-priced listings toward the minimum", () => {
     const listings = makeListings([
-      ...Array.from({ length: MIN_PRICED_LISTINGS - 1 }, () => 20000),
+      ...Array.from({ length: MIN_ORIENTATION_LISTINGS - 1 }, () => 20000),
       null,
       null,
       null,
@@ -175,13 +196,25 @@ describe("calculatePriceStatistics", () => {
     });
 
     it("returns null when too few plausible listings remain after filtering", () => {
-      // Vier Fahrzeuge, vier Teile — die Mindestzahl wird erst durch den
+      // Drei Fahrzeuge, drei Teile — die Mindestzahl wird erst durch den
       // Schrott erreicht und darf deshalb nicht ausreichen.
-      const listings = makeListings([
-        18000, 19000, 20000, 21000,
-        600, 650, 690, 700,
-      ]);
+      // Median 9.345 €, Untergrenze 2.336,25 € → nur die drei Fahrzeuge
+      // bleiben übrig, das ist unter der Orientierungsgrenze von 4.
+      const listings = makeListings([18000, 19000, 20000, 600, 650, 690]);
       expect(calculatePriceStatistics(listings)).toBeNull();
+    });
+
+    it("zählt nur die Fahrzeuge, nicht die Teile, in die Stichprobe", () => {
+      // Vier Fahrzeuge, vier Teile: Median 9.350 €, Untergrenze 2.337,50 €.
+      // Es dürfen genau die vier Fahrzeuge übrig bleiben — sonst würden die
+      // Teile die Stichprobe künstlich auf "belastbar" heben.
+      const stats = calculatePriceStatistics(
+        makeListings([18000, 19000, 20000, 21000, 600, 650, 690, 700])
+      )!;
+
+      expect(stats.count).toBe(4);
+      expect(stats.median).toBe(19500);
+      expect(stats.confidence).toBe("orientierend");
     });
   });
 });

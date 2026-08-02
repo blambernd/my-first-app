@@ -39,4 +39,22 @@ export interface MarketAnalysis {
   listings: MarketAnalysisListing[];
   error_message: string | null;
   created_at: string;
+  /** Zustandsnote des Fahrzeugs zum Analysezeitpunkt (PROJ-29). */
+  condition_grade: number | null;
+  /**
+   * Belastbarkeit des Ergebnisses (PROJ-29). NULL bei Analysen, die vor der
+   * Überarbeitung entstanden sind.
+   */
+  confidence: "belastbar" | "orientierend" | null;
+  /** Verworfene Treffer mit Begründung, gedeckelt. */
+  rejected_listings: Array<{
+    title: string;
+    url: string;
+    platform: string;
+    reason: string;
+  }>;
+  /** Anzahl verworfener Treffer je Grund. */
+  rejected_counts: Record<string, number>;
+  /** 1 = vor PROJ-29, 2 = mit geprüfter Filterkette. */
+  pipeline_version: number;
 }

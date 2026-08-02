@@ -162,6 +162,89 @@ export function extractRichSnippetPrice(item: Record<string, unknown>): number |
 }
 
 /**
+ * Fremdwährungen (PROJ-29, BUG-2).
+ *
+ * Im Live-Lauf stand "Mercedes-Benz 220 Cabriolet A (1954) angeboten für
+ * CHF 76.200" mit 76.200 **Euro** in der Auswertung. Das Spec verlangt
+ * ausdrücklich, Fremdwährungen zu verwerfen statt umzurechnen — ein
+ * Umrechnungskurs wäre zum Anzeigezeitpunkt ohnehin veraltet.
+ */
+const FREMDWAEHRUNG =
+  /\b(CHF|USD|GBP|SEK|DKK|NOK|PLN|CZK|HUF|CAD|AUD|JPY|SFr)\b|\$|£|¥|(?<!\w)Fr\.\s*\d/i;
+
+/**
+ * Ob im Text eine andere Währung als Euro genannt wird.
+ *
+ * Bewusst grob: Ein Inserat, das CHF *und* EUR nennt, wird ebenfalls
+ * ausgeschlossen — welcher der beiden Beträge der Preis ist, lässt sich aus
+ * einem Suchtreffer nicht sicher entscheiden.
+ */
+export function hasForeignCurrency(title: string, snippet: string = ""): boolean {
+  return FREMDWAEHRUNG.test(`${title} ${snippet}`);
+}
+
+/**
+ * Preis nur aus eindeutig gekennzeichneten Stellen lesen (PROJ-29, C1).
+ *
+ * Unterschied zu `parsePrice`: Diese Variante verlangt einen Anker — ein
+ * Währungszeichen, "EUR", "Preis:", "VB" oder Classic Traders "angeboten für".
+ * Sie rät nicht.
+ *
+ * Grund: `parsePrice` fällt am Ende auf "irgendeine Zahl mit Tausenderpunkt"
+ * zurück. Damit wurde aus "264 Mercedes-Benz 220 ... ab 2.108" ein
+ * Fahrzeugpreis von 2.108 €. Auch das Muster "ab X" ist hier bewusst NICHT
+ * enthalten: ein Ab-Preis ist der Einstiegspreis einer Trefferliste, nicht der
+ * Preis eines Fahrzeugs.
+ */
+export function parseAnchoredPrice(text: string): number | null {
+  const anchored = [
+    /(\d{1,3}(?:\.\d{3})+),\d{2}\s*€/,
+    /(\d{1,3}(?:\.\d{3})+)\s*[,\-]*\s*€/,
+    /€\s*(\d{1,3}(?:\.\d{3})+)/,
+    /EUR\s*(\d{1,3}(?:\.\d{3})+)/i,
+    /Preis[:\s]*(\d{1,3}(?:\.\d{3})+)/i,
+    /(?:VB|VHB)\s*(\d{1,3}(?:\.\d{3})+)/i,
+    /(\d{1,3}(?:\.\d{3})+)\s*(?:VB|VHB)/i,
+    /(\d{1,3}(?:\.\d{3})+)\s*,-/,
+    // Classic Trader schreibt den Preis im Titel aus: "angeboten für 75.000"
+    /angeboten\s+f(?:ü|ue)r\s*€?\s*(\d{1,3}(?:\.\d{3})+)/i,
+    /(?:sold|offered)\s+for\s*€?\s*(\d{1,3}(?:\.\d{3})+)/i,
+  ];
+
+  for (const pattern of anchored) {
+    const match = text.match(pattern);
+    if (match) {
+      const price = parseInt(match[1].replace(/\./g, ""), 10);
+      if (!isNaN(price) && price >= 1000 && price <= 5_000_000) return price;
+    }
+  }
+
+  const plain = [
+    /(\d{4,7})\s*[,\-]*\s*€/,
+    /€\s*(\d{4,7})/,
+    /EUR\s*(\d{4,7})/i,
+    /Preis[:\s]*(\d{4,7})(?!\s*km)/i,
+    /(\d{4,7})\s*(?:VB|VHB)/i,
+  ];
+
+  for (const pattern of plain) {
+    const match = text.match(pattern);
+    if (match) {
+      const price = parseInt(match[1], 10);
+      if (!isNaN(price) && price >= 1000 && price <= 5_000_000) return price;
+    }
+  }
+
+  const spaceMatch = text.match(/(\d{1,3}(?:\s\d{3})+)\s*€/);
+  if (spaceMatch) {
+    const price = parseInt(spaceMatch[1].replace(/\s/g, ""), 10);
+    if (!isNaN(price) && price >= 1000 && price <= 5_000_000) return price;
+  }
+
+  return null;
+}
+
+/**
  * Parse a price from text (German format: "25.000 €", "25000€", "EUR 25.000").
  * Returns null if no price found or price is implausible.
  */

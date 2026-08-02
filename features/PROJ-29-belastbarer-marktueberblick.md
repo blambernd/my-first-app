@@ -1,6 +1,6 @@
 # PROJ-29: Belastbarer Marktüberblick
 
-## Status: In Progress
+## Status: Zurückgestellt
 **Created:** 2026-08-01
 **Last Updated:** 2026-08-01
 
@@ -329,8 +329,262 @@ Bis dahin besteht ein bewusst in Kauf genommener Zwischenzustand: Der Nutzer mus
 
 **Das Wegwerf-Testfahrzeug hat kein Erstzulassungsdatum.** Das Bearbeitungsformular verlangt es als Pflichtfeld, weshalb sich das Fahrzeug ohne Nachtragen gar nicht speichern lässt. Vorbestehend und unabhängig von PROJ-29, aber es fällt beim Testen auf: Ein Fahrzeug kann in einem Zustand angelegt werden, in dem es später nicht mehr bearbeitbar ist, ohne ein zusätzliches Feld zu füllen.
 
+## Implementierung (Backend) — Ausbaustufe 2: Datenbeschaffung & Klassifikation
+
+### Der Hauptbefund: 61 % der „Inserate" waren gar keine Fahrzeuge
+
+Vor dem ersten Codeänderung habe ich die **echten gespeicherten Produktionsdaten** aus `market_analyses` ausgewertet — 396 Treffer aus 20 Analysen, die Nutzern bereits angezeigt wurden. Ergebnis nach Anwendung der neuen Filterkette:
+
+| Kategorie | Anzahl | Anteil |
+|---|---:|---:|
+| **Übersichts-/Suchergebnisseiten** | **240** | **60,6 %** |
+| Keine Fahrzeugmerkmale erkennbar | 30 | 7,6 % |
+| Ersatzteile | 26 | 6,6 % |
+| **Echte Vergleichsfahrzeuge** | **100** | **25,3 %** |
+
+**Suchergebnisseiten waren im Tech Design nicht identifiziert.** Genannt waren Ersatzteile und geratene Preise — der mit Abstand größte Posten fehlte. Beispiele aus den Echtdaten: „264 Mercedes-Benz 220 Limousine Gebrauchtwagen" mit „Preis" 2.108 €, „10 gebrauchte Mercedes-Benz 220 aus dem Jahr 1960". Ihr „Preis" ist ein Ab-Preis über hunderte fremder Fahrzeuge — das erklärt die absurden Bandbreiten (2.108 € bis 229.000 € beim selben Fahrzeug).
+
+Diese Seiten lassen sich **nicht** über Fahrzeugmerkmale aussortieren (C2), weil sie durchaus Jahreszahlen enthalten. Die URL ist das verlässliche Signal, weil sie plattformseitig vergeben ist:
+
+| Quelle | Treffer | davon Detailseiten |
+|---|---:|---:|
+| mobile.de | 141 | **0** — ausnahmslos `suchen.mobile.de` |
+| AutoScout24 | 60 | **0** — ausnahmslos `/lst/` |
+| Classic Trader | 161 | 99 (`/inserat/`) |
+| eBay | 34 | 34 (`/itm/`), überwiegend Teile |
+
+**mobile.de und AutoScout24 liefern über die Google-Suche keine einzige Fahrzeugseite.** Sie haben 201 der 396 Treffer gestellt — und keinen einzigen verwertbaren.
+
+### Der zweite Befund: die gespeicherten Preise waren teils falsch
+
+Bei 2 von 34 prüfbaren Treffern wich der gespeicherte Preis vom Preis im Titel ab — und zwar erheblich:
+
+| Titel | gespeichert | im Titel |
+|---|---:|---:|
+| „Mercedes-Benz 220 Coupe (1954) angeboten für 218.000" | 119.000 € | 218.000 € |
+| „Mercedes-Benz 220 Coupe (1955) angeboten für 189.220" | 54.271 € | 189.220 € |
+
+Deshalb ist die Reihenfolge **umgedreht** gegenüber dem bisherigen Code: Der ausgeschriebene Titelpreis schlägt jetzt das Rich-Snippet, nicht umgekehrt.
+
+### Abweichung vom Tech Design (C1) — bewusst und begründet
+
+C1 verlangte, die Preisermittlung aus Titel und Snippet **ganz** zu entfernen. Umgesetzt ist eine engere Fassung:
+
+- **Snippet: entfernt** wie vorgesehen — dort standen die Ab-Preise der Trefferlisten.
+- **Titel: behalten, aber nur mit Anker.** Neue Funktion `parseAnchoredPrice` verlangt „€", „EUR", „Preis:", „VB" oder Classic Traders „angeboten für". Die alte Rückfallebene „irgendeine Zahl mit Tausenderpunkt" ist weg — *sie* war das Raten, nicht die Titelauswertung als solche.
+- Auch das Muster „ab X" ist ausgeschlossen: ein Ab-Preis ist der Einstiegspreis einer Liste.
+
+Grund für die Abweichung: C1 wörtlich umgesetzt hätte den Großteil der Classic-Trader-Detailseiten preislos gemacht — und das ist nach obiger Tabelle die einzige Quelle, die überhaupt Fahrzeugseiten liefert.
+
+### Abweichung von AC „mindestens 8 Vergleichsfahrzeuge" — Staffelung statt Abschneiden
+
+Gemessen an den Echtdaten bleiben **je Analyse nur 0–7 Vergleichsfahrzeuge** übrig. **Keine einzige der 20 gespeicherten Analysen erreicht 8.** Eine harte Grenze bei 8 hieße: Das Feature liefert nie wieder ein Ergebnis.
+
+Deshalb gestaffelt:
+
+| Vergleichsfahrzeuge | Verhalten |
+|---|---|
+| ≥ 8 | `belastbar` — Spanne wie bisher |
+| 4–7 | `orientierend` — Spanne mit Warnhinweis, Badge „Schmale Datenbasis" |
+| < 4 | kein Ergebnis, nur die gefundenen Inserate |
+
+Der Warnhinweis steht **am Anfang** der Begründung, nicht am Ende — wer nur den ersten Satz liest, muss die Einschränkung mitbekommen.
+
+### Offener Punkt für den Nutzer — betrifft eine frühere Entscheidung
+
+Am 2026-08-01 wurde entschieden, **ohne** eBay Browse API zu starten. Die Messung oben verschiebt die Grundlage dieser Entscheidung: Die beiden volumenstärksten Quellen liefern nachweislich nichts, und die verbleibenden reichen für „belastbar" nicht aus. Mögliche Wege: eBay Browse API doch aufnehmen, Classic Trader gezielter abfragen, oder die Staffelung als Dauerzustand akzeptieren. **Entscheidung steht aus.**
+
+### Gebaute Dateien
+
+| Datei | Zweck |
+|---|---|
+| `src/lib/market-analysis/classification.ts` | neu — URL-/Titel-Klassifikation, Fahrzeugmerkmale, Ablehnungsgründe |
+| `src/lib/market-analysis/classification.test.ts` | neu — 23 Tests, Fixtures wörtlich aus Produktionsdaten |
+| `src/lib/market-analysis/filters.ts` | `parseAnchoredPrice` ergänzt |
+| `src/lib/market-analysis/search.ts` | Filterkette, `RejectionLog`, Preisreihenfolge gedreht |
+| `src/lib/market-analysis/statistics.ts` | `MIN_ORIENTATION_LISTINGS`, `Belastbarkeit` |
+| `src/lib/market-analysis/types.ts` | `RejectedListing`, `confidence` |
+| `src/app/api/vehicles/[id]/market-analysis/route.ts` | 24-h-Wiederverwendung, neue Felder |
+| `src/components/market-analysis.tsx` | Hinweis „Schmale Datenbasis"; Zustandssatz korrigiert |
+| `supabase/migrations/20260802_market_analyses_belastbarkeit.sql` | 5 Spalten + Index |
+
+### Umgesetzte Entscheidungen
+
+- **24-Stunden-Wiederverwendung** steht **vor** der Ratenbegrenzung — ein Aufruf, der nur ein vorhandenes Ergebnis zurückgibt, darf kein Tageskontingent verbrauchen. Nur Ergebnisse mit `pipeline_version = 2` kommen infrage.
+- **`pipeline_version`** trennt Alt- von Neubestand. Bestandszeilen sind ausdrücklich auf 1 gesetzt, nicht per Default — sie enthalten noch Übersichtsseiten als „Vergleichsfahrzeuge" und dürfen nicht als geprüft gelten.
+- **`condition_grade` wird mitgeschrieben**, damit eine später geänderte Note die Aussage nicht rückwirkend verfälscht.
+- **Verworfene Treffer** werden gespeichert (gedeckelt auf 50), die Zählung je Grund vollständig.
+
+### Der Übergabepunkt aus Ausbaustufe 1 ist erledigt
+
+Der Satz „Der Zustand des Fahrzeugs geht nicht in die Berechnung ein" ist ersetzt. Die neue Fassung sagt, was zutrifft: Die Note wird zur Analyse festgehalten, die Vergleichsinserate lassen sich aber nicht nach Zustand filtern. **Die Note fließt weiterhin nicht in die Suche ein** — sie zu behaupten wäre falsch gewesen.
+
+### Geprüft
+
+- `npx tsc --noEmit` — keine Fehler im Marktanalyse-Modul
+- `npx vitest run src/lib/market-analysis` — 73 Tests grün
+- Filterkette gegen alle 396 echten Produktionstreffer laufen lassen (Zahlen oben)
+- Migration auf der Produktionsdatenbank angewandt
+
+**Noch nicht geprüft:** ein echter Suchlauf gegen SerpAPI mit der neuen Kette. Die Zahlen oben sind Wiedergabe gespeicherter Treffer, keine Live-Messung — das gehört in `/qa`.
+
 ## QA Test Results
-_To be added by /qa_
+
+**Geprüft am:** 2026-08-02 · **Ergebnis: NICHT produktionsreif**
+
+### Der entscheidende Test: ein echter Suchlauf
+
+Das Backend hatte die neue Filterkette nur gegen *gespeicherte* Treffer geprüft. Ich habe sie live gegen SerpAPI laufen lassen (Mercedes-Benz 220, W187, 1952):
+
+| | |
+|---|---:|
+| Treffer gesamt | 282 |
+| verworfen | 275 |
+| **übernommen** | **7** |
+| davon mit Preis | **3** |
+| **davon eigenständige Fahrzeuge** | **1** |
+| Dauer | 15,1 s |
+
+Die drei bepreisten „Vergleichsfahrzeuge" sind **dieselbe Anzeige** — Classic Trader liefert sie unter `/de/`, `/at/` und `/ch/` mit identischer ID `460064`. Die Schweizer Fassung steht mit **CHF 76.200**, gespeichert als 76.200 **Euro**.
+
+Ein Median aus diesen Daten wäre der Preis eines einzigen Autos, dreifach gezählt, gemischt aus zwei Währungen. Dass am Ende „kein Ergebnis" herauskommt, verdeckt diesen Defekt eher, als dass es ihn behebt.
+
+### Akzeptanzkriterien: 17 von 30 erfüllt
+
+| Gruppe | erfüllt | offen |
+|---|---:|---:|
+| Zustandsnote | 7 / 7 | – |
+| Datenbeschaffung | 2 / 5 | 3 |
+| Klassifikation | 4 / 5 | 1 |
+| Ergebnis | 4 / 10 | 6 |
+| Altbestand | 1 / 3 | 2 |
+
+**Zustandsnote — vollständig erfüllt.** Erfassung 1–5 mit Erläuterungen, optional, Sperre des Startknopfes mit Link zum Bearbeiten, Anzeige in Übersicht ([vehicle-card.tsx](src/components/vehicle-card.tsx)) und Profil ([page.tsx:201](src/app/vehicles/[id]/page.tsx#L201)).
+
+**Nicht erfüllt:**
+- eBay über Browse API (bewusst zurückgestellt, Entscheidung 2026-08-01)
+- Preise ausschließlich aus strukturierten Feldern (bewusste Abweichung C1 — der CHF-Fall zeigt, dass auch das Rich-Snippet nicht sicher ist)
+- Treffer ohne Preis werden dennoch als Vergleichsfahrzeug angezeigt (4 von 7)
+- Ergebnis nennt die Zustandsnote nicht (wird gespeichert, nicht dargestellt)
+- Aussortierte Treffer nicht einsehbar (werden gespeichert, keine Oberfläche)
+- Altbestand erscheint weiter in der Historie, ohne leeren Zustand mit Erklärung
+- Mindestzahl 8: bewusst zu einer Staffelung geändert, im Backend-Abschnitt begründet
+
+### Gefundene Fehler
+
+| # | Schwere | Befund |
+|---|---|---|
+| BUG-1 | **Kritisch** | Dieselbe Anzeige zählt mehrfach. Classic Trader liefert `/de/`, `/at/`, `/ch/` derselben ID; die Entdopplung vergleicht die volle URL. Im Live-Lauf wurden aus einem Fahrzeug drei Datenpunkte. |
+| BUG-2 | **Hoch** | Fremdwährung wird als Euro übernommen. „angeboten für CHF 76.200" → 76.200 € gespeichert. Das Spec verlangt ausdrücklich, Fremdwährungen zu verwerfen statt umzurechnen. |
+| BUG-3 | **Hoch** | `de.wikipedia.org/wiki/Mercedes-Benz` und die AutoScout24-Modellseite `/auto/mercedes-benz/mercedes-benz-220/` gelten als Vergleichsfahrzeuge. Zudem trägt der Wikipedia-Treffer das Etikett **„AutoScout24"** — das Plattformkennzeichen stammt aus der Suchanfrage, nicht aus der URL. |
+| BUG-4 | **Hoch** | Der Altbestand (20 Analysen, 14 mit Ergebnis) erscheint unverändert in der Historie. Die GET-Route filtert `pipeline_version` nicht. Nutzer sehen weiter Ergebnisse, von denen wir wissen, dass zu 61 % Suchergebnisseiten eingeflossen sind. |
+| BUG-5 | **Hoch** | Der Live-Lauf liefert für das Referenzfahrzeug **ein** verwertbares Fahrzeug. Das Feature erzeugt für diesen Fall gar kein Ergebnis. |
+| BUG-6 | Mittel | Preislose Treffer erscheinen in der Liste der Vergleichsfahrzeuge, obwohl das Spec das ausschließt. |
+| BUG-7 | Mittel | Die 24-Stunden-Wiederverwendung ist für den Nutzer unsichtbar. Die Route liefert `reused: true`, die Oberfläche wertet es nicht aus — der Knopf „Analyse starten" liefert wortlos ein altes Ergebnis. |
+| BUG-8 | Mittel | `rejected_listings`, `rejected_counts` und `condition_grade` werden gespeichert, aber nirgends angezeigt (zwei offene Akzeptanzkriterien). |
+| BUG-9 | Mittel | `preis_unplausibel` ist mit 127 der häufigste Ablehnungsgrund, meint aber überwiegend billige eBay-Teile. Für eine Transparenzanzeige ist das Etikett irreführend. |
+| BUG-10 | Gering | Von 275 Ablehnungen werden nur 50 gespeichert. Die Auswahl folgt der Plattformreihenfolge und ist damit nicht repräsentativ. |
+| BUG-11 | Gering | 15,1 s gemessen bei einer Anforderung von höchstens 15 s (Einzelmessung). |
+
+### Sicherheitsprüfung
+
+Keine Befunde mit Schweregrad Hoch oder höher.
+
+- Analyse starten bleibt auf den Besitzer beschränkt (`user_id`-Abgleich in der POST-Route); Mitglieder können die Historie lesen — unverändertes Verhalten.
+- Die neuen Spalten enthalten nur öffentliche Titel und URLs, keine schützenswerten Daten.
+- Die Wiederverwendung greift **vor** der Ratenbegrenzung, verbraucht aber kein SerpAPI-Kontingent — keine Umgehung des Tageslimits.
+- **Gering:** Nach einem Fahrzeug-Transfer könnte der neue Besitzer innerhalb von 24 Stunden die Analyse des Vorbesitzers ausgeliefert bekommen. Berührt PROJ-32.
+
+### Automatisierte Tests
+
+- `npx vitest run src/lib/market-analysis` — **73 grün** (23 davon neu, Fixtures wörtlich aus Produktionsdaten)
+- `npm run build` — erfolgreich
+- **Vorbestehend defekt, unabhängig von PROJ-29:** 4 Tests in [auth.test.ts](src/lib/validations/auth.test.ts) (3) und [milestone.test.ts](src/lib/validations/milestone.test.ts) (1). `registerSchema` verlangt seit der AGB-Checkbox `acceptTerms: true`, die Tests übergeben es nicht. Beide Dateien sind unverändert.
+
+**Keine E2E-Tests geschrieben.** Sie würden das aktuelle Verhalten festschreiben, und dieses Verhalten ist in den Kernpunkten fehlerhaft. Sinnvoll nach BUG-1 bis BUG-5.
+
+### Fehlerbehebung (2026-08-02) — 10 von 11 behoben
+
+Nachweis über einen erneuten Live-Lauf mit identischen Suchparametern:
+
+| | vorher | nachher |
+|---|---:|---:|
+| Dauer | 15,1 s | **9,9 s** |
+| übernommen | 7 | 2 |
+| davon eigenständige Fahrzeuge | **1** | **2** |
+| als `doppelt` erkannt | – | 2 |
+| als `fremdwaehrung` erkannt | – | 1 |
+| als `fremde_seite` erkannt | – | 26 |
+| als `kein_preis` erkannt | – | 5 |
+
+Dass die Zahl der übernommenen Treffer von 7 auf 2 fällt, ist die Korrektur: von den sieben waren drei dieselbe Anzeige, einer eine Wikipedia-Seite, einer eine Modellübersicht und zwei ohne Preis.
+
+| # | Behebung |
+|---|---|
+| BUG-1 | Neues Modul [urls.ts](src/lib/market-analysis/urls.ts): `canonicalListingKey` bildet Länderfassungen und Tracking-Parameter auf einen Schlüssel ab. Classic Trader über die Inserats-ID, eBay über `/itm/<id>`. Entdopplung greift jetzt je Plattform **und** plattformübergreifend. |
+| BUG-2 | `hasForeignCurrency` in [filters.ts](src/lib/market-analysis/filters.ts). Gemischte Angaben („81.900 € / CHF 76.200") werden ebenfalls verworfen — welcher Betrag der Preis ist, lässt sich aus einem Suchtreffer nicht entscheiden. |
+| BUG-3 | `hostMatchesSite` verwirft Treffer außerhalb der durchsuchten Domain. Im Z3-Lauf betraf das bmw.de, bmwgroup.jobs und Wikipedia — allesamt aus einer `site:mobile.de`-Suche. Zusätzlich erkennt die Klassifikation jetzt AutoScout24-Modellseiten. |
+| BUG-4 | Die GET-Route filtert auf `pipeline_version = 2`. Die Oberfläche erklärt den leeren Zustand über `hiddenLegacyCount`, statt ihn unkommentiert zu zeigen. Die Datensätze bleiben erhalten. |
+| BUG-6 | Treffer ohne Preis werden als `kein_preis` verworfen statt als Vergleichsfahrzeug angezeigt. |
+| BUG-7 | Die Oberfläche wertet `reused` aus und weist darauf hin, dass ein Ergebnis der letzten 24 Stunden gezeigt wird. |
+| BUG-8 | Neue Karte „Aussortierte Treffer" mit Aufschlüsselung je Grund und Beispielen. Das Ergebnis nennt jetzt Zustandsnote, Erhebungszeitpunkt und die beteiligten Quellen. |
+| BUG-9 | Eigener Grund `preis_zu_niedrig` — unter 1.000 € sind es praktisch immer Teile, nicht „unplausible" Preise. |
+| BUG-10 | Deckel von 6 Beispielen **je Grund** statt 50 global. Vorher stammten fast alle Beispiele von der ersten Plattform; jetzt sind alle Gründe vertreten (32 Beispiele über 7 Gründe). |
+| BUG-11 | Zeitlimit je Abfrage von 15 s auf 10 s. Gemessen 9,9 s bzw. 8,4 s. |
+
+**Nebenbei behoben:** die 4 vorbestehenden Testfehler. `registerSchema` verlangt seit der AGB-Checkbox `acceptTerms: true` — fehlt es, scheitert schon die Objektprüfung und der `.refine()`-Vergleich der Passwörter läuft nicht an. `getCategoryLabel("unknown")` gibt seit `normalizeCategory` bewusst „Sonstiges" zurück statt des rohen Bezeichners.
+
+**Testlage:** 559 von 559 grün (30 Dateien), davon 88 im Marktanalyse-Modul. `npm run build` erfolgreich.
+
+### BUG-5 ist nicht behoben — und nicht durch Filterung behebbar
+
+Ich habe die Quellen mit einem **verbreiteten** Fahrzeug gegengeprüft, um Seltenheit als Ursache auszuschließen — BMW Z3, Baujahr 1997, tausende Angebote am Markt:
+
+| | Mercedes 220 (1952) | BMW Z3 (1997) |
+|---|---:|---:|
+| Treffer gesamt | 291 | 86 |
+| Ersatzteile | 78 | 59 |
+| fremde Seite | 26 | 26 |
+| **verwertbare Fahrzeuge** | **2** | **0** |
+
+Die Ablehnungen sind stichprobenartig geprüft und sämtlich korrekt: Fußmatten, Scheibenwischer, LED-Blinker bei den Ersatzteilen; bmw.de, Wikipedia und eine Jobbörse bei den fremden Seiten — letztere aus einer Suche mit `site:mobile.de`.
+
+**Google behandelt `site:` als Wunsch, nicht als Bedingung, und indexiert von mobile.de und AutoScout24 keine Fahrzeug-Detailseiten.** Für ein Allerweltsfahrzeug wie den Z3 bleibt null. Eine Lockerung der Filter würde das nicht ändern, sondern nur die Fehltreffer zurückholen, die BUG-1 bis BUG-3 ausgemacht haben.
+
+Zusätzlich umgesetzt und wirkungslos geblieben: eine zweite Ergebnisseite für Classic Trader (`DEEP_SEARCH_SITES`). Der Google-Index gibt für diese Anfragen nicht mehr her.
+
+**Damit ist die Entscheidung vom 2026-08-01 zu revidieren oder zu bestätigen.** Die Wahl steht zwischen:
+1. **eBay Browse API aufnehmen** — erfordert Registrierung und Zugangsdaten
+2. **Direkte Anbindung an Classic Trader** statt über die Google-Suche
+3. **Feature zurückstellen**, bis eine belastbare Quelle vorliegt
+
+Ohne eine dieser Entscheidungen liefert der Marktüberblick für kein Fahrzeug ein Ergebnis.
+
+### Empfehlung
+
+**Nicht ausliefern — aber nicht mehr wegen fehlerhafter Zahlen.**
+
+Nach der Behebung von BUG-1 bis BUG-4 und BUG-6 bis BUG-11 ist die Auswertung korrekt: keine Doppelzählung, keine Fremdwährung, keine Fremdseiten, keine preislosen „Vergleichsfahrzeuge", und die Altbestände sind aus der Anzeige genommen. Was das Feature ausweist, stimmt.
+
+Es weist nur nichts aus. **BUG-5 ist der einzige verbleibende Blocker**, und er ist eine Produktentscheidung über die Datenquelle, kein Programmierfehler — belegt durch den Gegentest mit einem Allerweltsfahrzeug, das ebenfalls null Vergleichsfahrzeuge ergab.
+
+## Entscheidung: zurückgestellt (2026-08-02)
+
+Der Nutzer hat sich für **Weg 3** entschieden: Das Feature wird zurückgestellt, bis eine belastbare Datenquelle vorliegt. Keine eBay Browse API, keine direkte Classic-Trader-Anbindung — vorerst.
+
+### Was das heißt
+
+- **Der Code bleibt erhalten** und ist vollständig, geprüft und grün (88 Tests im Modul, 559 im Projekt). Er wird nicht zurückgebaut.
+- **Nicht ausgeliefert.** Kein `/deploy` für PROJ-29.
+- Wieder aufgreifen, sobald eine Quelle mit Fahrzeug-Detailseiten zur Verfügung steht. Der Aufwand liegt dann allein in der Anbindung — Klassifikation, Entdopplung, Währungsprüfung und Belastbarkeitsstaffelung stehen bereits.
+
+### Was am Datenbestand bereits geändert wurde
+
+Die Migration `20260802_market_analyses_belastbarkeit.sql` ist **auf der Produktionsdatenbank angewandt**. Die fünf neuen Spalten sind nullable bzw. haben Vorgabewerte und werden vom ausgelieferten Code nicht verwendet — der Bestand ist unverändert nutzbar. Ein Rückbau ist nicht nötig und wäre der größere Eingriff.
+
+### Offen und ausdrücklich nicht entschieden
+
+PROJ-11 (Marktpreis-Analyse) ist **weiterhin live** und erzeugt bis auf Weiteres genau die Ergebnisse, deren Fehler in dieser QA-Runde belegt wurden: Suchergebnisseiten als Vergleichsfahrzeuge, Mehrfachzählung derselben Anzeige, Fremdwährung als Euro. Ob daran in der Produktion etwas geändert werden soll, ist noch zu klären.
 
 ## Deployment
 _To be added by /deploy_

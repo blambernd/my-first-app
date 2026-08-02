@@ -8,6 +8,21 @@ import type { MarketSearchParams } from "@/lib/market-analysis";
 
 const MAX_ANALYSES_PER_DAY = 5;
 
+/**
+ * Wie lange ein Ergebnis wiederverwendet wird, statt erneut zu suchen.
+ *
+ * Der Gebrauchtmarkt für Oldtimer bewegt sich in Wochen, nicht in Stunden —
+ * eine zweite Suche am selben Tag kostet Kontingent und liefert praktisch
+ * dasselbe Ergebnis.
+ */
+const REUSE_WINDOW_HOURS = 24;
+
+/**
+ * Version der Filterkette, die dieser Code implementiert. Siehe
+ * market_analyses.pipeline_version.
+ */
+const PIPELINE_VERSION = 2;
+
 type RouteContext = { params: Promise<{ id: string }> };
 
 /**
@@ -65,10 +80,15 @@ export async function GET(request: Request, { params }: RouteContext) {
     );
   }
 
+  // BUG-4: Analysen aus der Zeit vor PROJ-29 werden nicht mehr ausgeliefert.
+  // In sie sind nachweislich zu rund 61 % Suchergebnisseiten als
+  // "Vergleichsfahrzeuge" eingeflossen. Sie bleiben in der Datenbank
+  // erhalten — nur die Anzeige entfällt.
   const { data: analyses, error } = await supabase
     .from("market_analyses")
     .select("*")
     .eq("vehicle_id", vehicleId)
+    .eq("pipeline_version", PIPELINE_VERSION)
     .order("created_at", { ascending: false })
     .limit(20);
 
@@ -79,7 +99,18 @@ export async function GET(request: Request, { params }: RouteContext) {
     );
   }
 
-  return NextResponse.json({ analyses: analyses || [] });
+  // Anzahl der ausgeblendeten Altanalysen, damit die Oberfläche den leeren
+  // Zustand erklären kann statt ihn unkommentiert zu zeigen.
+  const { count: legacyCount } = await supabase
+    .from("market_analyses")
+    .select("id", { count: "exact", head: true })
+    .eq("vehicle_id", vehicleId)
+    .neq("pipeline_version", PIPELINE_VERSION);
+
+  return NextResponse.json({
+    analyses: analyses || [],
+    hiddenLegacyCount: legacyCount ?? 0,
+  });
 }
 
 /**
@@ -100,7 +131,7 @@ export async function POST(request: Request, { params }: RouteContext) {
   // Only vehicle owner can trigger analyses
   const { data: vehicle } = await supabase
     .from("vehicles")
-    .select("id, make, model, year, factory_code, body_type, mileage_km")
+    .select("id, make, model, year, factory_code, body_type, mileage_km, condition_grade")
     .eq("id", vehicleId)
     .eq("user_id", user.id)
     .single();
@@ -118,6 +149,28 @@ export async function POST(request: Request, { params }: RouteContext) {
       { error: "Such-Service nicht konfiguriert. SERPAPI_API_KEY fehlt." },
       { status: 503 }
     );
+  }
+
+  // Wiederverwendung vor Ratenbegrenzung: ein Aufruf, der nur ein bereits
+  // vorhandenes Ergebnis zurückgibt, darf kein Tageskontingent verbrauchen.
+  // Nur Ergebnisse der aktuellen Filterkette kommen infrage — ältere enthalten
+  // noch Übersichtsseiten als Vergleichsfahrzeuge.
+  const reuseThreshold = new Date(
+    Date.now() - REUSE_WINDOW_HOURS * 60 * 60 * 1000
+  ).toISOString();
+
+  const { data: recent } = await supabase
+    .from("market_analyses")
+    .select("*")
+    .eq("vehicle_id", vehicleId)
+    .eq("pipeline_version", PIPELINE_VERSION)
+    .gte("created_at", reuseThreshold)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (recent) {
+    return NextResponse.json({ analysis: recent, reused: true }, { status: 200 });
   }
 
   // Rate limiting: max 5 per vehicle per day (DB-backed)
@@ -148,7 +201,8 @@ export async function POST(request: Request, { params }: RouteContext) {
   };
 
   // Search all platforms
-  const { listings, platformErrors } = await searchMarketListings(searchParams);
+  const { listings, platformErrors, rejected, rejectedCounts } =
+    await searchMarketListings(searchParams);
 
   // Calculate statistics
   const stats = calculatePriceStatistics(listings);
@@ -168,6 +222,11 @@ export async function POST(request: Request, { params }: RouteContext) {
       mileage_km: vehicle.mileage_km,
     },
     status,
+    condition_grade: vehicle.condition_grade ?? null,
+    confidence: stats?.confidence ?? null,
+    rejected_listings: rejected,
+    rejected_counts: rejectedCounts,
+    pipeline_version: PIPELINE_VERSION,
     average_price: stats?.average ?? null,
     median_price: stats?.median ?? null,
     lowest_price: stats?.lowest ?? null,

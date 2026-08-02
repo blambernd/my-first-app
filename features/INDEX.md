@@ -9,6 +9,7 @@
 - **In Review** - `/qa` active, testing in progress
 - **Approved** - `/qa` passed, no critical/high bugs, ready to deploy
 - **Deployed** - `/deploy` done, live in production
+- **Zurückgestellt** - Arbeit liegt vor, Auslieferung bewusst ausgesetzt (Grund im Spec)
 
 ## Features
 
@@ -42,8 +43,11 @@
 | PROJ-26 | Einzelkosten | Deployed | [PROJ-26-einzelkosten.md](PROJ-26-einzelkosten.md) | 2026-07-31 |
 | PROJ-27 | Kostenanalyse | Deployed | [PROJ-27-kostenanalyse.md](PROJ-27-kostenanalyse.md) | 2026-07-31 |
 | PROJ-28 | Kaufpreis & Wertentwicklung | Deployed | [PROJ-28-kaufpreis-wertentwicklung.md](PROJ-28-kaufpreis-wertentwicklung.md) | 2026-07-31 |
-| PROJ-29 | Belastbarer Marktüberblick | Planned | [PROJ-29-belastbarer-marktueberblick.md](PROJ-29-belastbarer-marktueberblick.md) | 2026-08-01 |
+| PROJ-29 | Belastbarer Marktüberblick | Zurückgestellt | [PROJ-29-belastbarer-marktueberblick.md](PROJ-29-belastbarer-marktueberblick.md) | 2026-08-01 |
+| PROJ-30 | Fahrzeug-Navigation & UX-Überarbeitung | Planned | [PROJ-30-fahrzeug-navigation.md](PROJ-30-fahrzeug-navigation.md) | 2026-08-01 |
+| PROJ-31 | Kosten-Überblicksseite | Planned | [PROJ-31-kosten-ueberblick.md](PROJ-31-kosten-ueberblick.md) | 2026-08-01 |
+| PROJ-32 | Kostendaten beim Fahrzeug-Transfer | Architected | [PROJ-32-kostendaten-beim-transfer.md](PROJ-32-kostendaten-beim-transfer.md) | 2026-08-01 |
 
 <!-- Add features above this line -->
 
-## Next Available ID: PROJ-30
+## Next Available ID: PROJ-33
