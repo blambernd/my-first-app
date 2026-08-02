@@ -13,8 +13,11 @@ import {
   ChevronDown,
   ChevronUp,
   Info,
+  ArrowRight,
 } from "lucide-react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -37,6 +40,13 @@ interface MarketAnalysisProps {
   vehicleYear: number;
   vehicleFactoryCode?: string | null;
   vehicleMileageKm?: number | null;
+  /**
+   * Zustandsnote des Fahrzeugs. Ohne sie lässt sich kein Marktüberblick
+   * starten (PROJ-29): Ein Vergleich mit Fahrzeugen in unbekanntem Zustand
+   * ist genau der Grund, warum dieselbe Anfrage einmal 700 € und einmal
+   * 128.716 € ergeben hat.
+   */
+  vehicleConditionGrade?: number | null;
 }
 
 function formatPrice(price: number): string {
@@ -356,7 +366,10 @@ export function MarketAnalysis({
   vehicleYear,
   vehicleFactoryCode,
   vehicleMileageKm,
+  vehicleConditionGrade,
 }: MarketAnalysisProps) {
+  const hasConditionGrade =
+    vehicleConditionGrade !== null && vehicleConditionGrade !== undefined;
   const [analyses, setAnalyses] = useState<MarketAnalysis[]>([]);
   const [selectedAnalysis, setSelectedAnalysis] = useState<MarketAnalysis | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -433,9 +446,10 @@ export function MarketAnalysis({
             {vehicleMake} {vehicleModel} ({vehicleYear})
             {vehicleFactoryCode && ` · ${vehicleFactoryCode}`}
             {vehicleMileageKm != null && ` · ${vehicleMileageKm.toLocaleString("de-DE")} km`}
+            {hasConditionGrade && ` · Zustand ${vehicleConditionGrade}`}
           </p>
         </div>
-        <Button onClick={startAnalysis} disabled={isLoading}>
+        <Button onClick={startAnalysis} disabled={isLoading || !hasConditionGrade}>
           {isLoading ? (
             <>
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -449,6 +463,29 @@ export function MarketAnalysis({
           )}
         </Button>
       </div>
+
+      {/* Ohne Zustandsnote wird gar nicht erst erhoben (PROJ-29).
+          Der Hinweis nennt den Grund und führt direkt zum Bearbeiten —
+          eine deaktivierte Schaltfläche ohne Erklärung wäre eine Sackgasse. */}
+      {!hasConditionGrade && (
+        <Alert>
+          <Info className="h-4 w-4" />
+          <AlertDescription className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <span>
+              Für einen belastbaren Marktüberblick fehlt die{" "}
+              <strong>Zustandsnote</strong> deines Fahrzeugs. Ohne sie würde es
+              mit Fahrzeugen in unbekanntem Zustand verglichen — von
+              Scheunenfunden bis Concours.
+            </span>
+            <Button variant="outline" size="sm" asChild className="shrink-0">
+              <Link href={`/vehicles/${vehicleId}/edit`}>
+                Zustandsnote ergänzen
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Link>
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Loading state with progress hint */}
       {isLoading && (

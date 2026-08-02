@@ -3,7 +3,10 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase-server";
 import { VehicleGallery, type GalleryImage } from "@/components/vehicle-gallery";
 import { VehiclePurchaseSection } from "@/components/vehicle-purchase-section";
-import type { VehicleWithImages } from "@/lib/validations/vehicle";
+import {
+  getConditionGradeLabel,
+  type VehicleWithImages,
+} from "@/lib/validations/vehicle";
 import {
   normalizePurchase,
   normalizeExtraCost,
@@ -193,6 +196,10 @@ export default async function VehicleDetailPage({
             : null,
         },
         { label: "Farbe", value: typedVehicle.color },
+        {
+          label: "Zustand",
+          value: getConditionGradeLabel(typedVehicle.condition_grade),
+        },
       ],
     },
     {

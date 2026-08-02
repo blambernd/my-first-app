@@ -25,7 +25,7 @@ export default async function VerkaufsassistentPage({
   const { data: vehicle } = await supabase
     .from("vehicles")
     .select(
-      "id, make, model, year, factory_code, color, engine_type, displacement_ccm, horsepower, mileage_km"
+      "id, make, model, year, factory_code, color, engine_type, displacement_ccm, horsepower, mileage_km, condition_grade"
     )
     .eq("id", id)
     .eq("user_id", user.id)
@@ -179,6 +179,7 @@ export default async function VerkaufsassistentPage({
       vehicleYear={vehicle.year}
       vehicleFactoryCode={vehicle.factory_code}
       vehicleMileageKm={vehicle.mileage_km}
+      vehicleConditionGrade={vehicle.condition_grade}
       // Step 2
       images={vehicleImagesResult.data || []}
       serviceEntries={serviceEntriesResult.data || []}

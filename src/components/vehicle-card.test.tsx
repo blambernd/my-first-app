@@ -34,6 +34,7 @@ function makeVehicle(overrides: Partial<VehicleWithImages> = {}): VehicleWithIma
     horsepower: null,
     mileage_km: null,
     mileage_date: null,
+    condition_grade: null,
     insurance_company: null,
     insurance_policy_number: null,
     is_locked: false,

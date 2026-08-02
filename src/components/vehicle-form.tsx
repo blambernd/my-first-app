@@ -45,6 +45,7 @@ import {
   vehicleSchema,
   VEHICLE_MAKES,
   BODY_TYPES,
+  CONDITION_GRADES,
   type VehicleFormData,
   type Vehicle,
   type VehicleImage,
@@ -142,6 +143,7 @@ export function VehicleForm({ vehicle, vehicleImages = [], existingDatekarte = n
       horsepower: vehicle?.horsepower ?? undefined,
       mileage_km: vehicle?.mileage_km ?? undefined,
       mileage_date: vehicle?.mileage_date ?? "",
+      condition_grade: vehicle?.condition_grade ?? undefined,
       insurance_company: vehicle?.insurance_company ?? "",
       insurance_policy_number: vehicle?.insurance_policy_number ?? "",
     },
@@ -194,6 +196,7 @@ export function VehicleForm({ vehicle, vehicleImages = [], existingDatekarte = n
         horsepower: data.horsepower || null,
         mileage_km: data.mileage_km ?? null,
         mileage_date: data.mileage_date || null,
+        condition_grade: data.condition_grade || null,
         insurance_company: data.insurance_company || null,
         insurance_policy_number: data.insurance_policy_number || null,
       };
@@ -510,6 +513,48 @@ export function VehicleForm({ vehicle, vehicleImages = [], existingDatekarte = n
                       ))}
                     </SelectContent>
                   </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="condition_grade"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Zustandsnote</FormLabel>
+                  <Select
+                    onValueChange={(value) =>
+                      field.onChange(value === "" ? undefined : Number(value))
+                    }
+                    value={field.value ? String(field.value) : ""}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Bitte wählen" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {CONDITION_GRADES.map((grade) => (
+                        <SelectItem key={grade.value} value={String(grade.value)}>
+                          {/* Erläuterung direkt am Eintrag: Die Skala kennt
+                              nicht jeder auswendig, und eine falsch gewählte
+                              Note verzerrt den Marktvergleich */}
+                          <span className="flex flex-col items-start">
+                            <span>{grade.label}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {grade.description}
+                            </span>
+                          </span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormDescription>
+                    Grundlage für den Marktüberblick — ohne sie wird dein
+                    Fahrzeug mit Scheunenfunden verglichen.
+                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}

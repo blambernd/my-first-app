@@ -1,6 +1,6 @@
 # PROJ-29: Belastbarer Marktüberblick
 
-## Status: Architected
+## Status: In Progress
 **Created:** 2026-08-01
 **Last Updated:** 2026-08-01
 
@@ -273,6 +273,61 @@ Die 12 Fehltreffer zum Mercedes 220 sind der Maßstab für C2. Sie gehören als 
 
 **F4 — Reihenfolge des Baus.**
 Die Zustandsnote ist eigenständig und blockiert nichts. Sie zuerst zu bauen macht die Umstellung der Datenbeschaffung danach messbar, weil dann bereits eine Bezugsgröße existiert.
+
+## Implementierung (Frontend) — Ausbaustufe 1: Zustandsnote
+
+**Stand:** 2026-08-02
+
+Gebaut wurde die **Zustandsnote vollständig**, nach der im Tech Design empfohlenen Reihenfolge (F4): Sie ist eigenständig, blockiert nichts und macht die spätere Umstellung der Datenbeschaffung messbar.
+
+**Nicht Teil dieses Schritts:** die Umstellung von Datenbeschaffung und Klassifikation. Das ist Serverarbeit und gehört in `/backend`.
+
+### Gebaute Dateien
+
+| Datei | Zweck |
+|---|---|
+| `supabase/migrations/20260801_add_vehicle_condition_grade.sql` | Spalte am Fahrzeug, 1–5, optional |
+| `src/lib/validations/vehicle.ts` | Skala samt Erläuterungen, Schema, Anzeigehelfer |
+| `src/lib/validations/vehicle-condition.test.ts` | 12 Unit-Tests |
+| `src/components/vehicle-form.tsx` | Auswahlfeld mit Erläuterung je Note |
+| `src/app/vehicles/[id]/page.tsx` | Anzeige im Fahrzeugprofil unter „Technik" |
+| `src/components/vehicle-card.tsx` | Kurzform in der Fahrzeugübersicht |
+| `src/components/market-analysis.tsx` | Sperre ohne Note, Hinweis mit Weg zum Bearbeiten |
+| `src/components/sales-wizard.tsx`, `verkaufsassistent/page.tsx` | Note durchgereicht |
+
+### Umgesetzte Entscheidungen
+
+- **Spalte am Fahrzeug** statt eigener Tabelle (C3) — Stammdatum, anders als der Kaufpreis nicht schützenswert
+- **Erläuterung an jeder Note im Auswahlfeld.** Die Skala kennt nicht jeder auswendig, und eine falsch gewählte Note verzerrt genau das, was dieses Feature geradeziehen soll
+- **Sperre mit Ausweg** (C4): Ohne Note ist die Schaltfläche deaktiviert, der Hinweis nennt den Grund und führt direkt zum Bearbeiten. Eine deaktivierte Schaltfläche ohne Erklärung wäre eine Sackgasse
+- **Optional überall sonst** — bestehende Fahrzeuge ohne Note bleiben uneingeschränkt nutzbar
+
+### Geprüft
+
+| Prüfung | Ergebnis |
+|---|---|
+| Unit-Tests Zustandsnote | **12/12 grün** |
+| Unit gesamt | 515 grün, 4 vorbestehende Fehlschläge |
+| `npm run build` · `npx eslint` | erfolgreich · keine Meldung |
+| Regression PROJ-2, PROJ-27, PROJ-28 | **75/75 grün** |
+| Sichtprüfung **im Produktionsbuild** | Sperre, Formular, Profil, Übersicht |
+| Konsolenfehler | **0** |
+
+**Im Einzelnen sichtgeprüft:** Ohne Note ist die Schaltfläche deaktiviert, der Hinweis erscheint samt Link. Mit Note 2 zeigt das Profil „Note 2 — guter gepflegter Zustand", die Übersicht „Zustand 2", die Kopfzeile des Marktüberblicks „Zustand 2", die Sperre ist aufgehoben und das Formular ist mit der gespeicherten Note vorbelegt.
+
+### Übergabepunkt an `/backend` — nicht übersehen
+
+`market-analysis.tsx` enthält heute den Satz: **„Der Zustand des Fahrzeugs geht nicht in die Berechnung ein — er ist zugleich der größte Preisfaktor."**
+
+Er stammt aus der Nachbesserung an PROJ-11 und ist **heute noch richtig**: Die Note wird erfasst und sperrt den Start, aber die Suche verwendet sie noch nicht. In dem Moment, in dem `/backend` die Note in die Datenbeschaffung einbaut, **wird dieser Satz falsch** und muss ersetzt werden.
+
+Bis dahin besteht ein bewusst in Kauf genommener Zwischenzustand: Der Nutzer muss eine Note angeben, die noch nichts bewirkt. Das ist vertretbar, weil bis `/deploy` nichts davon ausgeliefert wird — **aber es darf nicht in dieser Form live gehen.**
+
+### Zwei Beobachtungen am Rande
+
+**Der Entwicklungsserver lieferte zwischenzeitlich HTTP 500** auf der Fahrzeugseite, mit der Meldung „Jest worker encountered child process exceptions". Gegen einen frischen Produktionsbuild geprüft: **HTTP 200**, alles korrekt. Es war der nach vielen Neuübersetzungen abgenutzte Dev-Server, nicht der Code — geprüft statt angenommen.
+
+**Das Wegwerf-Testfahrzeug hat kein Erstzulassungsdatum.** Das Bearbeitungsformular verlangt es als Pflichtfeld, weshalb sich das Fahrzeug ohne Nachtragen gar nicht speichern lässt. Vorbestehend und unabhängig von PROJ-29, aber es fällt beim Testen auf: Ein Fahrzeug kann in einem Zustand angelegt werden, in dem es später nicht mehr bearbeitbar ist, ohne ein zusätzliches Feld zu füllen.
 
 ## QA Test Results
 _To be added by /qa_

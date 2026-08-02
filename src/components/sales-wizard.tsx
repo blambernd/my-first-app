@@ -42,6 +42,7 @@ interface SalesWizardProps {
   vehicleYear: number;
   vehicleFactoryCode: string | null;
   vehicleMileageKm: number | null;
+  vehicleConditionGrade: number | null;
   // Step 2: ProfileConfigurator props
   images: { id: string; storage_path: string; position: number }[];
   serviceEntries: { id: string; description: string; service_date: string }[];
@@ -83,6 +84,7 @@ export function SalesWizard({
   vehicleYear,
   vehicleFactoryCode,
   vehicleMileageKm,
+  vehicleConditionGrade,
   images,
   serviceEntries,
   milestones,
@@ -212,6 +214,7 @@ export function SalesWizard({
             vehicleYear={vehicleYear}
             vehicleFactoryCode={vehicleFactoryCode}
             vehicleMileageKm={vehicleMileageKm}
+            vehicleConditionGrade={vehicleConditionGrade}
           />
         )}
 

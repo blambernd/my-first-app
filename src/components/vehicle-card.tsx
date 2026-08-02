@@ -4,7 +4,10 @@ import Link from "next/link";
 import { Car, Calendar, Plus, Lock } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import type { VehicleWithImages } from "@/lib/validations/vehicle";
+import {
+  getConditionGradeShort,
+  type VehicleWithImages,
+} from "@/lib/validations/vehicle";
 import { createClient } from "@/lib/supabase";
 
 interface VehicleCardProps {
@@ -67,11 +70,22 @@ export function VehicleCard({ vehicle, hasPremium = false }: VehicleCardProps) {
                 : vehicle.year}
             </span>
           </div>
-          {vehicle.license_plate && (
-            <p className="text-sm text-muted-foreground mt-1 truncate">
-              {vehicle.license_plate}
-            </p>
-          )}
+          <div className="mt-1 flex items-center justify-between gap-2">
+            {vehicle.license_plate ? (
+              <p className="text-sm text-muted-foreground truncate">
+                {vehicle.license_plate}
+              </p>
+            ) : (
+              <span />
+            )}
+            {/* Kurzform, weil in der Kachel wenig Platz ist; die volle
+                Bezeichnung steht im Fahrzeugprofil */}
+            {getConditionGradeShort(vehicle.condition_grade ?? null) && (
+              <Badge variant="outline" className="shrink-0 text-xs">
+                {getConditionGradeShort(vehicle.condition_grade ?? null)}
+              </Badge>
+            )}
+          </div>
         </CardContent>
       </Card>
     </Link>

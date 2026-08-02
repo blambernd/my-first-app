@@ -2,6 +2,53 @@ import { z } from "zod";
 
 const currentYear = new Date().getFullYear();
 
+/**
+ * Zustandsnote nach der im Oldtimer-Markt üblichen Skala 1–5.
+ *
+ * Sie ist die Bezugsgröße, ohne die ein Marktvergleich beliebig wird: Ohne
+ * Note wird ein gepflegtes Fahrzeug mit Scheunenfunden in einen Topf geworfen.
+ * Die Erläuterungen stehen bewusst hier und nicht im Formular — sie gehören
+ * zur Bedeutung der Note, nicht zu ihrer Darstellung.
+ */
+export const CONDITION_GRADES = [
+  {
+    value: 1,
+    label: "Note 1 — makellos",
+    description: "Concours-Zustand, besser als ab Werk",
+  },
+  {
+    value: 2,
+    label: "Note 2 — guter gepflegter Zustand",
+    description: "Keine Mängel, nur leichte Gebrauchsspuren",
+  },
+  {
+    value: 3,
+    label: "Note 3 — gebraucht, fahrbereit",
+    description: "Kleinere Mängel, aber ohne sofortigen Handlungsbedarf",
+  },
+  {
+    value: 4,
+    label: "Note 4 — verbraucht",
+    description: "Erhebliche Mängel, fahrbereit oder bedingt fahrbereit",
+  },
+  {
+    value: 5,
+    label: "Note 5 — restaurierungsbedürftig",
+    description: "Nicht fahrbereit, Restaurierung erforderlich",
+  },
+] as const;
+
+export type ConditionGrade = (typeof CONDITION_GRADES)[number]["value"];
+
+export function getConditionGradeLabel(grade: number | null): string | null {
+  return CONDITION_GRADES.find((g) => g.value === grade)?.label ?? null;
+}
+
+/** Kurzform für die Fahrzeugübersicht, wo wenig Platz ist */
+export function getConditionGradeShort(grade: number | null): string | null {
+  return grade === null ? null : `Zustand ${grade}`;
+}
+
 export const VEHICLE_MAKES = [
   "Alfa Romeo",
   "Aston Martin",
@@ -154,6 +201,15 @@ export const vehicleSchema = z.object({
   horsepower: z.coerce.number().int().positive("Leistung muss positiv sein").optional().or(z.literal("")),
   mileage_km: z.coerce.number().int().min(0, "Laufleistung kann nicht negativ sein").optional().or(z.literal("")),
   mileage_date: z.string().optional().or(z.literal("")),
+  // Optional: Bestehende Fahrzeuge ohne Note bleiben uneingeschränkt nutzbar.
+  // Nur der Marktüberblick verlangt sie (PROJ-29, Tech Design C4).
+  condition_grade: z.coerce
+    .number()
+    .int()
+    .min(1, "Zustandsnote liegt zwischen 1 und 5")
+    .max(5, "Zustandsnote liegt zwischen 1 und 5")
+    .optional()
+    .or(z.literal("")),
   insurance_company: z
     .string()
     .max(100, "Versicherung darf maximal 100 Zeichen lang sein")
@@ -181,6 +237,7 @@ export interface VehicleFormData {
   horsepower?: number;
   mileage_km?: number;
   mileage_date?: string;
+  condition_grade?: number;
   insurance_company?: string;
   insurance_policy_number?: string;
 }
@@ -203,6 +260,7 @@ export interface Vehicle {
   horsepower: number | null;
   mileage_km: number | null;
   mileage_date: string | null;
+  condition_grade: number | null;
   insurance_company: string | null;
   insurance_policy_number: string | null;
   is_locked: boolean;
