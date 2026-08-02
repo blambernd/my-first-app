@@ -1,6 +1,6 @@
 # PROJ-30: Fahrzeug-Navigation & UX-Überarbeitung
 
-## Status: In Progress
+## Status: In Review
 **Created:** 2026-08-01
 **Last Updated:** 2026-08-01
 
@@ -375,7 +375,91 @@ Das ist eine vorbestehende Schwäche der Testeinrichtung, keine Eigenschaft von 
 - **Tastaturbedienung und Screenreader** über die Voreinstellungen der Sidebar-Komponente hinaus.
 
 ## QA Test Results
-_To be added by /qa_
+
+**Geprüft am:** 2026-08-02 · **Ergebnis: produktionsreif** (ein Medium-Fehler offen)
+
+### Akzeptanzkriterien: 30 von 31 erfüllt
+
+| Gruppe | erfüllt | offen |
+|---|---:|---:|
+| Seitliche Navigation | 9 / 10 | 1 (Inhaltsbreite bei 1024–1279 px) |
+| Kopfbereich | 5 / 5 | – |
+| Fahrzeugwechsel | 6 / 6 | – |
+| Berechtigungen | 2 / 2 | – |
+| Premium-Kennzeichnung | 0 / 3 | nicht auslösbar (s. u.) |
+| Mobile | 3 / 4 | 1 (Panel schließt nicht) |
+| Aufräumen | 2 / 2 | – |
+
+### Der Fahrzeugwechsel — die größte Lücke aus `/frontend` — ist geschlossen
+
+Ich habe dem Testnutzer vorübergehend ein zweites eigenes Fahrzeug angelegt und ein fremdes als **Werkstatt** freigegeben. Damit ließ sich prüfen, was mit einem Fahrzeug unmöglich war:
+
+- Ab zwei Fahrzeugen wird der Name klickbar — **erfüllt**
+- Gruppen „Meine Fahrzeuge" / „Geteilte Fahrzeuge" sauber getrennt — **erfüllt**
+- Aktuelles Fahrzeug mit Häkchen markiert — **erfüllt**
+- „Fahrzeug anlegen" steht am Ende — **erfüllt**
+- Liste scrollbar (`overflow-y: auto`, `max-height: 320px`) — **erfüllt**
+- Wechsel von `/tankbuch` führt auf `/tankbuch` des Zielfahrzeugs — **erfüllt**
+- **Wechsel von `/kosten/auswertung` auf ein geteiltes Fahrzeug führt auf dessen Übersicht**, nicht auf eine Fehlerseite — **erfüllt**
+
+Als Werkstatt sind „Kosten" und „Verkaufsassistent" nicht im Menü, und im Kopf steht ausschließlich „Fahrzeug verlassen".
+
+**Die Testdaten sind nach der Prüfung vollständig entfernt** (zurück auf 1 eigenes, 0 geteilte Fahrzeuge); das fremde Fahrzeug blieb unberührt.
+
+### Sicherheitsprüfung
+
+Keine Befunde.
+
+- **Ausblenden ersetzt keine Prüfung:** Direktaufruf von `/vehicles/<fremd>/kosten` als Werkstatt liefert **HTTP 404**. Der Menüeintrag fehlt *und* der Server weist ab.
+- Der Fahrzeugwechsel greift auf keine Daten zu, die der Nutzer nicht ohnehin sehen darf — die Liste stammt aus `vehicles` (eigene) und `vehicle_members` (geteilte), beide durch bestehende Zugriffsregeln gedeckt.
+- Keine neuen Eingabefelder, keine neuen Endpunkte, keine neuen Datenfelder — die Angriffsfläche wächst nicht.
+
+### Weitere Prüfungen
+
+| Prüfung | Ergebnis |
+|---|---|
+| Tastaturbedienung | Navigation nach 3 × Tab erreichbar, `Enter` navigiert |
+| Screenreader | aktiver Eintrag über `data-active` ausgezeichnet |
+| Tooltip im Symbol-Modus | erscheint |
+| Erste Sitzung ohne Cookie | startet ausgeklappt |
+| Langer Fahrzeugname | bricht die Navigation nicht auf |
+| Bedienflächen mobil | 44–48 px, Vorgabe erfüllt |
+| Untere Leiste (mobil) | unverändert vorhanden, nicht überlagert |
+| Firefox | 12 Einträge, keine Fehler |
+| WebKit (Safari-Engine) | 12 Einträge, keine Fehler |
+| Alle bisherigen Fahrzeugpfade | 12 von 12 mit HTTP 200 |
+| Konsole | auf allen geprüften Seiten sauber |
+
+### Gefundene Fehler
+
+| # | Schwere | Befund |
+|---|---|---|
+| BUG-1 | **Mittel** | **Das überlagernde Panel schließt sich auf dem Smartphone nicht.** Nach Auswahl eines Bereichs navigiert die Seite korrekt, aber das Panel bleibt offen — der Inhalt wechselt unsichtbar dahinter. Betrifft **jede** Navigation auf Mobilgeräten. Ursache: Die Sidebar-Komponente schließt ihr mobiles Panel nicht von selbst, wenn ein Link darin angeklickt wird. Umgehung: daneben tippen. Verstößt gegen „Die Auswahl eines Bereichs schließt das Panel und navigiert dorthin". |
+| BUG-2 | Gering | **Inhaltsbreite bei 1024–1279 px.** 704 px statt bisher 960 px. Ab 1280 px erfüllt, darüber deutlich übertroffen (1440 px → 1120 px). In `/frontend` gemessen und begründet; die Vorgabe ist bei dieser Fensterbreite arithmetisch nicht erfüllbar. **Empfehlung: das Kriterium auf „ab 1280 px" präzisieren**, statt Aufwand in eine fragile Ausnahme zu stecken. |
+
+### Nicht prüfbar: Premium-Kennzeichnung
+
+Alle drei Kriterien dieser Gruppe hängen am Verkaufsassistenten — dem einzigen kostenpflichtigen Bereich. Er ist seit dem 2026-08-02 ausgesetzt, also steht kein Eintrag zur Verfügung, an dem die Kennzeichnung erscheinen könnte. Der Code dafür ist vorhanden und wird über dieselbe Bereichsliste angesteuert; **geprüft ist er nicht**. Das gehört nachgeholt, sobald der Assistent zurückkehrt.
+
+### Automatisierte Tests
+
+- **Neu:** `tests/PROJ-30-fahrzeug-navigation-auth.spec.ts` — **14 von 14 grün**. Darunter ausdrücklich: „Kosten" ist ein Link, der Pfeil klappt ohne zu navigieren, keine zweite Reiterleiste auf allen vier Kosten-Seiten, alle bisherigen Pfade liefern 200.
+- `src/lib/vehicle-areas.test.ts` — 16 Tests zur Bereichsliste und zur Wegberechnung des Wechsels.
+- Gesamt: **552 Unit-Tests grün**, Lint ohne Fehler, Build erfolgreich.
+
+### Zwei Schwächen der Testeinrichtung (vorbestehend, nicht PROJ-30)
+
+**`auth.setup.ts` scheitert, sobald der Testnutzer ein geteiltes Fahrzeug hat.** Die Anmeldeprüfung suchte eine Überschrift nach `/Fahrzeuge/i` — mit geteilten Fahrzeugen trifft das „Meine Fahrzeuge" **und** „Geteilte Fahrzeuge", und die Mehrdeutigkeit lässt die Anmeldung scheitern. Dadurch fielen **alle** angemeldeten Tests aus. Auf „Meine Fahrzeuge" präzisiert.
+
+**Die datenverändernden Specs stören einander.** PROJ-24, 25, 27 und 28 arbeiten alle auf demselben Wegwerf-Fahrzeug und räumen es auf; parallel ausgeführt löschen sie einander die Daten. Seriell sind es 62 von 62 grün. Empfehlung: eigenes Wegwerf-Fahrzeug je Spec oder `--workers=1` für diese Gruppe festschreiben.
+
+**Vorbestehend und unabhängig:** 21 E2E-Fehler auf den öffentlichen Seiten (PROJ-1, PROJ-15, PROJ-17). „App-Vorschau" wurde in Commit `1f35ac2` entfernt, ohne die Tests nachzuziehen; „Kostenlos starten" kommt seit dem Ausbau der Preissektion viermal vor. PROJ-17 steht folgerichtig noch auf **In Review**.
+
+### Empfehlung
+
+**Auslieferbar.** Kein kritischer und kein hoher Fehler. Das Feature erfüllt seinen Zweck: Auf allen vier Kosten-Seiten ist die zweite Navigationsebene verschwunden, alle bisherigen Pfade funktionieren, und die Zugriffsprüfung bleibt serverseitig maßgeblich.
+
+BUG-1 sollte vor dem Ausliefern behoben werden — er ist klein, betrifft aber jede Navigation auf dem Smartphone. BUG-2 ist eher eine Präzisierung der Spec als ein Fehler.
 
 ## Deployment
 _To be added by /deploy_
