@@ -1,6 +1,6 @@
 # PROJ-30: Fahrzeug-Navigation & UX-Überarbeitung
 
-## Status: Architected
+## Status: In Progress
 **Created:** 2026-08-01
 **Last Updated:** 2026-08-01
 
@@ -272,6 +272,107 @@ Alle bestehenden Pfade bleiben, wie sie sind. Lesezeichen und interne Verweise f
 **Die Breite des Inhaltsbereichs.** Die Spec verlangt, dass der Inhalt nicht schmaler wird als heute. Die Navigation braucht Platz, den es vorher nicht gab. Auf breiten Bildschirmen ist das unkritisch; zwischen 1024 und 1280 px wird es eng. Vorgesehen: In diesem Bereich startet die Navigation reduziert. Das ist die einzige Stelle, an der die Spec-Vorgaben sich gegenseitig drücken — beim Bauen an echten Breiten zu prüfen.
 
 **Verlässlichkeit der Umstellung.** Vier Kosten-Seiten verlieren ihre bisherige Unternavigation. Wird eine übersehen, stehen dort zwei Navigationsebenen — genau der Zustand, den das Feature beseitigen soll. Das gehört ausdrücklich in die Prüfliste für `/qa`.
+
+## Implementierung (Frontend)
+
+**Umgesetzt am:** 2026-08-02
+
+### Gebaute und geänderte Dateien
+
+| Datei | Zweck |
+|---|---|
+| `src/lib/vehicle-areas.ts` | neu — die Bereichsliste an genau einer Stelle |
+| `src/components/vehicle-sidebar.tsx` | neu — Seitennavigation, beide Darstellungen |
+| `src/components/vehicle-switcher.tsx` | neu — Fahrzeugwechsel im Kopf |
+| `src/components/vehicle-header-actions.tsx` | neu — Kopfzeile mit Überlaufmenü |
+| `src/app/vehicles/[id]/layout.tsx` | Sidebar eingesetzt, Fahrzeugliste geladen, Cookie gelesen |
+| `src/components/delete-vehicle-button.tsx` | um einen gesteuerten Modus ohne eigene Schaltfläche erweitert |
+| `src/hooks/use-mobile.tsx` | Umbruchpunkt von 768 auf 1024 px |
+| `src/lib/vehicle-areas.test.ts` | neu — 16 Tests, u. a. der Fahrzeugwechsel |
+| `src/components/cost-area-nav.tsx` | **gelöscht** |
+| `src/components/vehicle-profile-nav.tsx` | **gelöscht** |
+| 4 Kosten-Seiten | Einbindung der Unternavigation entfernt |
+
+### Im Browser gemessen, nicht angenommen
+
+Angemeldet über den E2E-Testnutzer, gegen einen Produktionsbuild:
+
+| Seite | Sidebar | Einträge | alte Reiterleiste |
+|---|---|---|---:|
+| Übersicht | ja | 6 Bereiche | **0** |
+| Kosten | ja | 6 + 4 Unterbereiche aufgeklappt | **0** |
+| Kosten/Auswertung | ja | 6 + 4 Unterbereiche aufgeklappt | **0** |
+| Scheckheft | ja | 6, Kosten zugeklappt | **0** |
+
+Der Bereich „Kosten" klappt auf Unterseiten von selbst auf und bleibt anderswo zu — wie gefordert.
+
+**Symbol-Modus (der im Entwurf als heikel benannte Fall):** Ein Klick auf das Kosten-Symbol öffnet alle vier Unterbereiche als Menü daneben, der Sprung auf „Einzelkosten" funktioniert. Der Zustand steht danach als `sidebar_state=false` im Cookie und überlebt den Seitenwechsel.
+
+**Umbruchpunkt:** 1023 px → überlagerndes Panel, 1024 px → feste Navigation. Kein Querscrollen bei 375, 768, 1024, 1280 und 1440 px. Konsole auf allen geprüften Seiten sauber, keine Hydration-Meldungen.
+
+### Ein Fehler, den erst der Browser gezeigt hat
+
+Mein erster Entwurf verschachtelte ein `<main>` innerhalb des `<main>`, das `SidebarInset` selbst rendert. Ungültiges HTML, und Screenreader hätten zwei Hauptinhalte gemeldet — bei einer Spec, die Barrierefreiheit ausdrücklich verlangt. Das innere Element ist jetzt ein `div`. Aufgefallen ist es nur, weil eine Prüfung zwei Treffer statt einem fand; im Build und in der Typprüfung war es unsichtbar.
+
+### Abweichung: Inhaltsbreite bei 1024–1279 px
+
+Die Spec verlangt, dass der Inhalt nicht schmaler wird als bisher. Gemessen:
+
+| Breite | Inhalt neu | Inhalt vorher | |
+|---|---:|---:|---|
+| 1024 px | 704 px | 960 px | **schmaler** |
+| 1280 px | 960 px | 960 px | gleich |
+| 1440 px | 1120 px | 960 px | breiter |
+| 1920 px | 1600 px | 960 px | deutlich breiter |
+
+Ab 1280 px ist die Vorgabe erfüllt und darüber deutlich übertroffen — vorher war der Inhalt auf 1024 px gedeckelt, jetzt wächst er mit. **Unterhalb von 1280 px ist sie nicht erfüllt**, und das ist Arithmetik, kein Fehler: 960 px Inhalt plus 256 px Navigation verlangen mindestens 1216 px Fensterbreite.
+
+Der Entwurf sah als Ausweg vor, die Navigation in diesem Bereich reduziert zu starten. Das ist **bewusst nicht umgesetzt**: Der Startzustand kommt aus dem Cookie, den der Server liest — er kennt die Fensterbreite nicht. Eine breitenabhängige Vorgabe ließe sich nur clientseitig treffen und erzeugte genau das Zusammenklappen nach dem Laden, das der Cookie-Weg vermeidet.
+
+Wer bei 1024 px mehr Platz braucht, klappt die Navigation einmal ein; der Zustand bleibt erhalten. Ob das genügt oder die Vorgabe angepasst werden sollte, gehört in die QA-Bewertung.
+
+### Umgesetzte Entscheidungen
+
+- **Die Bereichsliste steht an einer Stelle.** Vorher war dieselbe Information dreifach gepflegt. PROJ-31 fügt später nur einen Eintrag hinzu.
+- **Ausgesetzte Bereiche verschwinden von selbst**, weil die Liste den Schalter aus `feature-flags.ts` mitliest. Der Verkaufsassistent ist dadurch derzeit nicht in der Navigation — die Premium-Kennzeichnung ist trotzdem gebaut und greift, sobald er zurückkehrt.
+- **Der Fahrzeugwechsel prüft vor dem Sprung**, ob der Unterbereich am Zielfahrzeug zusteht. Wer von „Kosten" auf ein geteiltes Fahrzeug wechselt, landet auf dessen Übersicht statt auf einer Fehlerseite.
+- **Der Löschdialog liegt außerhalb des Überlaufmenüs.** Läge er darin, nähme das schließende Menü ihn mit.
+- **Leere Gruppen werden weggelassen.** Ein nur als Werkstatt eingeladener Nutzer sieht keine leere Überschrift „Meine Fahrzeuge".
+
+### Eine Regression, die ich selbst eingebaut und wieder behoben habe
+
+Im ersten Wurf war „Kosten" nur ein Aufklapp-Schalter, kein Link. Vorher führte ein Klick darauf in den Kostenbereich — das wäre eine Verschlechterung gewesen, und mit PROJ-31 bekommt der Bereich eine eigene Einstiegsseite.
+
+Aufgefallen ist es **nicht** beim Ausprobieren, sondern durch einen bestehenden E2E-Test aus PROJ-25: „Kosten sind über die Fahrzeug-Navigation erreichbar" suchte einen Link und fand keinen.
+
+Jetzt trägt die Zeile beides: Der Name ist ein Link in den Bereich, der Pfeil daneben klappt nur auf. Im Browser geprüft — der Pfeil navigiert nicht, der Name schon.
+
+### E2E-Lage
+
+`npm run test:e2e` meldet 24 Fehler. Aufgeschlüsselt:
+
+| Gruppe | Anzahl | Ursache |
+|---|---:|---|
+| PROJ-1, PROJ-15, PROJ-17 (öffentliche Seiten) | 21 | **vorbestehend**, siehe unten |
+| PROJ-25 Navigation | 1 | **meine Regression** — behoben |
+| PROJ-27, PROJ-28 | 2 | **Parallelitäts-Störung** — siehe unten |
+
+**Vorbestehend:** Diese Tests prüfen Inhalte der Startseite, die es so nicht mehr gibt. „App-Vorschau" wurde in Commit `1f35ac2` durch einen Screenshot ersetzt, der Test nie nachgezogen. „Kostenlos starten" und „Digitales Scheckheft" kommen seit dem Ausbau der Preissektion mehrfach vor, was die Tests als Mehrdeutigkeit abweisen. PROJ-17 steht folgerichtig noch auf **In Review** — die Feature-QA wurde nie abgeschlossen. Nichts davon berührt PROJ-30.
+
+**Parallelität:** Die vier datenverändernden Specs (PROJ-24, 25, 27, 28) arbeiten alle auf **demselben** Wegwerf-Fahrzeug und räumen es jeweils auf. Laufen sie gleichzeitig, löschen sie einander die Daten weg. Nacheinander ausgeführt sind es **62 von 62 grün**:
+
+```
+npx playwright test tests/PROJ-2{4,5,7,8}-*-auth.spec.ts --project=chromium-auth --workers=1
+→ 62 passed
+```
+
+Das ist eine vorbestehende Schwäche der Testeinrichtung, keine Eigenschaft von PROJ-30 — sie fällt nur auf, wenn alle vier zusammen laufen. Empfehlung für `/qa`: entweder `--workers=1` für diese Gruppe festschreiben oder je Spec ein eigenes Wegwerf-Fahrzeug anlegen.
+
+### Nicht geprüft
+
+- **Der Fahrzeugwechsel im Browser.** Der Testnutzer besitzt genau ein Fahrzeug; geprüft ist damit nur die Einzelfahrzeug-Darstellung ohne Auswahlmöglichkeit. Die **Wegberechnung** ist dafür als reine Funktion ausgelagert und mit 16 Tests abgedeckt — einschließlich des Falls „von Kosten auf ein geteiltes Fahrzeug", der auf die Übersicht führen muss statt auf eine Fehlerseite. Die Darstellung der Auswahlliste und die Gruppentrennung gehören dennoch in `/qa` mit einem Nutzer, der mindestens zwei Fahrzeuge hat.
+- **Die Premium-Kennzeichnung** ist mangels sichtbaren kostenpflichtigen Bereichs derzeit nicht auslösbar.
+- **Tastaturbedienung und Screenreader** über die Voreinstellungen der Sidebar-Komponente hinaus.
 
 ## QA Test Results
 _To be added by /qa_

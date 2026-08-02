@@ -1,6 +1,5 @@
 import { redirect, notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase-server";
-import { CostAreaNav } from "@/components/cost-area-nav";
 import { RecurringCostList } from "@/components/recurring-cost-list";
 import {
   normalizeRecurringCost,
@@ -51,7 +50,6 @@ export default async function KostenPage({ params }: KostenPageProps) {
 
   return (
     <div className="space-y-6">
-      <CostAreaNav vehicleId={id} />
       <RecurringCostList
         vehicleId={id}
         initialCosts={((costs ?? []) as RecurringCost[]).map(

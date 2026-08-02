@@ -2,7 +2,6 @@ import { redirect, notFound } from "next/navigation";
 import { format, parse } from "date-fns";
 import { de } from "date-fns/locale";
 import { createClient } from "@/lib/supabase-server";
-import { CostAreaNav } from "@/components/cost-area-nav";
 import { OneOffCostList } from "@/components/one-off-cost-list";
 import type { ServiceEntryOption } from "@/components/one-off-cost-form";
 import {
@@ -87,7 +86,6 @@ export default async function EinzelkostenPage({ params }: EinzelkostenPageProps
 
   return (
     <div className="space-y-6">
-      <CostAreaNav vehicleId={id} />
       <OneOffCostList
         vehicleId={id}
         initialCosts={((costs ?? []) as OneOffCost[]).map(normalizeOneOffCost)}
