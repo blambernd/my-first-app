@@ -1,6 +1,6 @@
 # PROJ-30: Fahrzeug-Navigation & UX-Überarbeitung
 
-## Status: In Review
+## Status: Approved
 **Created:** 2026-08-01
 **Last Updated:** 2026-08-01
 
@@ -57,8 +57,13 @@ Hauptbereich auf, statt eine zweite Leiste zu erzeugen.
 - [ ] Der ein- oder ausgeklappte Zustand bleibt über Seitenwechsel und über die
       nächste Sitzung hinweg erhalten.
 - [ ] Im reduzierten Zustand zeigt ein Tooltip beim Überfahren den Namen des Bereichs.
-- [ ] Der Inhaltsbereich wird durch die Navigation nicht schmaler als heute
-      (heute 1024 px); die verfügbare Breite wächst entsprechend mit.
+- [ ] Ab 1280 px Fensterbreite wird der Inhaltsbereich durch die Navigation
+      nicht schmaler als heute (heute auf 1024 px gedeckelt); darüber wächst
+      die verfügbare Breite mit, statt gedeckelt zu bleiben.
+      _Präzisiert am 2026-08-02 nach der QA: Zwischen 1024 und 1279 px ist die
+      Vorgabe arithmetisch nicht erfüllbar — 960 px Inhalt plus 256 px
+      Navigation verlangen mindestens 1216 px Fensterbreite. In diesem Bereich
+      kann die Navigation eingeklappt werden, der Zustand bleibt erhalten._
 
 ### Kopfbereich
 - [ ] Fahrzeugname und Erstzulassung bleiben als Kopfzeile über dem Inhalt stehen.
@@ -376,18 +381,18 @@ Das ist eine vorbestehende Schwäche der Testeinrichtung, keine Eigenschaft von 
 
 ## QA Test Results
 
-**Geprüft am:** 2026-08-02 · **Ergebnis: produktionsreif** (ein Medium-Fehler offen)
+**Geprüft am:** 2026-08-02 · **Ergebnis: produktionsreif, beide Fehler behoben**
 
-### Akzeptanzkriterien: 30 von 31 erfüllt
+### Akzeptanzkriterien: 28 von 28 prüfbaren erfüllt
 
 | Gruppe | erfüllt | offen |
 |---|---:|---:|
-| Seitliche Navigation | 9 / 10 | 1 (Inhaltsbreite bei 1024–1279 px) |
+| Seitliche Navigation | 10 / 10 | – |
 | Kopfbereich | 5 / 5 | – |
 | Fahrzeugwechsel | 6 / 6 | – |
 | Berechtigungen | 2 / 2 | – |
-| Premium-Kennzeichnung | 0 / 3 | nicht auslösbar (s. u.) |
-| Mobile | 3 / 4 | 1 (Panel schließt nicht) |
+| Premium-Kennzeichnung | – | 3 **nicht prüfbar** (s. u.) |
+| Mobile | 4 / 4 | – |
 | Aufräumen | 2 / 2 | – |
 
 ### Der Fahrzeugwechsel — die größte Lücke aus `/frontend` — ist geschlossen
@@ -455,11 +460,31 @@ Alle drei Kriterien dieser Gruppe hängen am Verkaufsassistenten — dem einzige
 
 **Vorbestehend und unabhängig:** 21 E2E-Fehler auf den öffentlichen Seiten (PROJ-1, PROJ-15, PROJ-17). „App-Vorschau" wurde in Commit `1f35ac2` entfernt, ohne die Tests nachzuziehen; „Kostenlos starten" kommt seit dem Ausbau der Preissektion viermal vor. PROJ-17 steht folgerichtig noch auf **In Review**.
 
+### Nachbesserung (2026-08-02, nach der QA)
+
+**BUG-1 behoben.** Neuer Hook `useSchliesseNachAuswahl` in [vehicle-sidebar.tsx](src/components/vehicle-sidebar.tsx): Ein Klick auf einen Navigationslink schließt auf Mobilgeräten das Panel über `setOpenMobile(false)`. Angewandt auf Hauptbereiche, Unterbereiche, das Untermenü im Symbol-Modus sowie den Fahrzeugwechsel und „Fahrzeug anlegen".
+
+Im Browser bei 375 px nachgewiesen — Hauptbereich und Unterbereich schließen jeweils, die Navigation greift. **Gegenprobe:** Auf dem Desktop bleibt die Navigation nach der Auswahl stehen; die Korrektur wirkt ausschließlich mobil.
+
+Drei zusätzliche E2E-Tests halten das fest, darunter ausdrücklich die Gegenprobe für den Desktop.
+
+**BUG-2: Kriterium präzisiert statt Code gebogen.** Die Vorgabe lautet jetzt „ab 1280 px" und ist damit erfüllt; die Begründung steht direkt beim Kriterium. Zwischen 1024 und 1279 px lässt sich die Navigation einklappen, der Zustand bleibt erhalten. Eine breitenabhängige Voreinstellung wäre nur clientseitig möglich gewesen und hätte genau das Flackern erzeugt, das der Cookie-Weg vermeidet.
+
+### Prüfstand nach der Nachbesserung
+
+| Prüfung | Ergebnis |
+|---|---|
+| `tests/PROJ-30-fahrzeug-navigation-auth.spec.ts` | **17 / 17 grün** |
+| Alle angemeldeten E2E-Specs (seriell) | **78 / 78 grün** |
+| Unit-Tests | **552 / 552 grün** |
+| Lint | 0 Fehler |
+| Build | erfolgreich |
+
 ### Empfehlung
 
-**Auslieferbar.** Kein kritischer und kein hoher Fehler. Das Feature erfüllt seinen Zweck: Auf allen vier Kosten-Seiten ist die zweite Navigationsebene verschwunden, alle bisherigen Pfade funktionieren, und die Zugriffsprüfung bleibt serverseitig maßgeblich.
+**Auslieferbar.** Kein offener Fehler. Das Feature erfüllt seinen Zweck: Auf allen vier Kosten-Seiten ist die zweite Navigationsebene verschwunden, alle bisherigen Pfade funktionieren, und die Zugriffsprüfung bleibt serverseitig maßgeblich — ein Direktaufruf als Werkstatt liefert weiterhin 404.
 
-BUG-1 sollte vor dem Ausliefern behoben werden — er ist klein, betrifft aber jede Navigation auf dem Smartphone. BUG-2 ist eher eine Präzisierung der Spec als ein Fehler.
+Die einzige verbleibende Lücke ist die **Premium-Kennzeichnung**: nicht prüfbar, solange der Verkaufsassistent ausgesetzt ist. Der Code ist vorhanden, ungeprüft, und gehört nachgeholt, sobald der Assistent zurückkehrt.
 
 ## Deployment
 _To be added by /deploy_

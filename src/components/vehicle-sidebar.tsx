@@ -60,6 +60,24 @@ interface VehicleSidebarProps {
   vehicles: SwitchableVehicle[];
 }
 
+/**
+ * Schließt das überlagernde Panel nach einer Auswahl (BUG-1).
+ *
+ * Die Sidebar-Komponente schließt ihr mobiles Panel nicht von selbst, wenn
+ * darin ein Link angeklickt wird. Ohne diesen Griff navigiert die Seite zwar
+ * korrekt, der Inhalt wechselt aber unsichtbar hinter der Überlagerung — bei
+ * jeder einzelnen Navigation auf dem Smartphone.
+ *
+ * Auf dem Desktop bleibt die Navigation stehen; dort gibt es nichts zu
+ * schließen.
+ */
+function useSchliesseNachAuswahl(): () => void {
+  const { isMobile, setOpenMobile } = useSidebar();
+  return () => {
+    if (isMobile) setOpenMobile(false);
+  };
+}
+
 export function VehicleSidebar({
   vehicleId,
   isOwner,
@@ -140,11 +158,12 @@ function SimpleArea({
 }) {
   const aktiv = isAreaActive(area, basePath, pathname);
   const Icon = area.icon;
+  const schliessen = useSchliesseNachAuswahl();
 
   return (
     <SidebarMenuItem>
       <SidebarMenuButton asChild isActive={aktiv} tooltip={area.label} className={TOUCH_HOEHE}>
-        <Link href={`${basePath}${area.href}`}>
+        <Link href={`${basePath}${area.href}`} onClick={schliessen}>
           <Icon />
           <span>{area.label}</span>
         </Link>
@@ -180,6 +199,7 @@ function AreaWithChildren({
   const imBereich = isAreaActive(area, basePath, pathname);
   const Icon = area.icon;
   const children = area.children ?? [];
+  const schliessen = useSchliesseNachAuswahl();
 
   if (eingeklappt) {
     return (
@@ -195,7 +215,7 @@ function AreaWithChildren({
             <DropdownMenuLabel>{area.label}</DropdownMenuLabel>
             {children.map((sub) => (
               <DropdownMenuItem key={sub.href} asChild>
-                <Link href={`${basePath}${sub.href}`}>
+                <Link href={`${basePath}${sub.href}`} onClick={schliessen}>
                   <sub.icon className="size-4" />
                   {sub.label}
                 </Link>
@@ -221,7 +241,7 @@ function AreaWithChildren({
           tooltip={area.label}
           className={TOUCH_HOEHE}
         >
-          <Link href={`${basePath}${area.href}`}>
+          <Link href={`${basePath}${area.href}`} onClick={schliessen}>
             <Icon />
             <span>{area.label}</span>
           </Link>
@@ -245,7 +265,7 @@ function AreaWithChildren({
                   isActive={isSubAreaActive(sub, basePath, pathname)}
                   className={TOUCH_HOEHE_SUB}
                 >
-                  <Link href={`${basePath}${sub.href}`}>
+                  <Link href={`${basePath}${sub.href}`} onClick={schliessen}>
                     <sub.icon />
                     <span>{sub.label}</span>
                   </Link>

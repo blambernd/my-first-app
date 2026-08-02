@@ -37,7 +37,7 @@ export function VehicleSwitcher({
 }: VehicleSwitcherProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const { isMobile } = useSidebar();
+  const { isMobile, setOpenMobile } = useSidebar();
 
   const current =
     vehicles.find((v) => v.id === currentVehicleId) ?? vehicles[0] ?? null;
@@ -56,7 +56,15 @@ export function VehicleSwitcher({
    */
   function wechselZu(ziel: SwitchableVehicle) {
     if (ziel.id === currentVehicleId) return;
+    // Sonst bliebe auf dem Smartphone das überlagernde Panel offen und der
+    // Fahrzeugwechsel liefe unsichtbar dahinter ab (BUG-1).
+    if (isMobile) setOpenMobile(false);
     router.push(switchTargetPath(pathname, currentVehicleId, ziel));
+  }
+
+  function neuesFahrzeug() {
+    if (isMobile) setOpenMobile(false);
+    router.push("/vehicles/new");
   }
 
   // Bei nur einem Fahrzeug gibt es nichts zu wählen — dann darf es auch nicht
@@ -142,7 +150,7 @@ export function VehicleSwitcher({
             )}
 
             <DropdownMenuSeparator />
-            <DropdownMenuItem onSelect={() => router.push("/vehicles/new")}>
+            <DropdownMenuItem onSelect={neuesFahrzeug}>
               <Plus className="size-4" />
               Fahrzeug anlegen
             </DropdownMenuItem>

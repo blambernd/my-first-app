@@ -227,6 +227,51 @@ test.describe("PROJ-30: Fahrzeug-Navigation", () => {
     for (const h of hoehen) expect(h).toBeGreaterThanOrEqual(44);
   });
 
+  test("AC: Die Auswahl schließt das Panel und navigiert (BUG-1)", async ({
+    page,
+  }) => {
+    // Ohne den Griff in setOpenMobile navigierte die Seite zwar, das Panel
+    // blieb aber offen — der Inhalt wechselte unsichtbar dahinter.
+    await page.setViewportSize({ width: 375, height: 780 });
+    await page.goto(BASIS);
+    await page.locator('[data-sidebar="trigger"]').first().click();
+    await expect(page.getByRole("dialog")).toBeVisible();
+
+    await page.getByRole("link", { name: "Scheckheft", exact: true }).click();
+    await expect(page).toHaveURL(new RegExp(`${BASIS}/scheckheft$`));
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+  });
+
+  test("AC: Auch ein Unterbereich schließt das Panel (BUG-1)", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 375, height: 780 });
+    await page.goto(BASIS);
+    await page.locator('[data-sidebar="trigger"]').first().click();
+    await expect(page.getByRole("dialog")).toBeVisible();
+
+    await page
+      .getByRole("button", { name: /Kosten auf- oder zuklappen/ })
+      .click();
+    await page.getByRole("link", { name: "Einzelkosten" }).click();
+
+    await expect(page).toHaveURL(new RegExp(`${BASIS}/kosten/einzelkosten$`));
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+  });
+
+  test("AC: Auf dem Desktop bleibt die Navigation nach der Auswahl stehen", async ({
+    page,
+  }) => {
+    // Gegenprobe zur BUG-1-Korrektur: Sie darf nur mobil greifen.
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto(BASIS);
+    await page.getByRole("link", { name: "Tankbuch", exact: true }).click();
+    await expect(page).toHaveURL(new RegExp(`${BASIS}/tankbuch$`));
+    await expect(
+      page.locator('[data-sidebar="sidebar"]').first()
+    ).toBeVisible();
+  });
+
   test("AC: Unterhalb der Desktop-Breite überlagert die Navigation", async ({
     page,
   }) => {
