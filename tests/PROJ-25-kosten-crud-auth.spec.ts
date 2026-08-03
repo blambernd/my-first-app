@@ -121,7 +121,11 @@ test.describe("PROJ-25: Laufende Kosten — Erfassen, Umlegen, Ändern, Löschen
     // im Kostenbereich, wo die Unterpunkte aufgeklappt sind — auf der
     // Fahrzeugübersicht ist „Kosten" zugeklappt.
     await page.goto(`/vehicles/${VEHICLE_ID}/kosten`);
-    const liste = page.getByRole("link", { name: "Laufende Kosten", exact: true });
+    // Ausdrücklich der Navigationseintrag: Der Überblick verweist selbst nach
+    // „Laufende Kosten", sobald Kosten erfasst sind.
+    const liste = page
+      .locator('[data-sidebar="menu-sub-button"]')
+      .filter({ hasText: /^Laufende Kosten$/ });
     await expect(liste).toBeVisible({ timeout: 15000 });
     await expect(liste).toHaveAttribute("href", KOSTEN);
   });

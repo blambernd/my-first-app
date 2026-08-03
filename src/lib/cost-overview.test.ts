@@ -199,3 +199,73 @@ describe("buildCostOverview — Datenlage", () => {
     expect(o.dominantGroup).toBeNull();
   });
 });
+
+describe("buildCostOverview — unerfasste Gruppen (QA BUG-2)", () => {
+  const ALLE = [
+    "fuel",
+    "maintenance",
+    "repair",
+    "insurance",
+    "tax",
+    "storage",
+    "club",
+    "parts",
+    "appraisal",
+    "misc",
+  ];
+
+  /**
+   * Wie die echte Auswertung: **alle** Kostenarten sind vertreten, jede mit
+   * ihrem Erfassungsstand. Die genannten gelten als erfasst.
+   */
+  function analyseMitErfassung(erfasst: Record<string, number>): CostAnalysis {
+    return {
+      categories: ALLE.map((k) => ({
+        ...kategorie(k, erfasst[k] ?? 0),
+        tracked: k in erfasst,
+      })),
+      mileage: { km: 1000, readings: 5, skippedSegments: 0 },
+    } as unknown as CostAnalysis;
+  }
+
+  it("nennt die Gruppen der Aufteilung, nicht die feineren Kategorien", () => {
+    const o = buildCostOverview(analyseMitErfassung({ fuel: 50000 }), 12);
+    // „Wartung" und „Reparatur" einzeln zu nennen, während die Aufteilung
+    // „Wartung & Reparatur" zeigt, war der gemeldete Widerspruch
+    expect(o.untrackedGroups).toEqual([
+      "Wartung & Reparatur",
+      "Laufende Kosten",
+      "Einzelkosten",
+    ]);
+  });
+
+  it("meldet eine Gruppe nicht als unerfasst, wenn ein Teil davon erfasst ist", () => {
+    // Genau der gemeldete Fall: Reparaturen erfasst, Wartungen nicht. Die
+    // Gruppe zeigt 15.000 € — sie als unerfasst zu melden wäre falsch.
+    const o = buildCostOverview(
+      analyseMitErfassung({ fuel: 50000, repair: 1500000 }),
+      12
+    );
+    expect(o.untrackedGroups).not.toContain("Wartung & Reparatur");
+    expect(o.groups.map((g) => g.label)).toContain("Wartung & Reparatur");
+  });
+
+  it("meldet nichts, wenn jede Gruppe etwas enthält", () => {
+    const o = buildCostOverview(
+      analyseMitErfassung({
+        fuel: 50000,
+        maintenance: 10000,
+        insurance: 20000,
+        misc: 5000,
+      }),
+      12
+    );
+    expect(o.untrackedGroups).toEqual([]);
+  });
+
+  it("meldet keine Gruppe als unerfasst, wenn der Erfassungsstand fehlt", () => {
+    // Ohne Angabe lieber schweigen als etwas Falsches behaupten
+    const o = buildCostOverview(analyse([["fuel", 50000]]), 12);
+    expect(o.untrackedGroups).toEqual([]);
+  });
+});

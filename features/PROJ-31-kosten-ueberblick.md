@@ -1,8 +1,8 @@
 # PROJ-31: Kosten-Überblicksseite
 
-## Status: In Progress
+## Status: Approved
 **Created:** 2026-08-01
-**Last Updated:** 2026-08-01
+**Last Updated:** 2026-08-03
 
 ## Kontext
 
@@ -284,7 +284,128 @@ Ein fünfter Test lief in einen Zeitüberlauf: Er ruft alle Fahrzeugseiten nache
 - **Tastaturbedienung** über die Voreinstellungen hinaus.
 
 ## QA Test Results
-_To be added by /qa_
+
+**Geprüft am:** 2026-08-03 · **Ergebnis: produktionsreif** (BUG-1 und BUG-2 behoben, kein offener Fehler)
+
+### Sechs Datenlagen durchgespielt
+
+Die Lücke aus `/frontend` waren die Grenzfälle — sie ließen sich nur mit passend gebauten Daten prüfen. Für jeden wurde das Wegwerf-Fahrzeug entsprechend befüllt:
+
+| Szenario | Erwartung | Ergebnis |
+|---|---|---|
+| **A** Nur Daten der letzten 3 Monate | Zeitraum verkürzt, Durchschnitt durch 3 | „Seit Juni 2026", 160 € → **53,33 €/Monat** ✓ |
+| **B** Restaurierung 15.000 € neben 160 € Benzin | Hinweis auf beherrschenden Posten | „Wartung & Reparatur macht **99 %**…" ✓ |
+| **C** Nur Daten aus 2023 | darf **nicht** wie „keine Daten" aussehen | **FEHLER — siehe BUG-1** |
+| **D** Rückläufige Kilometerstände (30.000 → 20.000) | keine negativen Werte | „—" mit „Die Kilometerstände widersprechen sich" ✓ |
+| **E** Alle vier Quellen | Übereinstimmung mit der Auswertung | beide **860,00 €** ✓ |
+| **F** Nur Einzelkosten, keine Kilometerstände | Kennzahl entfällt mit anderer Begründung | „—" mit „Dafür fehlen zwei Kilometerstände" ✓ |
+
+Szenario A belegte zugleich zwei weitere Kriterien: Bei einer einzigen Quelle heißt die Karte **„Erfasste Kosten"** statt „Aufteilung" und zeigt keinen Anteil — 100 % aus einer Quelle ist keine Verteilung.
+
+**Die Kernforderung ist erfüllt:** Überblick und Auswertung zeigten für dieselben Daten übereinstimmend 860,00 €. Von Hand nachgerechnet: 150 € Kraftstoff + 450 € Reparatur + 180 € Ersatzteile + 80 € Kfz-Steuer (120 €/Jahr über 8 abgedeckte Monate).
+
+### Akzeptanzkriterien: 17 von 17 erfüllt
+
+| Gruppe | erfüllt | offen |
+|---|---:|---:|
+| Einstieg und Navigation | 4 / 4 | – |
+| Kennzahlen | 7 / 7 | – |
+| Datenlage | 3 / 3 | – |
+| Zugriff | 1 / 1 | – |
+| Darstellung | 2 / 2 | – |
+
+### Sicherheitsprüfung
+
+Keine Befunde.
+
+- Aufruf von `/vehicles/<fremd>/kosten` liefert **HTTP 404**. Im ausgelieferten HTML steht **kein einziger Betrag** — ausdrücklich gegengeprüft, nicht nur der Statuscode.
+- Keine neuen Eingabefelder, keine neuen Endpunkte, kein neues Schema. Die Seite liest ausschließlich, was die Zugriffsregeln ohnehin schon schützen.
+- Serverseitig gerechnet: Was der Server nicht ausliefert, kann auch nicht abgegriffen werden. Rohdaten fremder Fahrzeuge erreichen den Browser nie.
+
+### Weitere Prüfungen
+
+| Prüfung | Ergebnis |
+|---|---|
+| Chromium | alle Kennzahlen, Konsole sauber |
+| Firefox | alle Kennzahlen, keine Fehler |
+| WebKit (Safari-Engine) | alle Kennzahlen sichtbar |
+| 375 / 768 / 1440 px | kein Querscrollen, vier Karten |
+| Hydration | auf allen geprüften Seiten sauber |
+
+**Zu WebKit:** Dort meldet die Konsole blockierte Abrufe an `/api/subscription` und `/api/pending-requests`. Das betrifft **jede** Seite der Anwendung, nicht diese — eine Eigenheit des WebKit-Treibers gegenüber `localhost`. Die Seite selbst rendert vollständig. Kein PROJ-31-Befund.
+
+### Gefundene Fehler
+
+| # | Schwere | Befund |
+|---|---|---|
+| BUG-1 | **Mittel** | **Ein Fahrzeug mit ausschließlich alten Daten sieht aus wie eines ohne jede Erfassung.** Bei Einträgen nur aus 2023 zeigt die Seite denselben leeren Zustand wie ein frisch angelegtes Fahrzeug: „Noch keine Kosten erfasst — Sobald du tankst, … steht hier, was dich das Fahrzeug kostet." Ein Nutzer, der jahrelang gepflegt erfasst hat, wird aufgefordert, damit anzufangen. Der Spec verbietet das ausdrücklich („darf nicht wie ein Fahrzeug ohne Daten aussehen"). Erwartet wäre ein Hinweis wie „Im gewählten Zeitraum keine Kosten — die letzten Einträge stammen von 2023" mit Weg in die Auswertung, wo alle Zeiträume wählbar sind. |
+| BUG-2 | Gering | **Widersprüchliche Beschriftung bei den nicht erfassten Kostenarten.** Bei erfassten Reparaturen zeigt die Seite gleichzeitig „**Wartung & Reparatur** 15.000 €" und „Für **Wartung** wurde bisher nichts erfasst". Ursache: Der Hinweis benennt die feinen Kategorien der Auswertung, die Darstellung fasst sie zu gröberen Gruppen zusammen. Sachlich richtig, beim Lesen aber ein Widerspruch. |
+
+**Beide Fehler sind behoben** — siehe die beiden Nachbesserungen weiter unten.
+
+### Automatisierte Tests
+
+- **Neu:** `tests/PROJ-31-kosten-ueberblick-auth.spec.ts` — **11 von 11 grün**. Schwerpunkt auf dem Umzug: dass `/kosten` den Überblick zeigt, die Liste unter `/kosten/laufende` erreichbar bleibt, nie beide Navigationseinträge zugleich aktiv sind und **kein** Verweis mehr auf den alten Pfad zeigt.
+- `src/lib/cost-overview.test.ts` (15) und die 7 Zeitraum-Tests decken die Rechnung ab.
+- Gesamt: **582 Unit-Tests grün**, Lint ohne Fehler, Build erfolgreich.
+
+### Nachbesserung (2026-08-03) — BUG-1 behoben
+
+Der leere Zustand unterscheidet jetzt **zwei Fälle**:
+
+| Datenlage | Anzeige |
+|---|---|
+| Nie etwas erfasst | „Noch keine Kosten erfasst" mit Wegen ins Tankbuch, zu laufenden Kosten und Einzelkosten |
+| Nur ältere Einträge | „**In diesem Zeitraum keine Kosten** — Erfasst ist durchaus etwas, die jüngsten Einträge stammen aus August 2023 … Die Auswertung lässt längere Zeiträume wählen." mit Weg dorthin |
+
+Neue Funktion `latestMonth` als Gegenstück zu `earliestMonth`. Sie zählt laufende Kosten mit ihrem **Ende**, nicht ihrem Beginn — sonst sähe ein 2019 abgeschlossener, heute noch gültiger Versicherungsvertrag wie eine alte Erfassung aus.
+
+Im Browser mit derselben Datenlage nachgewiesen, die den Fehler ausgelöst hatte: Die falsche Aufforderung ist weg, der letzte Eintragsmonat wird genannt, der Weg in die Auswertung steht da.
+
+### Prüfstand nach der ersten Nachbesserung
+
+| Prüfung | Ergebnis |
+|---|---|
+| `tests/PROJ-31-kosten-ueberblick-auth.spec.ts` | **12 / 12 grün** (inkl. BUG-1-Regression) |
+| Unit-Tests | **585 / 585 grün** (3 neu für `latestMonth`) |
+| Gesamtregression `chromium-auth` | **104 / 104 grün** (7 Specs, 5,9 min) |
+| Lint | 0 Fehler |
+| Build | erfolgreich |
+
+Drei Tests hatten im Gesamtlauf zunächst gefehlt — alle aus demselben Grund wie schon bei PROJ-26: Der Überblick verweist selbst nach „Laufende Kosten" und „Einzelkosten", wodurch diese Beschriftungen auf `/kosten` doppelt vorkommen, sobald Kosten erfasst sind. Sie zielen jetzt ausdrücklich auf den Navigationseintrag. Zwei weitere waren meine eigenen: Sie kannten nur zwei leere Zustände, seit der Korrektur gibt es drei.
+
+### Nachbesserung (2026-08-03) — BUG-2 behoben
+
+Hinweis und Aufteilung nutzen jetzt **dasselbe Vokabular**. Statt der feinen Kategorien der Auswertung nennt der Hinweis die vier Gruppen der Aufteilung, und eine Gruppe gilt nur dann als unerfasst, wenn **keine** ihrer Kostenarten je erfasst wurde.
+
+Damit verschwindet der Widerspruch an der Wurzel: Was mit einem Betrag dasteht, kann nicht mehr als „bisher nichts erfasst" gemeldet werden.
+
+Im Browser mit der auslösenden Konstellation nachgewiesen (Reparatur 15.000 € erfasst, Wartung nicht):
+
+```
+Wartung & Reparatur macht 99 % der Gesamtkosten aus. …
+Für Laufende Kosten und Einzelkosten wurde bisher nichts erfasst. …
+Aufteilung: Kraftstoff 1 % 180,00 € · Wartung & Reparatur 99 % 15.000,00 €
+```
+
+**Der E2E-Test prüft das Vokabular, nicht nur die Überschneidung.** Der erste Entwurf verglich lediglich, ob ein Gruppenname zugleich im Hinweis und in der Aufteilung steht — er wäre am alten Verhalten durchgerutscht, weil dort „Wartung" stand und nicht „Wartung & Reparatur". Die endgültige Fassung verlangt, dass jeder genannte Posten ein Gruppenname ist. Gegenprobe gemacht: Mit dem alten Verhalten **scheitert** der Test (`„Wartung" ist kein Gruppenname`), mit der Korrektur läuft er durch.
+
+### Prüfstand nach der zweiten Nachbesserung
+
+| Prüfung | Ergebnis |
+|---|---|
+| `tests/PROJ-31-kosten-ueberblick-auth.spec.ts` | **13 / 13 grün** (neu: BUG-2-Regression) |
+| Gegenprobe gegen das alte Verhalten | scheitert wie erwartet |
+| Unit-Tests | **589 / 589 grün** (4 neu für `untrackedGroups`) |
+| Gesamtregression `chromium-auth` | **110 / 110 grün** (6,3 min) |
+| Lint | 0 Fehler |
+| Build | erfolgreich |
+
+Der erste Gesamtlauf danach meldete drei Fehler — **verursacht von mir**, nicht vom Code: Der Reparatur-Eintrag, mit dem ich BUG-2 im Browser nachgewiesen hatte, war per SQL angelegt und lag noch auf dem Wegwerf-Fahrzeug. `leeren()` entfernt im Scheckheft bewusst nur die selbst angelegten Einträge — auf einem geteilten Fahrzeug ist diese Zurückhaltung richtig. Nach dem Entfernen per SQL lief alles durch. Keine Änderung an der Testinfrastruktur nötig; die Lehre betrifft das Vorgehen: Per SQL eingefügte Prüfdaten müssen per SQL wieder verschwinden.
+
+### Empfehlung
+
+**Auslieferbar.** Kein offener Fehler mehr — beide gemeldeten sind behoben und durch Regressionstests abgesichert. Der Umzug, die im Entwurf benannte Gefahrenstelle, ist sauber vollzogen; die Zahlen stimmen mit der Auswertung überein und wurden von Hand nachgerechnet.
 
 ## Deployment
 _To be added by /deploy_

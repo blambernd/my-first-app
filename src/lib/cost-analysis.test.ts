@@ -6,6 +6,7 @@ import {
   enumerateMonths,
   monthLabel,
   earliestMonth,
+  latestMonth,
   buildPeriods,
   buildOverviewPeriod,
   calculateMileage,
@@ -947,5 +948,35 @@ describe("buildOverviewPeriod", () => {
     expect(p.fromMonth).toBe("2026-08");
     expect(p.monthsCovered).toBe(1);
     expect(p.shortened).toBe(true);
+  });
+});
+
+describe("latestMonth", () => {
+  it("liefert den jüngsten Monat über alle Quellen", () => {
+    const m = latestMonth(
+      input({
+        fuelEntries: [fuel({ fueled_at: "2023-04-10" })],
+        oneOffCosts: [oneOff({ purchased_at: "2023-08-15" })],
+      })
+    );
+    expect(m).toBe("2023-08");
+  });
+
+  it("zählt laufende Kosten mit ihrem Ende, nicht ihrem Beginn", () => {
+    // Ein 2019 abgeschlossener, heute noch gültiger Vertrag ist keine alte
+    // Erfassung — sonst sähe ein aktiv versichertes Fahrzeug wie ein
+    // stillgelegtes aus
+    const m = latestMonth(
+      input({
+        recurringCosts: [
+          recurring({ valid_from: "2019-01-01", valid_to: "2026-12-31" }),
+        ],
+      })
+    );
+    expect(m).toBe("2026-12");
+  });
+
+  it("liefert null ohne jede Erfassung", () => {
+    expect(latestMonth(input())).toBeNull();
   });
 });

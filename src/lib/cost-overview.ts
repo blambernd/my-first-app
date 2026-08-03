@@ -49,6 +49,19 @@ export interface CostOverview {
   dominantGroup: OverviewGroup | null;
   /** Nur eine einzige Kostenart erfasst — eine Verteilung wäre keine */
   singleSource: boolean;
+  /**
+   * Gruppen, für die nie etwas erfasst wurde (QA BUG-2).
+   *
+   * Bewusst in **derselben** Gruppierung wie die Aufteilung. Zuvor nannte der
+   * Hinweis die feinen Kategorien der Auswertung, während die Darstellung sie
+   * zusammenfasste — die Seite zeigte dann „Wartung & Reparatur 15.000 €" und
+   * gleichzeitig „Für Wartung wurde nichts erfasst". Beides stimmte, gelesen
+   * ergab es einen Widerspruch.
+   *
+   * Eine Gruppe gilt nur als unerfasst, wenn **keine** ihrer Kostenarten je
+   * erfasst wurde.
+   */
+  untrackedGroups: string[];
 }
 
 /**
@@ -128,6 +141,13 @@ export function buildCostOverview(
 
   const dominant = groups.find((g) => g.share > DOMINANT_SHARE) ?? null;
 
+  // Eine Gruppe ist unerfasst, wenn keine ihrer Kostenarten je erfasst wurde.
+  // `tracked` bezieht sich auf **alle** Daten, nicht nur den Zeitraum — wer
+  // Tankbelege von 2023 hat, hat die Art sehr wohl erfasst.
+  const untrackedGroups = GROUPS.filter((g) =>
+    g.categories.every((k) => byKey.get(k)?.tracked === false)
+  ).map((g) => g.label);
+
   return {
     totalCents,
     perMonthCents,
@@ -141,5 +161,6 @@ export function buildCostOverview(
     // Anteil trivialerweise 100 %.
     dominantGroup: groups.length > 1 ? dominant : null,
     singleSource: groups.length === 1,
+    untrackedGroups,
   };
 }

@@ -10,6 +10,8 @@ import { CostOverviewView } from "@/components/cost-overview-view";
 import {
   analyzeCosts,
   buildOverviewPeriod,
+  latestMonth,
+  longMonthLabel,
   type AnalysisInput,
   type ServiceEntryForAnalysis,
 } from "@/lib/cost-analysis";
@@ -148,13 +150,21 @@ export default async function KostenUeberblickPage({
   const analysis = analyzeCosts(input, period, today);
   const overview = buildCostOverview(analysis, period.monthsCovered);
 
+  // Liegt im Zeitraum nichts, aber anderswo schon: Der Nutzer hat erfasst,
+  // nur eben frueher. Ihn zum Anfangen aufzufordern waere falsch (QA BUG-1).
+  const letzter = latestMonth(input);
+  const lastEntryLabel =
+    overview.isEmpty && letzter && letzter < period.fromMonth
+      ? longMonthLabel(letzter)
+      : null;
+
   return (
     <CostOverviewView
       vehicleId={id}
       overview={overview}
       periodLabel={period.label}
       shortened={period.shortened}
-      untracked={analysis.quality.untracked}
+      lastEntryLabel={lastEntryLabel}
     />
   );
 }

@@ -13,8 +13,14 @@ interface CostOverviewViewProps {
   periodLabel: string;
   /** Der Zeitraum ist wegen junger Datenlage verkürzt */
   shortened: boolean;
-  /** Kostenarten, für die nie etwas erfasst wurde */
-  untracked: string[];
+  /**
+   * Monat des jüngsten Eintrags, falls im Zeitraum nichts liegt (QA BUG-1).
+   *
+   * Unterscheidet ein Fahrzeug mit älteren Einträgen von einem ohne jede
+   * Erfassung. Beide haben im Zeitraum 0 € — aber dem einen zu sagen „noch
+   * keine Kosten erfasst" ist schlicht falsch.
+   */
+  lastEntryLabel: string | null;
 }
 
 const GRUPPEN_SYMBOLE: Record<string, typeof Fuel> = {
@@ -23,6 +29,12 @@ const GRUPPEN_SYMBOLE: Record<string, typeof Fuel> = {
   recurring: Repeat,
   oneoff: Receipt,
 };
+
+/** „A", „A und B", „A, B und C" — deutsche Aufzählung mit „und" am Ende */
+function aufzaehlung(teile: string[]): string {
+  if (teile.length <= 1) return teile[0] ?? "";
+  return `${teile.slice(0, -1).join(", ")} und ${teile.at(-1)}`;
+}
 
 /** Anteil in Prozent, ohne Nachkommastellen — genauer wäre Scheingenauigkeit */
 function prozent(anteil: number): string {
@@ -34,34 +46,70 @@ export function CostOverviewView({
   overview,
   periodLabel,
   shortened,
-  untracked,
+  lastEntryLabel,
 }: CostOverviewViewProps) {
   const basis = `/vehicles/${vehicleId}`;
 
   if (overview.isEmpty) {
+    // Zwei verschiedene leere Zustände: Wer nie etwas erfasst hat, braucht
+    // einen Anfang. Wer 2023 fleißig erfasst und seither nichts eingetragen
+    // hat, braucht die Auswertung — ihn zum Anfangen aufzufordern wäre falsch.
     return (
       <div className="space-y-6">
         <Ueberschrift periodLabel={periodLabel} />
         <Card>
           <CardContent className="flex flex-col items-center gap-6 py-12 text-center">
-            <div className="max-w-md space-y-2">
-              <p className="font-medium">Noch keine Kosten erfasst</p>
-              <p className="text-sm text-muted-foreground">
-                Sobald du tankst, eine Werkstattrechnung oder einen laufenden
-                Beitrag einträgst, steht hier, was dich das Fahrzeug kostet.
-              </p>
-            </div>
-            <div className="flex flex-wrap justify-center gap-2">
-              <Button variant="outline" size="sm" asChild>
-                <Link href={`${basis}/tankbuch`}>Tankvorgang erfassen</Link>
-              </Button>
-              <Button variant="outline" size="sm" asChild>
-                <Link href={`${basis}/kosten/laufende`}>Laufende Kosten</Link>
-              </Button>
-              <Button variant="outline" size="sm" asChild>
-                <Link href={`${basis}/kosten/einzelkosten`}>Einzelkosten</Link>
-              </Button>
-            </div>
+            {lastEntryLabel ? (
+              <>
+                <div className="max-w-md space-y-2">
+                  <p className="font-medium">
+                    In diesem Zeitraum keine Kosten
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Erfasst ist durchaus etwas — die jüngsten Einträge stammen
+                    aus <strong>{lastEntryLabel}</strong> und liegen damit vor
+                    dem gezeigten Zeitraum. Die Auswertung lässt längere
+                    Zeiträume wählen.
+                  </p>
+                </div>
+                <div className="flex flex-wrap justify-center gap-2">
+                  <Button variant="outline" size="sm" asChild>
+                    <Link href={`${basis}/kosten/auswertung`}>
+                      Zur Auswertung
+                    </Link>
+                  </Button>
+                  <Button variant="outline" size="sm" asChild>
+                    <Link href={`${basis}/tankbuch`}>Tankvorgang erfassen</Link>
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="max-w-md space-y-2">
+                  <p className="font-medium">Noch keine Kosten erfasst</p>
+                  <p className="text-sm text-muted-foreground">
+                    Sobald du tankst, eine Werkstattrechnung oder einen
+                    laufenden Beitrag einträgst, steht hier, was dich das
+                    Fahrzeug kostet.
+                  </p>
+                </div>
+                <div className="flex flex-wrap justify-center gap-2">
+                  <Button variant="outline" size="sm" asChild>
+                    <Link href={`${basis}/tankbuch`}>Tankvorgang erfassen</Link>
+                  </Button>
+                  <Button variant="outline" size="sm" asChild>
+                    <Link href={`${basis}/kosten/laufende`}>
+                      Laufende Kosten
+                    </Link>
+                  </Button>
+                  <Button variant="outline" size="sm" asChild>
+                    <Link href={`${basis}/kosten/einzelkosten`}>
+                      Einzelkosten
+                    </Link>
+                  </Button>
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -137,17 +185,16 @@ export function CostOverviewView({
         </Alert>
       )}
 
-      {untracked.length > 0 && (
+      {/* Benennt dieselben Gruppen wie die Aufteilung darunter. Zuvor kamen
+          hier die feineren Kategorien der Auswertung — die Seite zeigte dann
+          „Wartung & Reparatur 15.000 €" und direkt daneben „Für Wartung wurde
+          nichts erfasst" (QA BUG-2). */}
+      {overview.untrackedGroups.length > 0 && (
         <Alert>
           <Info className="h-4 w-4" />
           <AlertDescription>
-            Für{" "}
-            <strong>
-              {untracked.length === 1
-                ? untracked[0]
-                : `${untracked.slice(0, -1).join(", ")} und ${untracked.at(-1)}`}
-            </strong>{" "}
-            wurde bisher nichts erfasst. Die Zahlen oben sind deshalb
+            Für <strong>{aufzaehlung(overview.untrackedGroups)}</strong> wurde
+            bisher nichts erfasst. Die Zahlen oben sind deshalb
             eingeschränkt belastbar — sie zeigen, was erfasst ist, nicht
             zwingend, was angefallen ist.
           </AlertDescription>

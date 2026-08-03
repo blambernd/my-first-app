@@ -322,13 +322,35 @@ export function earliestMonth(input: AnalysisInput): string | null {
 }
 
 /**
+ * Der jüngste Monat, für den überhaupt etwas erfasst ist.
+ *
+ * Gegenstück zu `earliestMonth`. Gebraucht wird er, um ein Fahrzeug mit alten
+ * Einträgen von einem ohne jede Erfassung zu unterscheiden (QA BUG-1): Beide
+ * haben im gewählten Zeitraum 0 €, aber dem einen zu sagen „noch keine Kosten
+ * erfasst" ist schlicht falsch.
+ *
+ * Laufende Kosten zählen mit ihrem **Ende**, nicht ihrem Beginn — ein 2019
+ * abgeschlossener und heute noch gültiger Vertrag ist keine alte Erfassung.
+ */
+export function latestMonth(input: AnalysisInput): string | null {
+  const candidates: string[] = [
+    ...input.fuelEntries.map((e) => monthOf(e.fueled_at)),
+    ...input.serviceEntries.map((e) => monthOf(e.service_date)),
+    ...input.oneOffCosts.map((e) => monthOf(e.purchased_at)),
+    ...input.recurringCosts.map((e) => monthOf(e.valid_to ?? e.valid_from)),
+  ];
+  if (candidates.length === 0) return null;
+  return candidates.reduce((max, m) => (m > max ? m : max));
+}
+
+/**
  * Monatsname ausgeschrieben mit vollem Jahr.
  *
  * Neben dem kurzen `monthLabel` („Aug 26"), das für Diagrammachsen gedacht
  * ist: Die Zeitraumangabe des Überblicks steht als Fließtext und darf nicht
  * geraten werden müssen.
  */
-function longMonthLabel(month: string): string {
+export function longMonthLabel(month: string): string {
   const [jahr, monat] = month.split("-").map(Number);
   const namen = [
     "Januar", "Februar", "März", "April", "Mai", "Juni",
