@@ -48,11 +48,11 @@ Eine SaaS-Plattform für Oldtimer-Besitzer, die es ermöglicht, die komplette Hi
 | P1 | PROJ-25: Wiederkehrende Kosten | Deployed |
 | P2 | PROJ-26: Einzelkosten | Deployed |
 | P1 | PROJ-27: Kostenanalyse | Deployed |
-| P2 | PROJ-28: Kaufpreis & Wertentwicklung | Planned |
+| P2 | PROJ-28: Kaufpreis & Wertentwicklung | Deployed |
 | P1 | PROJ-29: Belastbarer Marktüberblick | Zurückgestellt |
 | P1 | PROJ-30: Fahrzeug-Navigation & UX-Überarbeitung | Deployed |
-| P2 | PROJ-31: Kosten-Überblicksseite | Planned |
-| P1 | PROJ-32: Kostendaten beim Fahrzeug-Transfer | Planned |
+| P2 | PROJ-31: Kosten-Überblicksseite | Architected |
+| P1 | PROJ-32: Kostendaten beim Fahrzeug-Transfer | Architected |
 
 ## Success Metrics
 - **Registrierungen:** 500 Nutzer in den ersten 3 Monaten

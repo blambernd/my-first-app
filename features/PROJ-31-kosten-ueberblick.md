@@ -1,6 +1,6 @@
 # PROJ-31: Kosten-Überblicksseite
 
-## Status: Planned
+## Status: Architected
 **Created:** 2026-08-01
 **Last Updated:** 2026-08-01
 
@@ -111,7 +111,113 @@ beantwortet und von dort in die Detailbereiche verzweigt.
 <!-- Sections below are added by subsequent skills -->
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture_
+
+**Erstellt:** 2026-08-03
+
+### A) Aufbau der Oberfläche
+
+```
+Kosten (Einstieg)                    ← neu, ersetzt den bisherigen Einstieg
+│
+├── Zeitraum-Angabe
+│   „Letzte 12 Monate (August 2025 – August 2026)"
+│   oder verkürzt, wenn das Fahrzeug jünger ist
+│
+├── Kennzahlen (vier Felder)
+│   ├── Gesamtkosten im Zeitraum
+│   ├── Durchschnitt je Monat
+│   ├── Kosten je Kilometer      ← entfällt ohne Fahrleistung
+│   └── Gefahrene Kilometer
+│
+├── Aufteilung nach Quelle
+│   Kraftstoff · Wartung & Reparatur · Laufende Kosten · Einzelkosten
+│   je mit Betrag, Anteil und Weg in den Detailbereich
+│
+├── Hinweisfeld (nur wenn nötig)
+│   „Beruht auf lückenhaften Daten" — mit Angabe, woran es liegt
+│
+└── Leerer Zustand (statt Kennzahlen)
+    Erklärung, was zu erfassen ist, mit Wegen ins Tankbuch,
+    zu Laufenden Kosten und Einzelkosten
+```
+
+Die Seite **rechnet nichts Eigenes**. Sie stellt dieselben Zahlen dar, die der Auswertungsbereich für denselben Zeitraum liefert.
+
+### B) Welche Angaben gebraucht werden
+
+**Keine neue Datenbanktabelle, keine neue Spalte.** Die Seite liest ausschließlich, was Tankbuch, Scheckheft, laufende Kosten und Einzelkosten ohnehin schon enthalten.
+
+Gebraucht werden pro Fahrzeug:
+- die Kostenzeilen der vier Quellen im gewählten Zeitraum
+- die Kilometerstände aus Tankbuch und Scheckheft, um die Fahrleistung zu bestimmen
+- die Angabe, welche Kostenarten gar nicht erfasst sind — daraus entsteht der Belastbarkeitshinweis
+
+**Der Kaufpreis bleibt außen vor.** Er ist Kapital, kein laufender Aufwand; flösse er ein, wären Monatsdurchschnitt und Kosten je Kilometer unbrauchbar. Er hat seit dem 2026-08-03 seinen Platz unter *Wertentwicklung*, und dorthin führt vom Überblick ein Weg.
+
+### C) Technische Entscheidungen
+
+**1. Die Zahlen entstehen auf dem Server — offener Punkt aus der Spec**
+
+Wie bei Auswertung und Wertentwicklung. Drei Gründe:
+
+- Die Spec verlangt „Platzhalter, keine springenden Zahlen". Serverseitig gerechnet gibt es **gar kein Nachladen** — die Seite kommt fertig an. Das ist besser als ein guter Platzhalter.
+- Die Rechnung ist billig: In PROJ-27 gemessen **3,8 ms** für 868 Datensätze. Sie in den Browser zu verlagern spart nichts und verlangte, sämtliche Rohdaten dorthin zu schicken.
+- Der Kostenbereich ist auf den Besitzer beschränkt. Was der Server nicht ausliefert, kann auch nicht abgegriffen werden.
+
+**2. Ein neuer Zeitraum, keine neue Rechenmaschine**
+
+Die vorhandene Auswertung kennt heute *laufendes Jahr*, *Vorjahr* und *Gesamtzeitraum*. Die Spec verlangt **die letzten zwölf Monate** — ein rollierendes Fenster, das es noch nicht gibt.
+
+Die Rechenlogik nimmt einen Zeitraum bereits als Eingabe entgegen; es kommt also nur ein weiterer Zeitraum hinzu, keine zweite Berechnung. Beginnt die Datenlage später, wird das Fenster entsprechend verkürzt und **so benannt** — eine Hochrechnung auf zwölf Monate wäre eine erfundene Zahl.
+
+**3. Der Kostenbereich zeigt künftig den Überblick — offener Punkt aus der Spec**
+
+Heute liegt „Laufende Kosten" auf dem Pfad des Kostenbereichs selbst. Künftig:
+
+| | heute | künftig |
+|---|---|---|
+| Kostenbereich | Laufende Kosten | **Überblick** |
+| Laufende Kosten | — | eigener Unterpfad |
+| Einzelkosten, Auswertung, Wertentwicklung | unverändert | unverändert |
+
+Die Spec verlangt das ausdrücklich („Der Aufruf des Kostenbereichs zeigt die Überblicksseite"). Die drei übrigen Unterseiten behalten ihre Adressen, Lesezeichen darauf funktionieren weiter.
+
+**Was sich für Nutzer ändert:** Wer den Kostenbereich als Lesezeichen hat, landet künftig auf dem Überblick statt bei den laufenden Kosten. Das ist der beabsichtigte Zweck des Features; vom Überblick führt ein Weg dorthin.
+
+**Nicht vergessen:** Zwei Stellen im Programm verweisen heute auf den Kostenbereich in der Bedeutung „Laufende Kosten" — die Quellenverweise der Auswertung und die Bereichsliste der Navigation. Beide müssen auf den neuen Unterpfad zeigen, sonst führen sie auf den Überblick statt auf die Liste. Das gehört ausdrücklich in die Prüfliste.
+
+**4. Die Navigation muss nicht angefasst werden**
+
+PROJ-30 hat die Bereiche an **einer** Stelle zusammengeführt. Der Überblick wird dort als weiterer Unterpunkt eingetragen — die Navigationskomponenten selbst bleiben unberührt. Genau dafür war die Zusammenführung gedacht.
+
+**5. Belastbarkeit wird gekennzeichnet, nicht verschwiegen**
+
+Die Rechenlogik meldet bereits, welche Kostenarten unerfasst sind, wie viele Scheckheft-Einträge ohne Betrag geführt werden und wie viele Kilometer-Abschnitte wegen widersprüchlicher Stände übersprungen wurden. Diese Angaben tragen den Hinweis „eingeschränkt belastbar". Eine Kennzahl kommentarlos auszugeben, die auf drei von zwölf Monaten beruht, wäre die schlechtere Antwort.
+
+**6. Kosten je Kilometer entfallen lieber, als zu raten**
+
+Ohne zwei verwertbare Kilometerstände gibt es keine Fahrleistung und damit keine Kosten je Kilometer. Die Kennzahl verschwindet dann mit einer kurzen Begründung. Ein Wert von 0 € oder ein aus einem einzigen Stand hochgerechneter Wert sähe plausibel aus und wäre falsch.
+
+### D) Was zusätzlich installiert werden muss
+
+**Nichts.** Kennzahlenfelder, Hinweisfelder, Ladeplatzhalter und die Aufteilungsdarstellung sind alle bereits im Projekt vorhanden.
+
+### E) Was dieses Feature bewusst nicht tut
+
+- **Keine wählbaren Zeiträume.** Der Überblick beantwortet eine Frage; wer vergleichen will, geht in die Auswertung.
+- **Keine Diagramme.** Sie sind der Zweck der Auswertung; hier stünden sie dem schnellen Blick im Weg.
+- **Keine neue Erfassung.** Der Überblick zeigt und verweist, er nimmt nichts auf.
+- **Kein Kaufpreis in den Kennzahlen** (siehe B).
+
+### F) Risiken und offene Punkte für die Umsetzung
+
+**Der Umzug der laufenden Kosten ist die eigentliche Gefahrenstelle.** Nicht die neue Seite, sondern die beiden Verweise, die heute auf den Kostenbereich zeigen und künftig ins Falsche laufen. Sie sind still — es gibt keine Fehlermeldung, der Nutzer landet nur woanders. Gehört gezielt geprüft.
+
+**„Nur eine Kostenart erfasst" braucht eine Entscheidung beim Bauen.** Die Spec verlangt, dass eine Aufteilung dann nicht als aussagekräftige Verteilung erscheint. Vorgesehen: Bei nur einer Quelle entfällt die Anteilsdarstellung und es steht schlicht der Betrag da. Am echten Fall zu prüfen.
+
+**Sehr hohe Einzelposten verzerren den Monatsdurchschnitt.** Eine Restaurierung über 15.000 € lässt zwölf Monate teuer aussehen. Vorgesehen: Der Durchschnitt weist aus, wenn ein einzelner Posten mehr als die Hälfte der Gesamtkosten ausmacht. Ob das genügt oder ein Median die ehrlichere Zahl wäre, ist beim Bauen an echten Daten zu beurteilen.
+
+**Die Zahlen müssen mit der Auswertung übereinstimmen.** Beide Seiten nutzen dieselbe Rechenlogik, aber unterschiedliche Zeiträume. Ein Test, der für denselben Zeitraum beide Seiten vergleicht, ist die einzige verlässliche Absicherung dagegen, dass sie später auseinanderlaufen.
 
 ## QA Test Results
 _To be added by /qa_
