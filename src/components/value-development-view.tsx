@@ -52,17 +52,15 @@ export function ValueDevelopmentView({
           <div>
             <p className="font-medium">Noch kein Kaufpreis hinterlegt</p>
             <p className="text-sm text-muted-foreground">
-              Die Wertentwicklung vergleicht Anschaffung, Unterhalt und
-              geschätzten Marktwert. Dafür wird der Kaufpreis gebraucht — ohne
-              ihn wäre jede Bilanz irreführend.
+              Die Wertentwicklung stellt Anschaffung, Investition, laufende
+              Kosten und geschätzten Marktwert nebeneinander. Dafür wird der
+              Kaufpreis gebraucht — ohne ihn wäre jede Bilanz irreführend.
+              {/* Der Erfassungsbereich steht seit dem 2026-08-03 direkt über
+                  dieser Karte; ein Verweis aufs Fahrzeugprofil führte ins
+                  Leere. */}
+              {" "}Trag ihn oben unter &bdquo;Anschaffung&ldquo; ein.
             </p>
           </div>
-          <Button variant="outline" asChild>
-            <Link href={`/vehicles/${vehicleId}`}>
-              Anschaffung im Fahrzeugprofil erfassen
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Link>
-          </Button>
         </CardContent>
       </Card>
     );
@@ -75,7 +73,7 @@ export function ValueDevelopmentView({
       <h2 className="text-xl font-bold">Wertentwicklung</h2>
 
       {/* Was das Fahrzeug gekostet hat — immer verfügbar */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -96,6 +94,9 @@ export function ValueDevelopmentView({
           </CardContent>
         </Card>
 
+        {/* Bewusst getrennt: Ersatzteile und Reparaturen stecken im Fahrzeug,
+            Benzin und Versicherung sind verbraucht. Beides in einer Zahl
+            verschwieg, wovon das eine den Wert stützt und das andere nicht. */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -104,10 +105,26 @@ export function ValueDevelopmentView({
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">
-              {formatCentsToEur(result.upkeepCents)}
+              {formatCentsToEur(result.investmentCents)}
             </p>
             <p className="text-sm text-muted-foreground">
-              Aufgelaufene Unterhaltskosten
+              Ersatzteile, Reparaturen, Restaurierung
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Laufende Kosten
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold">
+              {formatCentsToEur(result.runningCents)}
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Kraftstoff, Wartung, Versicherung, Steuer, Garage
             </p>
           </CardContent>
         </Card>
@@ -123,7 +140,7 @@ export function ValueDevelopmentView({
               {formatCentsToEur(result.totalSpentCents)}
             </p>
             <p className="text-sm text-muted-foreground">
-              Anschaffung und Investition zusammen
+              Anschaffung, Investition und laufende Kosten zusammen
             </p>
           </CardContent>
         </Card>
@@ -136,7 +153,7 @@ export function ValueDevelopmentView({
             Es sind Kosten aus der Zeit <strong>vor dem Kaufdatum</strong>{" "}
             erfasst — die früheste stammt aus {monthLabel(costsBefore.earliestMonth)}.
             Das kann ein Tippfehler im Kaufdatum sein oder Aufwand aus der Zeit
-            vor dem Kauf. Beides zählt derzeit zur Investition.
+            vor dem Kauf. Beides fließt derzeit in die Kosten ein.
           </AlertDescription>
         </Alert>
       )}
@@ -155,8 +172,12 @@ export function ValueDevelopmentView({
                   {formatCentsToEur(market.cents)}
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  {market.basis === "median" ? "Median" : "Durchschnitt"} der
-                  Vergleichsangebote
+                  {/* "manuell" kam mit der Selbsteingabe hinzu; ohne diesen
+                      Zweig stand dort "Durchschnitt der Vergleichsangebote"
+                      unter einem selbst eingetragenen Wert. */}
+                  {market.basis === "manuell"
+                    ? "Von dir geschätzt"
+                    : `${market.basis === "median" ? "Median" : "Durchschnitt"} der Vergleichsangebote`}
                 </p>
               </CardContent>
             </Card>

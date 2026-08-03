@@ -25,9 +25,15 @@ const TANKBUCH = `${PROFIL}/tankbuch`;
  *   Nebenkosten Überführung      500,00 €
  *   ------------------------------------
  *   Anschaffung               19.000,00 €
- *   Investition (ein Tankvorgang)  80,00 €
+ *   Investition                    0,00 €
+ *   Laufende Kosten (ein Tankvorgang) 80,00 €
  *   ------------------------------------
  *   Bisher aufgewendet        19.080,00 €
+ *
+ * Seit dem 2026-08-03 wird der Unterhalt getrennt ausgewiesen: Investition
+ * (Ersatzteile, Reparatur, Restaurierung) gegen laufende Kosten der Nutzung.
+ * Kraftstoff ist verbraucht und zählt deshalb zu Letzteren — ohne die
+ * Trennung stand er zuvor unter „Investition".
  *
  * Für das Wegwerf-Fahrzeug liegt keine Marktpreis-Analyse vor — die Bilanz
  * zeigt deshalb nur die Kostenseite. Genau der Fall, den ein neuer Nutzer
@@ -37,7 +43,8 @@ const ERWARTET = {
   kaufpreis: "18.500,00 €",
   nebenkosten: "500,00 €",
   anschaffung: "19.000,00 €",
-  investition: "80,00 €",
+  investition: "0,00 €",
+  laufend: "80,00 €",
   aufgewendet: "19.080,00 €",
 };
 
@@ -56,8 +63,27 @@ function karte(page: Page, titel: string) {
   return page.getByText(titel, { exact: true }).first().locator("xpath=../..");
 }
 
+/**
+ * Kennzahlen-Karte **innerhalb der Bilanz**.
+ *
+ * Seit dem 2026-08-03 stehen Erfassungsbereich und Bilanz auf einer Seite, und
+ * die Navigation liegt dauerhaft daneben. Begriffe wie „Anschaffung" und
+ * „Laufende Kosten" kommen dadurch dreifach vor — als Abschnittsüberschrift,
+ * als Menüeintrag und als Kennzahl. Ein `.first()` über die ganze Seite trifft
+ * dann das Falsche, ohne dass es beim Lesen auffällt.
+ *
+ * Verankert an der Überschrift „Wertentwicklung"; deren Elternelement ist die
+ * Bilanz.
+ */
+function bilanzKarte(page: Page, titel: string) {
+  const bilanz = page
+    .getByRole("heading", { name: "Wertentwicklung", level: 2 })
+    .locator("xpath=..");
+  return bilanz.getByText(titel, { exact: true }).first().locator("xpath=../..");
+}
+
 async function anschaffungEntfernen(page: Page) {
-  await page.goto(PROFIL);
+  await page.goto(WERTENTWICKLUNG);
   const entfernen = page.getByRole("button", { name: "Anschaffung entfernen" });
   await expect(
     entfernen.or(page.getByRole("button", { name: "Anschaffung erfassen" })).first()
@@ -131,9 +157,11 @@ test.describe("PROJ-28: Kaufpreis & Wertentwicklung", () => {
     });
     // Keine Bilanz mit angenommenem Kaufpreis 0 €
     await expect(page.getByText("Gesamtbilanz")).not.toBeVisible();
-    await expect(karte(page, "Anschaffung")).toHaveCount(0);
+    await expect(bilanzKarte(page, "Bisher aufgewendet")).toHaveCount(0);
+    // Seit dem 2026-08-03 steht der Erfassungsbereich auf derselben Seite;
+    // ein Verweis aufs Fahrzeugprofil führte ins Leere.
     await expect(
-      page.getByRole("link", { name: /Anschaffung im Fahrzeugprofil erfassen/ })
+      page.getByRole("button", { name: "Anschaffung erfassen" })
     ).toBeVisible();
   });
 
@@ -141,20 +169,27 @@ test.describe("PROJ-28: Kaufpreis & Wertentwicklung", () => {
     page,
   }) => {
     await page.goto(PROFIL);
-    await expect(page.getByText("Anschaffung", { exact: true })).toBeVisible({
-      timeout: 30000,
-    });
     await expect(
-      page.getByRole("button", { name: "Anschaffung erfassen" })
-    ).toBeVisible();
-    // Die übrigen Profilinhalte sind unberührt
-    await expect(page.getByRole("link", { name: "Scheckheft" })).toBeVisible();
+      page.getByRole("link", { name: "Scheckheft", exact: true })
+    ).toBeVisible({ timeout: 30000 });
+    // Die Anschaffung ist seit dem 2026-08-03 unter Kosten → Wertentwicklung
+    // zu Hause. Auf dem Profil hat sie nichts mehr verloren — damit gerät der
+    // Kaufpreis auch nicht mehr in die Antwort dieser Seite.
+    await expect(
+      page.getByRole("button", { name: /Anschaffung (erfassen|bearbeiten)/ })
+    ).toHaveCount(0);
   });
 
   test("AC: Anschaffung mit Nebenkosten wird über das Formular erfasst", async ({
     page,
   }) => {
-    await page.goto(PROFIL);
+    // Stellt den leeren Zustand selbst her, statt ihn von der Vorbereitung zu
+    // erben. Dieser Test setzt zwingend voraus, dass noch keine Anschaffung
+    // erfasst ist — sonst heißt die Schaltfläche „bearbeiten" und der Test
+    // läuft in einen Zeitüberlauf, dessen Ursache mehrere Tests entfernt liegt.
+    await anschaffungEntfernen(page);
+
+    await page.goto(WERTENTWICKLUNG);
     await page.getByRole("button", { name: "Anschaffung erfassen" }).click();
 
     const dialog = page.getByRole("dialog");
@@ -172,14 +207,26 @@ test.describe("PROJ-28: Kaufpreis & Wertentwicklung", () => {
     await expect(dialog).not.toBeVisible({ timeout: 20000 });
     await waitForToastsGone(page);
 
-    await expect(page.getByText(ERWARTET.kaufpreis)).toBeVisible({ timeout: 20000 });
-    await expect(page.getByText("Überführung")).toBeVisible();
+    // Seit dem 2026-08-03 stehen Erfassungsbereich und Bilanz auf **einer**
+    // Seite. Beträge erscheinen dadurch doppelt — einmal im Abschnitt
+    // „Anschaffung", einmal in der Kennzahlenkarte. Die Prüfung zielt
+    // deshalb auf den Erfassungsbereich statt auf die ganze Seite.
+    const abschnitt = page
+      .getByRole("heading", { name: "Anschaffung", level: 3 })
+      .locator("xpath=../../..");
+
+    await expect(abschnitt.getByText(ERWARTET.kaufpreis, { exact: true })).toBeVisible({
+      timeout: 20000,
+    });
+    await expect(abschnitt.getByText("Überführung")).toBeVisible();
     // exact: true — „500,00 €" steckt als Teilzeichenkette auch in
     // „18.500,00 €" und träfe sonst zwei Elemente
     await expect(
-      page.getByText(ERWARTET.nebenkosten, { exact: true })
+      abschnitt.getByText(ERWARTET.nebenkosten, { exact: true })
     ).toBeVisible();
-    await expect(page.getByText(ERWARTET.anschaffung)).toBeVisible();
+    await expect(
+      abschnitt.getByText(ERWARTET.anschaffung, { exact: true })
+    ).toBeVisible();
   });
 
   test("SICHERHEIT: Bezeichnung und Notiz werden als Text dargestellt", async ({
@@ -190,7 +237,7 @@ test.describe("PROJ-28: Kaufpreis & Wertentwicklung", () => {
     // Angriffsfläche, die es in PROJ-27 nicht gab.
     const payload = '<img src=x onerror="window.__xss=1">Teil';
 
-    await page.goto(PROFIL);
+    await page.goto(WERTENTWICKLUNG);
     await page.getByRole("button", { name: "Anschaffung bearbeiten" }).click();
     const dialog = page.getByRole("dialog");
     await expect(dialog).toBeVisible({ timeout: 15000 });
@@ -220,7 +267,7 @@ test.describe("PROJ-28: Kaufpreis & Wertentwicklung", () => {
   });
 
   test("AC: Ein Kaufdatum in der Zukunft ist nicht wählbar", async ({ page }) => {
-    await page.goto(PROFIL);
+    await page.goto(WERTENTWICKLUNG);
     await page.getByRole("button", { name: "Anschaffung bearbeiten" }).click();
     const dialog = page.getByRole("dialog");
     await expect(dialog).toBeVisible({ timeout: 15000 });
@@ -237,7 +284,7 @@ test.describe("PROJ-28: Kaufpreis & Wertentwicklung", () => {
   });
 
   test("AC: Der Abschnitt ist als privat gekennzeichnet", async ({ page }) => {
-    await page.goto(PROFIL);
+    await page.goto(WERTENTWICKLUNG);
     await expect(page.getByText("privat")).toBeVisible({ timeout: 30000 });
   });
 
@@ -256,13 +303,16 @@ test.describe("PROJ-28: Kaufpreis & Wertentwicklung", () => {
 
   test("KERN: Die Bilanz entspricht der Handrechnung", async ({ page }) => {
     await page.goto(WERTENTWICKLUNG);
-    await expect(karte(page, "Anschaffung")).toContainText(ERWARTET.anschaffung, {
+    await expect(bilanzKarte(page, "Anschaffung")).toContainText(ERWARTET.anschaffung, {
       timeout: 30000,
     });
-    // Anschaffung und Investition bleiben getrennt ablesbar
-    await expect(karte(page, "Anschaffung")).toContainText(ERWARTET.kaufpreis);
-    await expect(karte(page, "Investition")).toContainText(ERWARTET.investition);
-    await expect(karte(page, "Bisher aufgewendet")).toContainText(
+    // Anschaffung, Investition und laufende Kosten bleiben getrennt ablesbar
+    await expect(bilanzKarte(page, "Anschaffung")).toContainText(ERWARTET.kaufpreis);
+    // Kraftstoff ist verbraucht — er gehört zu den laufenden Kosten, nicht
+    // zur Investition ins Fahrzeug
+    await expect(bilanzKarte(page, "Investition")).toContainText(ERWARTET.investition);
+    await expect(bilanzKarte(page, "Laufende Kosten")).toContainText(ERWARTET.laufend);
+    await expect(bilanzKarte(page, "Bisher aufgewendet")).toContainText(
       ERWARTET.aufgewendet
     );
   });
@@ -271,7 +321,7 @@ test.describe("PROJ-28: Kaufpreis & Wertentwicklung", () => {
     page,
   }) => {
     await page.goto(WERTENTWICKLUNG);
-    await expect(karte(page, "Anschaffung")).toBeVisible({ timeout: 30000 });
+    await expect(bilanzKarte(page, "Anschaffung")).toBeVisible({ timeout: 30000 });
     // Keine erfundene Bilanz
     await expect(page.getByText("Gesamtbilanz")).not.toBeVisible();
     await expect(page.getByText("Wertveränderung")).not.toBeVisible();
@@ -287,7 +337,7 @@ test.describe("PROJ-28: Kaufpreis & Wertentwicklung", () => {
 
   test("AC: Der Marktwert lässt sich selbst eintragen", async ({ page }) => {
     await page.goto(WERTENTWICKLUNG);
-    await expect(karte(page, "Anschaffung")).toBeVisible({ timeout: 30000 });
+    await expect(bilanzKarte(page, "Anschaffung")).toBeVisible({ timeout: 30000 });
 
     await page.getByRole("button", { name: /Marktwert eintragen/ }).click();
     await expect(
@@ -303,7 +353,7 @@ test.describe("PROJ-28: Kaufpreis & Wertentwicklung", () => {
     page,
   }) => {
     await page.goto(WERTENTWICKLUNG);
-    await expect(karte(page, "Anschaffung")).toBeVisible({ timeout: 30000 });
+    await expect(bilanzKarte(page, "Anschaffung")).toBeVisible({ timeout: 30000 });
     await expect(page.getByText(/vor dem Kaufdatum/)).not.toBeVisible();
   });
 
@@ -338,13 +388,13 @@ test.describe("PROJ-28: Kaufpreis & Wertentwicklung", () => {
     // Anschaffung ist Kapital, kein laufender Aufwand — sonst wäre jede
     // Zeitreihe unbrauchbar
     await page.goto(`${KOSTEN}/auswertung`);
-    await expect(karte(page, "Gesamtkosten")).toContainText(ERWARTET.investition, {
+    await expect(karte(page, "Gesamtkosten")).toContainText(ERWARTET.laufend, {
       timeout: 30000,
     });
   });
 
   test("AC: Bearbeiten ändert Kaufpreis und Nebenkosten", async ({ page }) => {
-    await page.goto(PROFIL);
+    await page.goto(WERTENTWICKLUNG);
     await page.getByRole("button", { name: "Anschaffung bearbeiten" }).click();
 
     const dialog = page.getByRole("dialog");
@@ -357,7 +407,11 @@ test.describe("PROJ-28: Kaufpreis & Wertentwicklung", () => {
     await expect(dialog).not.toBeVisible({ timeout: 20000 });
     await waitForToastsGone(page);
 
-    await expect(page.getByText("19.500,00 €")).toBeVisible({ timeout: 20000 });
+    // Der Betrag steht seit dem 2026-08-03 zweimal auf der Seite — im
+    // Erfassungsbereich und in der Bilanzkarte. Beide müssen ihn zeigen.
+    await expect(
+      bilanzKarte(page, "Anschaffung")
+    ).toContainText("19.500,00 €", { timeout: 20000 });
     await expect(page.getByText("Überführung")).not.toBeVisible();
   });
 
@@ -369,7 +423,7 @@ test.describe("PROJ-28: Kaufpreis & Wertentwicklung", () => {
     ] as Array<[number, number, string]>) {
       await page.setViewportSize({ width: breite, height: hoehe });
       await page.goto(WERTENTWICKLUNG);
-      await expect(karte(page, "Anschaffung"), `${name}`).toContainText(
+      await expect(bilanzKarte(page, "Anschaffung"), `${name}`).toContainText(
         "19.500,00 €",
         { timeout: 30000 }
       );

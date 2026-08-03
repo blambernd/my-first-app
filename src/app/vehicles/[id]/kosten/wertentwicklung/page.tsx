@@ -7,6 +7,7 @@ import {
 } from "@/lib/subscription";
 import { PremiumUpsell } from "@/components/premium-upsell";
 import { ValueDevelopmentView } from "@/components/value-development-view";
+import { VehiclePurchaseSection } from "@/components/vehicle-purchase-section";
 import {
   analyzeCosts,
   buildPeriods,
@@ -18,6 +19,7 @@ import {
   calculateValueDevelopment,
   costsBeforePurchase,
   pickManualMarketValue,
+  splitUpkeep,
   type ManualMarketValueRow,
 } from "@/lib/value-development";
 import {
@@ -91,17 +93,31 @@ export default async function WertentwicklungPage({
     );
   }
 
-  const { data: purchaseRow } = await supabase
-    .from("vehicle_purchases")
-    .select("*")
-    .eq("vehicle_id", id)
-    .maybeSingle();
+  const [{ data: purchaseRow }, { data: kaufMilestone }] = await Promise.all([
+    supabase.from("vehicle_purchases").select("*").eq("vehicle_id", id).maybeSingle(),
+    supabase
+      .from("vehicle_milestones")
+      .select("milestone_date")
+      .eq("vehicle_id", id)
+      .eq("category", "kauf")
+      .order("milestone_date", { ascending: true })
+      .limit(1)
+      .maybeSingle(),
+  ]);
+
+  const purchaseMilestoneDate = kaufMilestone?.milestone_date ?? null;
 
   // Ohne Kaufpreis gibt es keine Bilanz — die Kostenquellen müssen dann gar
-  // nicht erst geladen werden.
+  // nicht erst geladen werden. Die Anschaffung lässt sich aber hier erfassen;
+  // seit dem 2026-08-03 ist das ihr Ort statt der Fahrzeugübersicht.
   if (!purchaseRow) {
     return (
       <div className="space-y-6">
+        <VehiclePurchaseSection
+          vehicleId={id}
+          purchase={null}
+          milestoneDate={purchaseMilestoneDate}
+        />
         <ValueDevelopmentView
           vehicleId={id}
           result={null}
@@ -191,15 +207,23 @@ export default async function WertentwicklungPage({
     today
   );
 
+  // Investition und laufender Aufwand werden aus denselben Kategorien
+  // gebildet, die auch die Auswertung nutzt — beide Seiten dürfen für
+  // dieselben Daten nicht auseinanderlaufen.
   const result = calculateValueDevelopment(
     purchase,
     extraCosts,
-    gesamt.totalCents,
+    splitUpkeep(gesamt.categories),
     market
   );
 
   return (
     <div className="space-y-6">
+      <VehiclePurchaseSection
+        vehicleId={id}
+        purchase={{ ...purchase, extraCosts }}
+        milestoneDate={purchaseMilestoneDate}
+      />
       <ValueDevelopmentView
         vehicleId={id}
         result={result}

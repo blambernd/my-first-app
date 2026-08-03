@@ -44,6 +44,48 @@ export interface MarketValue {
   note?: string | null;
 }
 
+/**
+ * Kategorien, die als **Investition in das Fahrzeug** gelten.
+ *
+ * Die Trennung beantwortet eine andere Frage als die Kostenanalyse: Dort geht
+ * es darum, ob Kosten beim Fahren oder beim Stehen anfallen. Hier geht es
+ * darum, ob Geld **im Fahrzeug steckt** oder für dessen Nutzung verbraucht
+ * wurde. Benzin ist weg, ein eingebauter Vergaser nicht.
+ *
+ * Einordnung nach Festlegung vom 2026-08-03:
+ * - **Investition:** Ersatzteile, Reparatur, Restaurierung
+ * - **laufend:** Kraftstoff, Wartung (Inspektion, Ölwechsel, TÜV/HU),
+ *   Versicherung, Kfz-Steuer, Garage, Clubbeitrag, Wertgutachten
+ *
+ * `misc` („Sonstiges") zählt zu den laufenden Kosten. Die Kategorie wird von
+ * zwei Quellen gespeist — Einzelkosten und Scheckheft — und lässt sich hier
+ * nicht auseinanderhalten. Sie den Investitionen zuzuschlagen hieße, nicht
+ * eingeordneten Werkstattaufwand als Wertzuwachs auszuweisen.
+ */
+const INVESTITIONS_KATEGORIEN = new Set(["repair", "parts"]);
+
+export function istInvestition(categoryKey: string): boolean {
+  return INVESTITIONS_KATEGORIEN.has(categoryKey);
+}
+
+/**
+ * Teilt die Kostenkategorien in Investition und laufenden Aufwand.
+ *
+ * Erwartet die Kategorieergebnisse aus `analyzeCosts`; die Summe beider Teile
+ * ergibt wieder den Gesamtaufwand.
+ */
+export function splitUpkeep(
+  categories: Array<{ key: string; totalCents: number }>
+): { investmentCents: number; runningCents: number } {
+  let investmentCents = 0;
+  let runningCents = 0;
+  for (const c of categories) {
+    if (istInvestition(c.key)) investmentCents += c.totalCents;
+    else runningCents += c.totalCents;
+  }
+  return { investmentCents, runningCents };
+}
+
 export interface ValueDevelopment {
   /** Kaufpreis ohne Nebenkosten */
   purchaseCents: number;
@@ -51,8 +93,12 @@ export interface ValueDevelopment {
   extraCents: number;
   /** Kaufpreis plus Nebenkosten */
   acquisitionCents: number;
-  /** Aufgelaufene Unterhaltskosten aus PROJ-27 */
+  /** Aufgelaufene Unterhaltskosten aus PROJ-27 — Investition plus laufend */
   upkeepCents: number;
+  /** Was ins Fahrzeug geflossen ist: Ersatzteile, Reparatur, Restaurierung */
+  investmentCents: number;
+  /** Was die Nutzung gekostet hat: Kraftstoff, Wartung, Versicherung, … */
+  runningCents: number;
   /** Alles, was das Fahrzeug bisher gekostet hat */
   totalSpentCents: number;
   /** Geschätzter Marktwert, oder null wenn keine brauchbare Analyse vorliegt */
@@ -159,11 +205,12 @@ export function pickMarketValue(
 export function calculateValueDevelopment(
   purchase: VehiclePurchase,
   extraCosts: PurchaseExtraCost[],
-  upkeepCents: number,
+  upkeep: { investmentCents: number; runningCents: number },
   market: MarketValue | null
 ): ValueDevelopment {
   const acquisitionCents = totalAcquisitionCents(purchase, extraCosts);
   const extraCents = acquisitionCents - purchase.price_cents;
+  const upkeepCents = upkeep.investmentCents + upkeep.runningCents;
   const totalSpentCents = acquisitionCents + upkeepCents;
 
   return {
@@ -171,6 +218,8 @@ export function calculateValueDevelopment(
     extraCents,
     acquisitionCents,
     upkeepCents,
+    investmentCents: upkeep.investmentCents,
+    runningCents: upkeep.runningCents,
     totalSpentCents,
     market,
     // Laut Acceptance Criteria ausdrücklich gegen den **Kaufpreis**, nicht

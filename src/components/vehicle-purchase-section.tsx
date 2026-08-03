@@ -1,12 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { format, parse } from "date-fns";
 import { de } from "date-fns/locale";
 import { toast } from "sonner";
-import { Lock, Pencil, Trash2, Plus, ChartLine } from "lucide-react";
+import { Lock, Pencil, Trash2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -163,12 +162,9 @@ export function VehiclePurchaseSection({
             </p>
           )}
 
-          <Button variant="outline" size="sm" asChild className="mt-2 w-full">
-            <Link href={`/vehicles/${vehicleId}/kosten/wertentwicklung`}>
-              <ChartLine className="mr-2 h-4 w-4" />
-              Wertentwicklung ansehen
-            </Link>
-          </Button>
+          {/* Der Verweis auf die Wertentwicklung ist entfallen: Seit dem
+              2026-08-03 steht dieser Abschnitt dort selbst, die Auswertung
+              beginnt unmittelbar darunter. */}
         </div>
       ) : (
         <div className="mt-3">

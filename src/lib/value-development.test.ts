@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   pickManualMarketValue,
+  splitUpkeep,
   pickMarketValue,
   calculateValueDevelopment,
   costsBeforePurchase,
@@ -45,6 +46,14 @@ function nebenkosten(
     amount_cents,
     created_at: "",
   }));
+}
+
+/**
+ * Unterhalt als Gesamtbetrag, wenn die Aufteilung für den Test keine Rolle
+ * spielt — die Bilanzsummen hängen nur an der Summe beider Teile.
+ */
+function unterhalt(gesamtCents: number) {
+  return { investmentCents: 0, runningCents: gesamtCents };
 }
 
 function analyse(partial: Partial<MarketAnalysisRow> = {}): MarketAnalysisRow {
@@ -194,7 +203,7 @@ describe("calculateValueDevelopment", () => {
     const r = calculateValueDevelopment(
       kauf(),
       nebenkosten([["Überführung", 50000]]),
-      300000, // 3.000 € Unterhalt
+      unterhalt(300000), // 3.000 € Unterhalt
       markt
     );
     expect(r.purchaseCents).toBe(2000000);
@@ -210,7 +219,7 @@ describe("calculateValueDevelopment", () => {
     const r = calculateValueDevelopment(
       kauf(),
       nebenkosten([["Überführung", 50000]]),
-      300000,
+      unterhalt(300000),
       markt
     );
     expect(r.valueChangeCents).toBe(2445000 - 2000000);
@@ -220,7 +229,7 @@ describe("calculateValueDevelopment", () => {
     const r = calculateValueDevelopment(
       kauf(),
       nebenkosten([["Überführung", 50000]]),
-      300000,
+      unterhalt(300000),
       markt
     );
     expect(r.balanceCents).toBe(2445000 - 2350000);
@@ -231,7 +240,7 @@ describe("calculateValueDevelopment", () => {
     const r = calculateValueDevelopment(
       kauf({ price_cents: 3000000 }),
       [],
-      0,
+      unterhalt(0),
       markt
     );
     expect(r.valueChangeCents).toBe(2445000 - 3000000);
@@ -239,7 +248,7 @@ describe("calculateValueDevelopment", () => {
   });
 
   it("lässt Wertveränderung und Bilanz ohne Marktwert offen", () => {
-    const r = calculateValueDevelopment(kauf(), [], 300000, null);
+    const r = calculateValueDevelopment(kauf(), [], unterhalt(300000), null);
     expect(r.valueChangeCents).toBeNull();
     expect(r.balanceCents).toBeNull();
     // Die Kostenseite bleibt trotzdem aussagekräftig
@@ -252,7 +261,7 @@ describe("calculateValueDevelopment", () => {
     const r = calculateValueDevelopment(
       kauf({ price_cents: 300000 }),
       [],
-      4000000,
+      unterhalt(4000000),
       markt
     );
     expect(r.acquisitionCents).toBe(300000);
@@ -261,7 +270,7 @@ describe("calculateValueDevelopment", () => {
   });
 
   it("kommt ohne Unterhaltskosten aus", () => {
-    const r = calculateValueDevelopment(kauf(), [], 0, markt);
+    const r = calculateValueDevelopment(kauf(), [], unterhalt(0), markt);
     expect(r.totalSpentCents).toBe(2000000);
     expect(r.balanceCents).toBe(445000);
   });
@@ -340,5 +349,86 @@ describe("pickManualMarketValue (Ersatz für die Marktanalyse)", () => {
 
   it("liefert null ohne Einträge", () => {
     expect(pickManualMarketValue([], heute)).toBeNull();
+  });
+});
+
+// ============================================================
+// INVESTITION GEGEN LAUFENDE KOSTEN (2026-08-03)
+// ============================================================
+
+describe("splitUpkeep", () => {
+  it("zählt Ersatzteile und Reparaturen zur Investition", () => {
+    const r = splitUpkeep([
+      { key: "parts", totalCents: 120000 },
+      { key: "repair", totalCents: 380000 },
+    ]);
+    expect(r.investmentCents).toBe(500000);
+    expect(r.runningCents).toBe(0);
+  });
+
+  it("zählt Nutzungskosten zu den laufenden Kosten", () => {
+    const r = splitUpkeep([
+      { key: "fuel", totalCents: 90000 },
+      { key: "insurance", totalCents: 60000 },
+      { key: "tax", totalCents: 20000 },
+      { key: "storage", totalCents: 100000 },
+      { key: "club", totalCents: 5000 },
+    ]);
+    expect(r.runningCents).toBe(275000);
+    expect(r.investmentCents).toBe(0);
+  });
+
+  it("zählt Wartung zu den laufenden Kosten", () => {
+    // Festlegung vom 2026-08-03: Inspektion, Ölwechsel und TÜV erhalten den
+    // Zustand, steigern ihn aber nicht
+    const r = splitUpkeep([{ key: "maintenance", totalCents: 45000 }]);
+    expect(r.runningCents).toBe(45000);
+    expect(r.investmentCents).toBe(0);
+  });
+
+  it("zählt „Sonstiges“ zu den laufenden Kosten", () => {
+    // Die Kategorie wird von Einzelkosten UND Scheckheft gespeist und lässt
+    // sich hier nicht trennen — als Investition auszuweisen hieße, nicht
+    // eingeordneten Aufwand als Wertzuwachs zu zeigen
+    const r = splitUpkeep([{ key: "misc", totalCents: 30000 }]);
+    expect(r.runningCents).toBe(30000);
+  });
+
+  it("verliert nichts: beide Teile ergeben zusammen die Summe", () => {
+    const kategorien = [
+      { key: "fuel", totalCents: 90000 },
+      { key: "parts", totalCents: 120000 },
+      { key: "maintenance", totalCents: 45000 },
+      { key: "repair", totalCents: 380000 },
+      { key: "insurance", totalCents: 60000 },
+      { key: "appraisal", totalCents: 25000 },
+      { key: "misc", totalCents: 30000 },
+    ];
+    const r = splitUpkeep(kategorien);
+    const summe = kategorien.reduce((s, k) => s + k.totalCents, 0);
+    expect(r.investmentCents + r.runningCents).toBe(summe);
+    expect(r.investmentCents).toBe(500000);
+  });
+
+  it("kommt mit einer unbekannten Kategorie zurecht", () => {
+    // Neue Kostenarten landen im laufenden Aufwand, nicht in der Investition
+    const r = splitUpkeep([{ key: "voellig-neu", totalCents: 1000 }]);
+    expect(r.runningCents).toBe(1000);
+    expect(r.investmentCents).toBe(0);
+  });
+});
+
+describe("calculateValueDevelopment — Aufteilung", () => {
+  it("führt Investition und laufende Kosten getrennt und zusammen", () => {
+    const r = calculateValueDevelopment(
+      kauf(),
+      [],
+      { investmentCents: 500000, runningCents: 275000 },
+      null
+    );
+    expect(r.investmentCents).toBe(500000);
+    expect(r.runningCents).toBe(275000);
+    expect(r.upkeepCents).toBe(775000);
+    expect(r.totalSpentCents).toBe(2000000 + 775000);
   });
 });
