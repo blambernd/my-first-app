@@ -73,7 +73,13 @@ export function VehicleSwitcher({
     return (
       <SidebarMenu>
         <SidebarMenuItem>
-          <SidebarMenuButton size="lg" className="cursor-default hover:bg-transparent">
+          <SidebarMenuButton
+            size="lg"
+            className="cursor-default hover:bg-transparent"
+            // Der Name wird in der schmalen Leiste abgeschnitten; vollständig
+            // bleibt er beim Überfahren lesbar.
+            title={name}
+          >
             <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
               <Car className="size-4" />
             </div>
@@ -94,6 +100,7 @@ export function VehicleSwitcher({
             <SidebarMenuButton
               size="lg"
               className="data-[state=open]:bg-sidebar-accent"
+              title={name}
             >
               <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
                 <Car className="size-4" />

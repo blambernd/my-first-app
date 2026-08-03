@@ -38,13 +38,18 @@
     --chart-8: 25 75% 50%;
     --chart-9: 205 15% 50%;
     --chart-10: 320 50% 50%;
-    --sidebar-background: 220 60% 22%;
-    --sidebar-foreground: 220 15% 90%;
-    --sidebar-primary: 40 30% 96%;
-    --sidebar-primary-foreground: 220 60% 22%;
-    --sidebar-accent: 220 50% 28%;
-    --sidebar-accent-foreground: 220 15% 90%;
-    --sidebar-border: 220 45% 30%;
+    /* PROJ-30: Die Seitennavigation war dunkles gesättigtes Marineblau
+       (220 60% 22%). Als schmales Element neben viel Weiß ging das noch; über
+       die volle Höhe des Fahrzeugbereichs zog sie den Blick vom Inhalt ab.
+       Jetzt eine ruhige helle Fläche, die sich nur leicht vom Seitenhintergrund
+       abhebt — der aktive Eintrag trägt die Betonung, nicht die ganze Leiste. */
+    --sidebar-background: 220 20% 97%;
+    --sidebar-foreground: 220 20% 32%;
+    --sidebar-primary: 220 60% 22%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 30% 91%;
+    --sidebar-accent-foreground: 220 60% 22%;
+    --sidebar-border: 220 15% 89%;
     --sidebar-ring: 220 60% 45%;
   }
 

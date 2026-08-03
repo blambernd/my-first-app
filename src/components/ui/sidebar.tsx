@@ -27,7 +27,10 @@ import {
 
 const SIDEBAR_COOKIE_NAME = "sidebar_state"
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
-const SIDEBAR_WIDTH = "16rem"
+// PROJ-30: von 16rem auf 14rem verschmälert. Die längste Beschriftung
+// ("Wertentwicklung", eingerückt) passt weiterhin ohne Abschneiden, und der
+// Inhaltsbereich gewinnt 32 px — spürbar im engen Bereich um 1024 px.
+const SIDEBAR_WIDTH = "14rem"
 const SIDEBAR_WIDTH_MOBILE = "18rem"
 const SIDEBAR_WIDTH_ICON = "3rem"
 const SIDEBAR_KEYBOARD_SHORTCUT = "b"
