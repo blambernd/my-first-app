@@ -118,7 +118,10 @@ export default async function VehicleLayout({
 
         <div className="border-b border-border/30">
           <div className="px-4 sm:px-6 lg:px-8">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 py-4">
+            {/* py-2.5 statt py-4: Der Kopf trägt nur eine Zeile — Name,
+                Erstzulassung und zwei Bedienelemente. Mehr Polsterung schob
+                den Inhalt ohne Gewinn nach unten. */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 py-2.5">
               <div className="flex items-center gap-2 min-w-0">
                 {/* Auf schmalen Bildschirmen der einzige Weg in die
                     Fahrzeugnavigation — sie liegt dort als Panel überlagert. */}
@@ -148,7 +151,12 @@ export default async function VehicleLayout({
             Zwei verschachtelte <main> sind ungültiges HTML und melden
             Screenreadern zwei Hauptinhalte. */}
         <div className="px-4 sm:px-6 lg:px-8">
-          <div className="py-6 sm:py-10 pb-20 md:pb-10">{children}</div>
+          {/* Oben knapper (vorher py-6 sm:py-10): Zwischen Fahrzeugkopf und
+              erster Überschrift standen 57 px, ohne dass die Trennung dadurch
+              deutlicher wurde — die Linie leistet das bereits.
+              Unten bleibt viel Luft, weil dort auf dem Smartphone die untere
+              Leiste liegt. */}
+          <div className="pt-4 sm:pt-6 pb-20 md:pb-10">{children}</div>
         </div>
 
         <MobileBottomNav />
