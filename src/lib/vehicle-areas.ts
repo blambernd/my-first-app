@@ -6,6 +6,7 @@ import {
   Fuel,
   Wallet,
   Workflow,
+  LayoutDashboard,
   Repeat,
   Receipt,
   ChartColumn,
@@ -55,7 +56,10 @@ const ALL_AREAS: VehicleArea[] = [
     // auch in den Zugriffsregeln der Datenbank, nicht nur hier.
     ownerOnly: true,
     children: [
-      { label: "Laufende Kosten", href: "/kosten", icon: Repeat },
+      // Der Überblick liegt auf dem Pfad des Bereichs selbst (PROJ-31);
+      // „Laufende Kosten" hat dafür einen eigenen bekommen.
+      { label: "Überblick", href: "/kosten", icon: LayoutDashboard },
+      { label: "Laufende Kosten", href: "/kosten/laufende", icon: Repeat },
       { label: "Einzelkosten", href: "/kosten/einzelkosten", icon: Receipt },
       { label: "Auswertung", href: "/kosten/auswertung", icon: ChartColumn },
       {

@@ -45,7 +45,7 @@
 | PROJ-28 | Kaufpreis & Wertentwicklung | Deployed | [PROJ-28-kaufpreis-wertentwicklung.md](PROJ-28-kaufpreis-wertentwicklung.md) | 2026-07-31 |
 | PROJ-29 | Belastbarer Marktüberblick | Zurückgestellt | [PROJ-29-belastbarer-marktueberblick.md](PROJ-29-belastbarer-marktueberblick.md) | 2026-08-01 |
 | PROJ-30 | Fahrzeug-Navigation & UX-Überarbeitung | Deployed | [PROJ-30-fahrzeug-navigation.md](PROJ-30-fahrzeug-navigation.md) | 2026-08-01 |
-| PROJ-31 | Kosten-Überblicksseite | Architected | [PROJ-31-kosten-ueberblick.md](PROJ-31-kosten-ueberblick.md) | 2026-08-01 |
+| PROJ-31 | Kosten-Überblicksseite | In Progress | [PROJ-31-kosten-ueberblick.md](PROJ-31-kosten-ueberblick.md) | 2026-08-01 |
 | PROJ-32 | Kostendaten beim Fahrzeug-Transfer | Architected | [PROJ-32-kostendaten-beim-transfer.md](PROJ-32-kostendaten-beim-transfer.md) | 2026-08-01 |
 
 <!-- Add features above this line -->

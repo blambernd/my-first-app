@@ -45,7 +45,8 @@ export const SOURCE_META: Record<
 > = {
   tankbuch: { label: "Tankbuch", path: "/tankbuch" },
   scheckheft: { label: "Scheckheft", path: "/scheckheft" },
-  laufende: { label: "Laufende Kosten", path: "/kosten" },
+  // Seit PROJ-31 hat die Liste einen eigenen Pfad; /kosten zeigt den Überblick
+  laufende: { label: "Laufende Kosten", path: "/kosten/laufende" },
   einzelkosten: { label: "Einzelkosten", path: "/kosten/einzelkosten" },
 };
 
@@ -318,6 +319,58 @@ export function earliestMonth(input: AnalysisInput): string | null {
   ];
   if (candidates.length === 0) return null;
   return candidates.reduce((min, m) => (m < min ? m : min));
+}
+
+/**
+ * Monatsname ausgeschrieben mit vollem Jahr.
+ *
+ * Neben dem kurzen `monthLabel` („Aug 26"), das für Diagrammachsen gedacht
+ * ist: Die Zeitraumangabe des Überblicks steht als Fließtext und darf nicht
+ * geraten werden müssen.
+ */
+function longMonthLabel(month: string): string {
+  const [jahr, monat] = month.split("-").map(Number);
+  const namen = [
+    "Januar", "Februar", "März", "April", "Mai", "Juni",
+    "Juli", "August", "September", "Oktober", "November", "Dezember",
+  ];
+  return `${namen[monat - 1]} ${jahr}`;
+}
+
+/**
+ * Der rollierende Zeitraum des Kostenüberblicks (PROJ-31).
+ *
+ * Zwölf Monate rückwärts vom laufenden Monat — anders als die wählbaren
+ * Zeiträume der Auswertung, die an Kalenderjahren hängen.
+ *
+ * Reicht die Datenlage nicht so weit zurück, wird das Fenster **verkürzt und
+ * entsprechend benannt**. Ein junges Fahrzeug auf zwölf Monate hochzurechnen
+ * ergäbe eine plausibel aussehende, erfundene Zahl — und der Monatsdurchschnitt
+ * wäre um den Faktor der fehlenden Monate zu niedrig.
+ */
+export function buildOverviewPeriod(
+  input: AnalysisInput,
+  today: Date
+): Period & { monthsCovered: number; shortened: boolean } {
+  const currentMonth = `${today.getFullYear()}-${String(
+    today.getMonth() + 1
+  ).padStart(2, "0")}`;
+  const zwoelfMonateZurueck = monthFromNumber(monthNumber(currentMonth) - 11);
+  const earliest = earliestMonth(input);
+
+  // Liegen die frühesten Daten später, beginnt der Zeitraum dort
+  const shortened = earliest !== null && earliest > zwoelfMonateZurueck;
+  const fromMonth = shortened ? earliest! : zwoelfMonateZurueck;
+
+  return {
+    fromMonth,
+    toMonth: currentMonth,
+    label: shortened
+      ? `Seit ${longMonthLabel(fromMonth)}`
+      : `Letzte 12 Monate (${longMonthLabel(fromMonth)} – ${longMonthLabel(currentMonth)})`,
+    monthsCovered: monthNumber(currentMonth) - monthNumber(fromMonth) + 1,
+    shortened,
+  };
 }
 
 /**

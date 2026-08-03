@@ -154,7 +154,11 @@ test.describe("PROJ-26: Einzelkosten — Erfassen, Verknüpfen, Doppelzählungss
     page,
   }) => {
     await page.goto(`/vehicles/${VEHICLE_ID}/kosten`);
-    const tab = page.getByRole("link", { name: "Einzelkosten" });
+    // Ausdrücklich der Navigationseintrag: Seit PROJ-31 zeigt /kosten den
+    // Überblick, dessen Aufteilung ebenfalls nach „Einzelkosten" verweist.
+    const tab = page
+      .locator('[data-sidebar="menu-sub-button"]')
+      .filter({ hasText: "Einzelkosten" });
     await expect(tab).toBeVisible({ timeout: 20000 });
     await expect(tab).toHaveAttribute("href", EINZELKOSTEN);
     await tab.click();

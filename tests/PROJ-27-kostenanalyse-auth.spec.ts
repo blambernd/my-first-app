@@ -19,6 +19,8 @@ const AUSWERTUNG = `/vehicles/${VEHICLE_ID}/kosten/auswertung`;
 const TANKBUCH = `/vehicles/${VEHICLE_ID}/tankbuch`;
 const SCHECKHEFT = `/vehicles/${VEHICLE_ID}/scheckheft`;
 const KOSTEN = `/vehicles/${VEHICLE_ID}/kosten`;
+// Seit PROJ-31 zeigt /kosten den Überblick; die Liste liegt darunter
+const LAUFENDE = `${KOSTEN}/laufende`;
 const EINZELKOSTEN = `${KOSTEN}/einzelkosten`;
 
 const SERVICE_DESC = "E2E-27 Inspektion";
@@ -130,7 +132,7 @@ async function removeTestServiceEntries(page: Page) {
 async function leeren(page: Page) {
   await removeAll(page, TANKBUCH, "Tankvorgang löschen", "Noch keine Tankvorgänge erfasst");
   await removeAll(page, EINZELKOSTEN, "Einzelkosten löschen", "Noch keine Einzelkosten erfasst");
-  await removeAll(page, KOSTEN, "Laufende Kosten löschen", "Noch keine laufenden Kosten hinterlegt");
+  await removeAll(page, LAUFENDE, "Laufende Kosten löschen", "Noch keine laufenden Kosten hinterlegt");
   await removeTestServiceEntries(page);
 }
 
@@ -232,7 +234,7 @@ test.describe("PROJ-27: Kostenanalyse — vier Quellen, eine Summe", () => {
     await waitForToastsGone(page);
 
     // --- Laufende Kosten: Versicherung 1200 € jährlich ---
-    await page.goto(KOSTEN);
+    await page.goto(LAUFENDE);
     await page
       .getByRole("button", { name: /Laufende Kosten erfassen|^Erfassen$/ })
       .first()
@@ -372,7 +374,7 @@ test.describe("PROJ-27: Kostenanalyse — vier Quellen, eine Summe", () => {
     page,
   }) => {
     // Dieselben Daten dürfen auf zwei Seiten nicht widersprechen
-    await page.goto(KOSTEN);
+    await page.goto(LAUFENDE);
     await expect(page.getByText("Aktuell pro Monat")).toBeVisible({
       timeout: 30000,
     });

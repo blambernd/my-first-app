@@ -500,7 +500,8 @@ function EmptyState({ vehicleId }: { vehicleId: string }) {
   const sources = [
     { path: "/tankbuch", label: "Tankbuch", hint: "Benzinkosten" },
     { path: "/scheckheft", label: "Scheckheft", hint: "Wartung und Reparatur" },
-    { path: "/kosten", label: "Laufende Kosten", hint: "Versicherung, Steuer, Garage" },
+    // Seit PROJ-31: /kosten ist der Überblick, die Liste liegt darunter
+    { path: "/kosten/laufende", label: "Laufende Kosten", hint: "Versicherung, Steuer, Garage" },
     {
       path: "/kosten/einzelkosten",
       label: "Einzelkosten",

@@ -1,16 +1,53 @@
 import { redirect, notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase-server";
-import { RecurringCostList } from "@/components/recurring-cost-list";
+import {
+  getEffectivePlan,
+  hasPremiumAccess,
+  isBetaMode,
+} from "@/lib/subscription";
+import { PremiumUpsell } from "@/components/premium-upsell";
+import { CostOverviewView } from "@/components/cost-overview-view";
+import {
+  analyzeCosts,
+  buildOverviewPeriod,
+  type AnalysisInput,
+  type ServiceEntryForAnalysis,
+} from "@/lib/cost-analysis";
+import { buildCostOverview } from "@/lib/cost-overview";
+import {
+  normalizeFuelEntry,
+  type FuelEntry,
+} from "@/lib/validations/fuel-entry";
 import {
   normalizeRecurringCost,
   type RecurringCost,
 } from "@/lib/validations/recurring-cost";
+import {
+  normalizeOneOffCost,
+  type OneOffCost,
+} from "@/lib/validations/one-off-cost";
 
-interface KostenPageProps {
+interface KostenUeberblickPageProps {
   params: Promise<{ id: string }>;
 }
 
-export default async function KostenPage({ params }: KostenPageProps) {
+const MAX_ROWS = 2000;
+
+/**
+ * Einstieg in den Kostenbereich (PROJ-31).
+ *
+ * Beantwortet in vier Zahlen, was das Fahrzeug kostet, und verzweigt von dort
+ * in die Detailbereiche. Bis zum 2026-08-03 lag hier „Laufende Kosten"; die
+ * Liste hat einen eigenen Unterpfad bekommen.
+ *
+ * Serverseitig gerechnet wie Auswertung und Wertentwicklung: Die Seite kommt
+ * fertig an, es gibt kein Nachladen und keine springenden Zahlen. Die
+ * Aggregation kostet unter 4 ms (in PROJ-27 an 868 Datensätzen gemessen) —
+ * die Seitenzeit besteht praktisch nur aus den Wegen zur Datenbank.
+ */
+export default async function KostenUeberblickPage({
+  params,
+}: KostenUeberblickPageProps) {
   const { id } = await params;
   const supabase = await createClient();
   const {
@@ -21,44 +58,103 @@ export default async function KostenPage({ params }: KostenPageProps) {
     redirect("/login");
   }
 
-  // Der gesamte Kostenbereich ist dem Besitzer vorbehalten (PROJ-27, C10).
-  // Kosten sind sensibler als die Wartungshistorie: Eine eingeladene Werkstatt
-  // soll nicht sehen, was der Besitzer anderswo bezahlt hat. Die Regeln in der
-  // Datenbank setzen dasselbe durch — diese Prüfung sorgt nur dafür, dass ein
-  // Mitglied eine klare Absage bekommt statt einer leeren Liste.
-  const { data: ownedVehicle } = await supabase
-    .from("vehicles")
-    .select("id, insurance_company")
-    .eq("id", id)
-    .eq("user_id", user.id)
-    .maybeSingle();
+  const [{ data: ownedVehicle }, { data: subscription }] = await Promise.all([
+    supabase
+      .from("vehicles")
+      .select("id")
+      .eq("id", id)
+      .eq("user_id", user.id)
+      .maybeSingle(),
+    supabase
+      .from("subscriptions")
+      .select("plan, status, trial_end, referral_bonus_until")
+      .eq("user_id", user.id)
+      .maybeSingle(),
+  ]);
 
+  // Der gesamte Kostenbereich ist dem Besitzer vorbehalten (PROJ-27, C10).
+  // Die Regeln in der Datenbank setzen dasselbe durch — diese Prüfung sorgt
+  // nur dafür, dass ein Mitglied eine klare Absage bekommt.
   if (!ownedVehicle) {
     notFound();
   }
 
-  const insuranceCompany: string | null = ownedVehicle.insurance_company ?? null;
-  const canEdit = true;
-  const canDelete = true;
+  const effectivePlan = subscription
+    ? getEffectivePlan(subscription)
+    : isBetaMode
+      ? "premium"
+      : "free";
 
-  const { data: costs } = await supabase
-    .from("recurring_costs")
-    .select("*")
-    .eq("vehicle_id", id)
-    .order("valid_from", { ascending: false })
-    .limit(500);
+  if (!hasPremiumAccess(effectivePlan)) {
+    return (
+      <PremiumUpsell
+        feature="Kostenüberblick"
+        description="Was dich dein Fahrzeug im letzten Jahr gekostet hat — Gesamtkosten, Durchschnitt je Monat, Kosten je Kilometer und die Aufteilung nach Quelle."
+      />
+    );
+  }
+
+  const [fuelResult, serviceResult, recurringResult, oneOffResult] =
+    await Promise.all([
+      supabase
+        .from("fuel_entries")
+        .select("*")
+        .eq("vehicle_id", id)
+        .order("fueled_at", { ascending: true })
+        .limit(MAX_ROWS),
+      supabase
+        .from("service_entries")
+        .select(
+          "id, service_date, entry_type, cost_cents, mileage_km, is_odometer_correction"
+        )
+        .eq("vehicle_id", id)
+        .order("service_date", { ascending: true })
+        .limit(MAX_ROWS),
+      supabase
+        .from("recurring_costs")
+        .select("*")
+        .eq("vehicle_id", id)
+        .limit(MAX_ROWS),
+      supabase
+        .from("one_off_costs")
+        .select("*")
+        .eq("vehicle_id", id)
+        .order("purchased_at", { ascending: true })
+        .limit(MAX_ROWS),
+    ]);
+
+  const input: AnalysisInput = {
+    fuelEntries: ((fuelResult.data ?? []) as FuelEntry[]).map(normalizeFuelEntry),
+    serviceEntries: ((serviceResult.data ?? []) as ServiceEntryForAnalysis[]).map(
+      (entry) => ({
+        ...entry,
+        // Zahlenspalten kommen je nach Treiber als String zurück
+        cost_cents: entry.cost_cents === null ? null : Number(entry.cost_cents),
+        mileage_km: Number(entry.mileage_km),
+      })
+    ),
+    recurringCosts: ((recurringResult.data ?? []) as RecurringCost[]).map(
+      normalizeRecurringCost
+    ),
+    oneOffCosts: ((oneOffResult.data ?? []) as OneOffCost[]).map(
+      normalizeOneOffCost
+    ),
+  };
+
+  const today = new Date();
+  const period = buildOverviewPeriod(input, today);
+  // Dieselbe Rechenlogik wie die Auswertung, nur ein anderer Zeitraum —
+  // damit beide Seiten für dieselben Daten nicht auseinanderlaufen.
+  const analysis = analyzeCosts(input, period, today);
+  const overview = buildCostOverview(analysis, period.monthsCovered);
 
   return (
-    <div className="space-y-6">
-      <RecurringCostList
-        vehicleId={id}
-        initialCosts={((costs ?? []) as RecurringCost[]).map(
-          normalizeRecurringCost
-        )}
-        insuranceCompany={insuranceCompany}
-        canEdit={canEdit}
-        canDelete={canDelete}
-      />
-    </div>
+    <CostOverviewView
+      vehicleId={id}
+      overview={overview}
+      periodLabel={period.label}
+      shortened={period.shortened}
+      untracked={analysis.quality.untracked}
+    />
   );
 }

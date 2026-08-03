@@ -7,6 +7,7 @@ import {
   monthLabel,
   earliestMonth,
   buildPeriods,
+  buildOverviewPeriod,
   calculateMileage,
   analyzeCosts,
   type AnalysisInput,
@@ -876,5 +877,75 @@ describe("analyzeCosts — Zeitachse", () => {
       END_OF_2026
     );
     expect(result.totalCents).toBe(8000);
+  });
+});
+
+// ============================================================
+// ZEITRAUM DES KOSTENÜBERBLICKS (PROJ-31)
+// ============================================================
+
+describe("buildOverviewPeriod", () => {
+  // Ausdrücklich UTC: `new Date(2026, 7, 3)` wäre lokale Mitternacht und die
+  // Monatsgrenze damit von der Zeitzone des Testrechners abhängig.
+  const HEUTE = new Date("2026-08-03T12:00:00Z");
+
+  it("spannt zwölf Monate rückwärts vom laufenden Monat", () => {
+    const p = buildOverviewPeriod(input({ fuelEntries: [fuel({ fueled_at: "2020-01-01" })] }), HEUTE);
+    expect(p.fromMonth).toBe("2025-09");
+    expect(p.toMonth).toBe("2026-08");
+    expect(p.monthsCovered).toBe(12);
+    expect(p.shortened).toBe(false);
+  });
+
+  it("benennt den vollen Zeitraum ausgeschrieben", () => {
+    const p = buildOverviewPeriod(input({ fuelEntries: [fuel({ fueled_at: "2020-01-01" })] }), HEUTE);
+    expect(p.label).toBe("Letzte 12 Monate (September 2025 – August 2026)");
+  });
+
+  it("verkürzt den Zeitraum bei jüngeren Fahrzeugen", () => {
+    // Eine Hochrechnung auf zwölf Monate ergäbe einen um zwei Drittel zu
+    // niedrigen Monatsdurchschnitt
+    const p = buildOverviewPeriod(
+      input({ fuelEntries: [fuel({ fueled_at: "2026-05-14" })] }),
+      HEUTE
+    );
+    expect(p.fromMonth).toBe("2026-05");
+    expect(p.monthsCovered).toBe(4);
+    expect(p.shortened).toBe(true);
+    expect(p.label).toBe("Seit Mai 2026");
+  });
+
+  it("verkürzt nicht, wenn die Daten weiter zurückreichen", () => {
+    const p = buildOverviewPeriod(
+      input({ fuelEntries: [fuel({ fueled_at: "2024-02-01" })] }),
+      HEUTE
+    );
+    expect(p.fromMonth).toBe("2025-09");
+    expect(p.shortened).toBe(false);
+  });
+
+  it("liefert ohne jede Erfassung den vollen Zeitraum", () => {
+    // Der leere Zustand wird von der Seite behandelt, nicht durch einen
+    // zusammengeschrumpften Zeitraum
+    const p = buildOverviewPeriod(input(), HEUTE);
+    expect(p.fromMonth).toBe("2025-09");
+    expect(p.monthsCovered).toBe(12);
+  });
+
+  it("rechnet über den Jahreswechsel richtig", () => {
+    const p = buildOverviewPeriod(input(), new Date("2026-01-15T12:00:00Z"));
+    expect(p.fromMonth).toBe("2025-02");
+    expect(p.toMonth).toBe("2026-01");
+    expect(p.monthsCovered).toBe(12);
+  });
+
+  it("behandelt Daten aus genau dem laufenden Monat", () => {
+    const p = buildOverviewPeriod(
+      input({ fuelEntries: [fuel({ fueled_at: "2026-08-01" })] }),
+      HEUTE
+    );
+    expect(p.fromMonth).toBe("2026-08");
+    expect(p.monthsCovered).toBe(1);
+    expect(p.shortened).toBe(true);
   });
 });

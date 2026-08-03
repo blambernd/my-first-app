@@ -15,7 +15,8 @@ import { test, expect, type Page } from "@playwright/test";
  */
 
 const VEHICLE_ID = process.env.E2E_VEHICLE_ID;
-const KOSTEN = `/vehicles/${VEHICLE_ID}/kosten`;
+// Seit PROJ-31 liegt die Liste unter /kosten/laufende; /kosten zeigt den Überblick
+const KOSTEN = `/vehicles/${VEHICLE_ID}/kosten/laufende`;
 
 async function waitForToastsGone(page: Page) {
   await expect(page.locator("[data-sonner-toast]")).toHaveCount(0, {
@@ -107,9 +108,22 @@ test.describe("PROJ-25: Laufende Kosten — Erfassen, Umlegen, Ändern, Löschen
     page,
   }) => {
     await page.goto(`/vehicles/${VEHICLE_ID}`);
-    const link = page.getByRole("link", { name: "Kosten" });
-    await expect(link).toBeVisible({ timeout: 15000 });
-    await expect(link).toHaveAttribute("href", KOSTEN);
+    // exact: true — seit PROJ-31 stehen unter „Kosten" fünf Unterpunkte, von
+    // denen mehrere das Wort enthalten („Laufende Kosten", „Einzelkosten")
+    const bereich = page.getByRole("link", { name: "Kosten", exact: true });
+    await expect(bereich).toBeVisible({ timeout: 15000 });
+    await expect(bereich).toHaveAttribute(
+      "href",
+      `/vehicles/${VEHICLE_ID}/kosten`
+    );
+
+    // Die Liste selbst liegt seit PROJ-31 einen Pfad tiefer. Geprüft wird sie
+    // im Kostenbereich, wo die Unterpunkte aufgeklappt sind — auf der
+    // Fahrzeugübersicht ist „Kosten" zugeklappt.
+    await page.goto(`/vehicles/${VEHICLE_ID}/kosten`);
+    const liste = page.getByRole("link", { name: "Laufende Kosten", exact: true });
+    await expect(liste).toBeVisible({ timeout: 15000 });
+    await expect(liste).toHaveAttribute("href", KOSTEN);
   });
 
   test("AC: Leerer Zustand bietet das Erfassen an", async ({ page }) => {

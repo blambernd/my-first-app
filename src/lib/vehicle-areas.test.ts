@@ -45,14 +45,19 @@ describe("getVehicleAreas", () => {
     expect(labels).not.toContain("Verkaufsassistent");
   });
 
-  it("hinterlegt dem Kostenbereich vier Unterbereiche", () => {
+  it("hinterlegt dem Kostenbereich fünf Unterbereiche", () => {
+    // Seit PROJ-31 führt der Überblick die Liste an; er liegt auf dem Pfad
+    // des Bereichs selbst, „Laufende Kosten" hat einen eigenen bekommen.
     const kosten = getVehicleAreas(true).find((a) => a.label === "Kosten");
     expect(kosten?.children?.map((c) => c.label)).toEqual([
+      "Überblick",
       "Laufende Kosten",
       "Einzelkosten",
       "Auswertung",
       "Wertentwicklung",
     ]);
+    expect(kosten?.children?.[0].href).toBe("/kosten");
+    expect(kosten?.children?.[1].href).toBe("/kosten/laufende");
   });
 });
 
@@ -79,14 +84,30 @@ describe("isAreaActive", () => {
 
 describe("isSubAreaActive", () => {
   const basis = `/vehicles/${A}`;
-  const laufende = { label: "Laufende Kosten", href: "/kosten", icon: null as never };
+  const ueberblick = { label: "Überblick", href: "/kosten", icon: null as never };
+  const laufende = {
+    label: "Laufende Kosten",
+    href: "/kosten/laufende",
+    icon: null as never,
+  };
 
-  it("markiert „Laufende Kosten“ nur auf ihrer eigenen Seite", () => {
-    // Sie teilt sich den Pfad mit dem Bereich "Kosten"
-    expect(isSubAreaActive(laufende, basis, `${basis}/kosten`)).toBe(true);
-    expect(isSubAreaActive(laufende, basis, `${basis}/kosten/einzelkosten`)).toBe(
+  it("markiert den Überblick nur auf dem Pfad des Bereichs selbst", () => {
+    // Er teilt sich den Pfad mit dem Bereich "Kosten" — ohne exakten
+    // Vergleich wäre er auf jeder Kosten-Unterseite mit hervorgehoben
+    expect(isSubAreaActive(ueberblick, basis, `${basis}/kosten`)).toBe(true);
+    expect(isSubAreaActive(ueberblick, basis, `${basis}/kosten/laufende`)).toBe(
       false
     );
+    expect(
+      isSubAreaActive(ueberblick, basis, `${basis}/kosten/einzelkosten`)
+    ).toBe(false);
+  });
+
+  it("markiert „Laufende Kosten“ nur auf ihrer eigenen Seite", () => {
+    expect(isSubAreaActive(laufende, basis, `${basis}/kosten/laufende`)).toBe(
+      true
+    );
+    expect(isSubAreaActive(laufende, basis, `${basis}/kosten`)).toBe(false);
   });
 });
 

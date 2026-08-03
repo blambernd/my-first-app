@@ -118,6 +118,7 @@ test.describe("PROJ-30: Fahrzeug-Navigation", () => {
     // <nav> mit unterer Rahmenlinie direkt im Seiteninhalt.
     for (const pfad of [
       "/kosten",
+      "/kosten/laufende",
       "/kosten/einzelkosten",
       "/kosten/auswertung",
       "/kosten/wertentwicklung",
@@ -194,6 +195,10 @@ test.describe("PROJ-30: Fahrzeug-Navigation", () => {
   test("AC: Alle bisherigen Fahrzeugseiten bleiben erreichbar", async ({
     page,
   }) => {
+    // Dreizehn vollständige Seitenaufrufe passen nicht in die voreingestellten
+    // 30 Sekunden — jeder lädt serverseitig seine eigenen Daten.
+    test.setTimeout(120_000);
+
     for (const pfad of [
       "",
       "/scheckheft",
@@ -201,6 +206,7 @@ test.describe("PROJ-30: Fahrzeug-Navigation", () => {
       "/dokumente",
       "/tankbuch",
       "/kosten",
+      "/kosten/laufende",
       "/kosten/einzelkosten",
       "/kosten/auswertung",
       "/kosten/wertentwicklung",

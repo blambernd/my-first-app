@@ -1,6 +1,6 @@
 # PROJ-31: Kosten-Überblicksseite
 
-## Status: Architected
+## Status: In Progress
 **Created:** 2026-08-01
 **Last Updated:** 2026-08-01
 
@@ -218,6 +218,70 @@ Ohne zwei verwertbare Kilometerstände gibt es keine Fahrleistung und damit kein
 **Sehr hohe Einzelposten verzerren den Monatsdurchschnitt.** Eine Restaurierung über 15.000 € lässt zwölf Monate teuer aussehen. Vorgesehen: Der Durchschnitt weist aus, wenn ein einzelner Posten mehr als die Hälfte der Gesamtkosten ausmacht. Ob das genügt oder ein Median die ehrlichere Zahl wäre, ist beim Bauen an echten Daten zu beurteilen.
 
 **Die Zahlen müssen mit der Auswertung übereinstimmen.** Beide Seiten nutzen dieselbe Rechenlogik, aber unterschiedliche Zeiträume. Ein Test, der für denselben Zeitraum beide Seiten vergleicht, ist die einzige verlässliche Absicherung dagegen, dass sie später auseinanderlaufen.
+
+## Implementierung (Frontend)
+
+**Umgesetzt am:** 2026-08-03
+
+### Gebaute und geänderte Dateien
+
+| Datei | Zweck |
+|---|---|
+| `src/app/vehicles/[id]/kosten/page.tsx` | **neu** — der Überblick, serverseitig gerechnet |
+| `src/app/vehicles/[id]/kosten/laufende/page.tsx` | **verschoben** von `/kosten` |
+| `src/components/cost-overview-view.tsx` | neu — Kennzahlen, Aufteilung, Hinweise, leerer Zustand |
+| `src/lib/cost-overview.ts` | neu — Zusammenfassung zu vier Zahlen |
+| `src/lib/cost-overview.test.ts` | neu — 15 Tests |
+| `src/lib/cost-analysis.ts` | `buildOverviewPeriod` ergänzt, Quellenpfad nachgezogen |
+| `src/lib/cost-analysis.test.ts` | 7 Tests zum neuen Zeitraum |
+| `src/components/cost-analysis-view.tsx` | Quellenverweis auf den neuen Pfad |
+| `src/lib/vehicle-areas.ts` | „Überblick" ergänzt, „Laufende Kosten" umgehängt |
+
+### An echten Daten nachgerechnet
+
+Mit vier Quellen befüllt und im Browser gegengeprüft:
+
+| Quelle | Betrag |
+|---|---:|
+| Kraftstoff (3 Tankvorgänge) | 270,00 € |
+| Wartung (1 Inspektion) | 350,00 € |
+| Einzelkosten (Ersatzteile) | 220,00 € |
+| Laufende Kosten (Versicherung 600 €/Jahr) | 600,00 € |
+| **Gesamt** | **1.440,00 €** |
+
+Die Seite zeigte **1.440,00 €**, **120,00 € je Monat** (1440 ÷ 12) und **0,36 € je Kilometer** bei 4.000 km — jede Zahl von Hand nachgerechnet. Die Anteile (19 % Kraftstoff, 24 % Wartung) summieren sich auf 100 %.
+
+Der Belastbarkeitshinweis nannte die sieben nicht erfassten Kostenarten. Konsole auf allen geprüften Seiten sauber, kein Querscrollen bei 375, 768 und 1440 px.
+
+### Umgesetzte Entscheidungen
+
+- **Serverseitig gerechnet.** Die Seite kommt fertig an; es gibt kein Nachladen und damit auch keine springenden Zahlen — besser als der in der Spec geforderte Platzhalter.
+- **Der Monatsdurchschnitt teilt durch die abgedeckten Monate**, nicht durch zwölf. Bei einem im Mai gekauften Fahrzeug wäre sonst jeder Monat um zwei Drittel zu billig.
+- **Kosten je Kilometer entfallen mit Begründung**, wenn zwei Messpunkte fehlen oder die Stände sich widersprechen. Beide Fälle werden unterschieden und getrennt benannt.
+- **Bei einer einzigen Quelle entfällt die Anteilsangabe.** 100 % aus einer Quelle ist keine Verteilung, sondern eine Feststellung; die Karte heißt dann „Erfasste Kosten" statt „Aufteilung".
+- **Ein beherrschender Posten wird gemeldet**, sobald eine Gruppe über die Hälfte ausmacht — aber nur, wenn es überhaupt mehrere gibt.
+- **Der Kaufpreis bleibt draußen**, mit einem Verweis auf die Wertentwicklung am Fuß der Seite.
+
+### Der Umzug — die im Entwurf benannte Gefahrenstelle
+
+Beide Verweise, die den Kostenbereich mit „Laufende Kosten" gleichsetzten, sind nachgezogen:
+
+- `SOURCE_META` in der Rechenlogik (speist die Quellenverweise der Auswertung)
+- die feste Quellenliste in der Auswertungsansicht
+
+Im Browser bestätigt: Der Quellenverweis der Auswertung zeigt auf `/kosten/laufende`. In der Navigation stehen fünf Unterpunkte, „Überblick" ist auf `/kosten` aktiv und „Laufende Kosten" auf `/kosten/laufende` — beide exakt und nicht gleichzeitig.
+
+### Was der Umzug an Tests gekostet hat
+
+Vier E2E-Tests brachen, alle aus demselben Grund: Der Überblick verweist selbst nach „Laufende Kosten" und „Einzelkosten", wodurch diese Begriffe auf `/kosten` nun **doppelt** vorkommen — einmal in der Navigation, einmal in der Aufteilung. Betroffene Prüfungen zielen jetzt ausdrücklich auf den Navigationseintrag.
+
+Ein fünfter Test lief in einen Zeitüberlauf: Er ruft alle Fahrzeugseiten nacheinander auf, und mit dem neuen Unterpfad sind es dreizehn statt zwölf — die voreingestellten 30 Sekunden reichten nicht mehr. Grenze angehoben.
+
+### Nicht geprüft
+
+- **Der verkürzte Zeitraum im Browser.** Das Wegwerf-Fahrzeug hat keine Daten, die jünger als zwölf Monate wären. Die Logik ist mit sieben Tests abgedeckt, einschließlich Jahreswechsel und Daten aus genau dem laufenden Monat — die Darstellung des Hinweises gehört aber in `/qa`.
+- **Der beherrschende Posten in der Oberfläche.** Ebenfalls nur als reine Funktion geprüft.
+- **Tastaturbedienung** über die Voreinstellungen hinaus.
 
 ## QA Test Results
 _To be added by /qa_
