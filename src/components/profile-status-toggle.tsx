@@ -1,5 +1,6 @@
 "use client";
 
+import { VERKAUFSASSISTENT_AKTIV } from "@/lib/feature-flags";
 import { useOrigin } from "@/hooks/use-origin";
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
@@ -77,6 +78,16 @@ export function ProfileStatusToggle({ vehicleId }: ProfileStatusToggleProps) {
   };
 
   if (loading || !hasProfile) return null;
+
+  // Solange der Verkaufsassistent ausgesetzt ist, lassen sich keine neuen
+  // Kurzprofile anlegen — ein Schalter für ein inaktives Profil führt dann in
+  // eine Sackgasse und wird ausgeblendet.
+  //
+  // Ist das Profil dagegen **aktiv**, bleibt der Schalter stehen: Er ist der
+  // einzige Weg, eine öffentlich erreichbare Seite wieder abzuschalten. Ihn
+  // auch dann zu verstecken hieße, eine veröffentlichte Fahrzeugseite ohne
+  // Rückweg im Netz stehen zu lassen.
+  if (!VERKAUFSASSISTENT_AKTIV && !isActive) return null;
 
   const profileUrl = token
     ? `${origin}/profil/${token}`
