@@ -1,6 +1,6 @@
 # PROJ-30: Fahrzeug-Navigation & UX-Überarbeitung
 
-## Status: Approved
+## Status: Deployed
 **Created:** 2026-08-01
 **Last Updated:** 2026-08-01
 
@@ -487,4 +487,48 @@ Drei zusätzliche E2E-Tests halten das fest, darunter ausdrücklich die Gegenpro
 Die einzige verbleibende Lücke ist die **Premium-Kennzeichnung**: nicht prüfbar, solange der Verkaufsassistent ausgesetzt ist. Der Code ist vorhanden, ungeprüft, und gehört nachgeholt, sobald der Assistent zurückkehrt.
 
 ## Deployment
-_To be added by /deploy_
+
+**Ausgeliefert am:** 2026-08-02 · **Produktion:** https://oldtimer-docs.com
+
+### Vorprüfungen
+
+| Prüfung | Ergebnis |
+|---|---|
+| `npm run build` | erfolgreich |
+| `npm run lint` | 0 Fehler (30 Hinweise, vorbestehend) |
+| Unit-Tests | 552 / 552 grün |
+| E2E PROJ-30 | 17 / 17 grün |
+| Alle angemeldeten E2E-Tests (seriell) | 78 / 78 grün |
+| QA-Freigabe | Approved, kein offener Fehler |
+| Geheimnisse im Diff | keine |
+| Neue Umgebungsvariablen | keine |
+| Datenbank-Migrationen | keine — reine Oberflächenänderung |
+
+### In der Produktion angemeldet geprüft
+
+Nicht nur HTTP-Status, sondern mit echtem Testnutzer:
+
+| Prüfung | Ergebnis |
+|---|---|
+| Navigation auf Übersicht / Kosten / Auswertung | 7 bzw. 11 Einträge, **alte Reiterleiste: 0** |
+| „Kosten" ist ein Link | ja, auf `/kosten` |
+| Kopfbereich | „Transfer" im Überlaufmenü statt sichtbar |
+| `/verkaufsassistent`, `/marktpreis`, `/kurzprofil` | leiten aufs Fahrzeugprofil zurück |
+| Mobil (375 px) | Panel öffnet und **schließt nach der Auswahl** |
+| Dashboard-Konsole | sauber — der Hydration-Fehler #418 ist weg |
+
+**Zur Wertentwicklung:** Die Seite liefert HTTP 200 und zeigt die Premium-Aufforderung, weil der Testnutzer im Free-Plan ist. Das ist das vorgesehene Verhalten, kein Fehler — meine erste Prüfregel hatte den Upsell schlicht nicht berücksichtigt.
+
+### Nachgereicht: Darstellung der Navigation
+
+Nach dem ersten Ausliefern zurückgemeldet: Die Leiste wirkte zu dominant. Sie war dunkles gesättigtes Marineblau (`220 60% 22%`) und 256 px breit — als schmales Element vertretbar, über die volle Höhe des Fahrzeugbereichs jedoch aufdringlich.
+
+- **Farbe:** ruhige helle Fläche (`220 20% 97%`), die sich nur leicht vom Seitenhintergrund abhebt. Die Betonung trägt jetzt der aktive Eintrag.
+- **Breite:** 16 rem → 14 rem. „Wertentwicklung" passt eingerückt weiterhin ohne Abschneiden; der Inhalt gewinnt 32 px und liegt bei 1440 px nun bei 1216 px.
+- Der Fahrzeugname wird in der schmaleren Leiste früher abgeschnitten und ist über das `title`-Attribut vollständig lesbar — deckt den Edge Case „sehr lange Fahrzeugnamen" ab.
+
+Die Farbtoken werden ausschließlich von dieser Navigation verwendet; andere Ansichten sind nicht betroffen. Der Dunkelmodus bleibt unberührt — die App hat keinen Umschalter dafür, seine Token sind derzeit unbenutzt.
+
+### Offen
+
+Die **Premium-Kennzeichnung** ist weiterhin ungeprüft, weil der Verkaufsassistent als einziger kostenpflichtiger Bereich ausgesetzt ist. Nachzuholen, sobald er zurückkehrt.
