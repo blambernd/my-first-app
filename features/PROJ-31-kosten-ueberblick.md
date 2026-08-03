@@ -1,6 +1,6 @@
 # PROJ-31: Kosten-Überblicksseite
 
-## Status: Approved
+## Status: Deployed
 **Created:** 2026-08-01
 **Last Updated:** 2026-08-03
 
@@ -408,4 +408,37 @@ Der erste Gesamtlauf danach meldete drei Fehler — **verursacht von mir**, nich
 **Auslieferbar.** Kein offener Fehler mehr — beide gemeldeten sind behoben und durch Regressionstests abgesichert. Der Umzug, die im Entwurf benannte Gefahrenstelle, ist sauber vollzogen; die Zahlen stimmen mit der Auswertung überein und wurden von Hand nachgerechnet.
 
 ## Deployment
-_To be added by /deploy_
+
+**Ausgeliefert am:** 2026-08-03 · **Produktion:** https://www.oldtimer-docs.com · **Tag:** `v1.31.0-PROJ-31`
+
+Zweig `feat/proj-31-kosten-ueberblick` per Fast-Forward nach `main` (Commits `568de6d`, `4b8ac5e`), Vercel hat automatisch gebaut.
+
+### Vor der Auslieferung geprüft
+
+| Prüfung | Ergebnis |
+|---|---|
+| Build | erfolgreich |
+| Lint | 0 Fehler |
+| Gesamtregression `chromium-auth` | 110 / 110 grün |
+| Unit-Tests | 589 / 589 grün |
+| Datenbank-Migration | **keine nötig** — die Seite liest ausschließlich vorhandene Daten |
+| Secrets im Repository | keine; nur `.env.example` und `.env.local.example` versioniert |
+| Umgebungsvariablen | vollständig dokumentiert; die drei nur lokal gesetzten (`SUPABASE_ACCESS_TOKEN`, `E2E_*`) werden vom Anwendungscode nicht gelesen |
+
+### Nach der Auslieferung geprüft
+
+| Prüfung | Ergebnis |
+|---|---|
+| Startseite | 200 |
+| `/vehicles/<id>/kosten` **ohne Anmeldung** | 307 → `/login` |
+| Unternavigation in Produktion | Überblick · Laufende Kosten · Einzelkosten · Auswertung · Wertentwicklung |
+| `/kosten/laufende` in Produktion | erreichbar, zeigt die Erfassung |
+| Browser-Konsole | keine Fehler |
+
+### Offener Punkt: Der Kostenbereich beginnt jetzt hinter der Premium-Schranke
+
+In Produktion zeigt `/kosten` einem Nutzer ohne Premium den Upsell („Dieses Feature ist Teil von Premium — Coming Soon!"). Das fiel lokal nicht auf, weil dort `NEXT_PUBLIC_BETA_MODE=true` jeden Zugriff zu Premium macht.
+
+Die Schranke selbst ist stimmig — der Überblick fasst Auswertung und Wertentwicklung zusammen, beide sind seit PROJ-27/28 Premium. **Die Nebenwirkung ist die Änderung des Einstiegs:** Vor PROJ-31 landete ein Klick auf „Kosten" bei den laufenden Kosten, die frei sind. Jetzt landet er auf dem Überblick — ein Nutzer ohne Premium sieht dort eine Werbewand statt seiner Daten, obwohl „Laufende Kosten" und „Einzelkosten" direkt darunter weiterhin frei sind.
+
+Der Spec sagt zur Premium-Frage nichts; die Schranke wurde in Anlehnung an die Auswertung gesetzt. Zu entscheiden ist, ob der Einstieg in den Kostenbereich frei bleiben soll.
