@@ -1,6 +1,6 @@
 # PROJ-32: Kostendaten beim Fahrzeug-Transfer
 
-## Status: In Progress
+## Status: In Review
 **Created:** 2026-08-01
 **Last Updated:** 2026-08-04
 
@@ -342,7 +342,66 @@ Keine falsche Aufforderung zum Anfangen, ein Strich statt „0,00 €", Verbrauc
 Die Prüfdaten wurden nach jedem Schritt entfernt und das Entfernen gezählt. Der echte Transfer lief ausschließlich in zurückgerollten Transaktionen — ein Testfahrzeug im Konto eines echten Nutzers abzulegen, wäre der Preis eines bequemeren Nachweises gewesen.
 
 ## QA Test Results
-_To be added by /qa_
+
+**Geprüft am:** 2026-08-04 · **Ergebnis: bedingt produktionsreif** (ein mittlerer Fehler offen)
+
+### Akzeptanzkriterien
+
+| Bereich | Ergebnis |
+|---|---|
+| Was entfernt wird (6 Kriterien) | **6 / 6** |
+| Was erhalten bleibt (3) | **3 / 3** |
+| Hinweis und Export (5) | **5 / 5** |
+| Verhalten nach dem Transfer (3) | **3 / 3** |
+| Sicherheit und Zuverlässigkeit (3) | **2 / 3** — siehe BUG-1 |
+
+**19 von 20 Kriterien erfüllt.**
+
+### Wie geprüft wurde
+
+Das Entfernen ließ sich nicht über die Oberfläche prüfen: Wer einen Transfer annimmt, besitzt danach das Fahrzeug. Ein Testfahrzeug im Konto eines echten Nutzers abzulegen wäre der bequemere Weg gewesen — geprüft wurde stattdessen mit echtem `accept_vehicle_transfer` in **zurückgerollten Transaktionen**, jeweils mit Positivkontrolle.
+
+Ein erster Zugriffstest war wertlos und wurde wiederholt: Das Fahrzeug war leer, „sieht 0 Beträge" bewies also nichts. Mit Daten und Kontrolle: als Besitzer 1/1/1 sichtbar, als Betrachter nach dem Wechsel **0** — und zwar schon durch die Zugriffsregeln, bevor überhaupt gelöscht wird.
+
+### Gefundene Fehler
+
+| # | Schwere | Befund |
+|---|---|---|
+| BUG-1 | **Mittel** | **Die Marktpreis-Analysen des Vorbesitzers werden beim Transfer sichtbar.** `market_analyses` enthält `median_price`, `recommended_price_low/high` und die Begründung dazu. Die Zugriffsregel lautet `vehicles.user_id = auth.uid()` — sie hängt am **Fahrzeug**, nicht am Nutzer. Mit dem Besitzerwechsel wandert der Zugriff also mit. Gemessen an einem echten Fahrzeug: **vorher 0 sichtbare Analysen, nachher 12**, davon 6 mit Preisempfehlung. Über die Oberfläche derzeit nicht erreichbar, weil der Marktüberblick ausgesetzt ist (`MARKTUEBERBLICK_AKTIV = false`) — über eine direkte Abfrage schon. Das Kriterium nennt „Oberfläche, **Seitenantwort oder direkte Abfrage**" ausdrücklich. Behebbar durch Löschen in derselben Funktion oder durch eine nutzergebundene Zugriffsregel. |
+| BUG-2 | Gering | **Der Vorbesitzer behält Inserat und Preis-Alarme zu einem Fahrzeug, das ihm nicht mehr gehört.** `vehicle_listings` und `part_alerts` sind an den Nutzer gebunden — der Käufer sieht sie also **nicht**, das ist in Ordnung. Aber die Zeilen bleiben beim Verkäufer stehen, samt Preisvorstellung und Kontaktdaten. Heute ohne Wirkung: beide vorhandenen Inserate sind Entwürfe, `part_alerts` ist leer, der Verkaufsassistent ist ausgesetzt. Würde ein **veröffentlichtes** Inserat einen Transfer überdauern, wäre es eine öffentlich erreichbare Anzeige für ein fremdes Fahrzeug. |
+
+### Beobachtung, kein Fehler: Rechnungen im Dokumenten-Archiv
+
+Der Spec bestimmt ausdrücklich, dass Dokumente unberührt bleiben — und das ist richtig, sie sind Fahrzeugwissen. Es bedeutet aber, dass **eine hochgeladene Werkstattrechnung den Betrag weiterhin zeigt**, den der Text daneben entfernt hat. Derzeit hängt 1 von 7 Dokumenten an einem Scheckheft-Eintrag.
+
+Das Versprechen „der Käufer sieht nicht, was der Vorbesitzer ausgegeben hat" gilt also für die erfassten Felder, nicht für die Belege. Das ist eine bewusste Abwägung des Specs, keine Lücke in der Umsetzung — aber es sollte niemand später überrascht sein.
+
+### Sicherheitsprüfung
+
+| Angriff | Ergebnis |
+|---|---|
+| Export für ein fremdes Fahrzeug | **404**, kein Betrag in der Antwort |
+| Export ohne Anmeldung | **401** |
+| Vorbesitzer als Betrachter, Export | Besitzerprüfung greift nicht → **404** |
+| Vorbesitzer als Betrachter, Kostentabellen direkt | **0 Zeilen**, mit Positivkontrolle bestätigt |
+| Abgelaufener Transfer | meldet sauber, löscht **nichts** |
+| Transfer an falschen Empfänger | meldet sauber, löscht **nichts** |
+| Mehrere offene Transfers | von einem eindeutigen Index verhindert |
+| Marktpreis-Analysen nach Transfer | **durchlässig** → BUG-1 |
+
+### Automatisierte Tests
+
+- **Neu:** `tests/PROJ-32-kostendaten-transfer-auth.spec.ts` — **10 / 10 grün**. Datenunabhängig formuliert, weil das Wegwerf-Fahrzeug von anderen Specs geleert und gefüllt wird; eine feste Erwartung an die Datenlage wäre reihenfolgeabhängig.
+- Unit-Tests: **622 grün**, davon 25 für die CSV-Erzeugung und 8 für Tankvorgänge ohne Betrag.
+- Gesamtregression `chromium-auth`: **116 grün, 3 übersprungen**, keine Fehlschläge.
+
+**Zu den drei übersprungenen Tests:** Sie prüfen den Inhalt des Hinweises und setzen Kostendaten voraus. Im Gesamtlauf läuft `PROJ-27` vorher und leert das Wegwerf-Fahrzeug — die drei überspringen sich dann selbst, statt fehlzuschlagen. Einzeln, mit Daten, sind es **10 / 10**. Das ist die gewollte Bauart: Ein Test, der von der Reihenfolge anderer Specs abhängt, meldet sonst Fehler, die keine sind. Der Preis ist, dass diese drei im Gesamtlauf nichts beweisen — geprüft sind sie im Einzellauf.
+
+### Empfehlung
+
+**Noch nicht ausliefern.** BUG-1 ist mittelschwer und betrifft genau das, wofür dieses Feature gebaut wurde: Preisdaten des Vorbesitzers, die der Käufer nicht sehen soll. Dass die Oberfläche sie derzeit nicht zeigt, ist ein Zufall der ausgesetzten Marktüberblick-Funktion — kein Schutz.
+
+BUG-2 kann warten, solange der Verkaufsassistent ausgesetzt ist. Er sollte aber behoben sein, **bevor** dieser wieder eingeschaltet wird.
 
 ## Deployment
 _To be added by /deploy_
