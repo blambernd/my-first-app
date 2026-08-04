@@ -442,6 +442,17 @@ function DataQualityNotes({
       } deshalb in der Summe.`
     );
   }
+  if (quality.fuelEntriesWithoutCost > 0) {
+    notes.push(
+      `${quality.fuelEntriesWithoutCost} ${
+        quality.fuelEntriesWithoutCost === 1
+          ? "Tankvorgang hat"
+          : "Tankvorgänge haben"
+      } keinen Betrag und ${
+        quality.fuelEntriesWithoutCost === 1 ? "fehlt" : "fehlen"
+      } deshalb in der Summe. Beim Besitzerwechsel werden die Beträge des Vorbesitzers entfernt, die Tankvorgänge selbst bleiben erhalten.`
+    );
+  }
   if (quality.overlappingRecurring > 0) {
     notes.push(
       `${quality.overlappingRecurring} laufende Kosten haben überlappende Zeiträume derselben Kostenart — die Beträge könnten doppelt enthalten sein.`

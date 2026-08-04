@@ -103,7 +103,11 @@ export function FuelEntryForm({
       form.reset({
         fueled_at: entry.fueled_at,
         liters: entry.liters,
-        cost_eur: entry.cost_cents / 100,
+        // Beim Bearbeiten eines Eintrags, dessen Betrag beim Besitzerwechsel
+        // geleert wurde (PROJ-32), bleibt das Feld leer statt 0 zu zeigen —
+        // sonst trüge der neue Besitzer unbemerkt eine Null ein.
+        cost_eur:
+          entry.cost_cents === null ? undefined : entry.cost_cents / 100,
         mileage_km: entry.mileage_km,
         is_full_tank: entry.is_full_tank,
         is_odometer_correction: entry.is_odometer_correction,

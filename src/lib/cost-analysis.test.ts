@@ -29,7 +29,10 @@ function fuel(partial: Partial<FuelEntry> & { fueled_at: string }): FuelEntry {
     vehicle_id: "v1",
     fueled_at: partial.fueled_at,
     liters: partial.liters ?? 40,
-    cost_cents: partial.cost_cents ?? 8000,
+    // Nicht `?? 8000`: Ein bewusst gesetztes null (Besitzerwechsel, PROJ-32)
+    // würde sonst still zu 8000 — der Test prüfte dann das Gegenteil.
+    cost_cents:
+      partial.cost_cents === undefined ? 8000 : partial.cost_cents,
     mileage_km: partial.mileage_km ?? 10000,
     is_full_tank: partial.is_full_tank ?? true,
     is_odometer_correction: partial.is_odometer_correction ?? false,
@@ -978,5 +981,82 @@ describe("latestMonth", () => {
 
   it("liefert null ohne jede Erfassung", () => {
     expect(latestMonth(input())).toBeNull();
+  });
+});
+
+describe("analyzeCosts — Tankvorgänge ohne Betrag (PROJ-32)", () => {
+  // Beim Besitzerwechsel werden die Beträge des Vorbesitzers geleert, die
+  // Tankvorgänge selbst bleiben. Der neue Besitzer hat also die volle
+  // Verbrauchshistorie, aber keine Kosten.
+
+  it("zählt einen Tankvorgang ohne Betrag nicht in die Summe", () => {
+    const result = analyzeCosts(
+      input({
+        fuelEntries: [
+          fuel({ fueled_at: "2026-02-01", cost_cents: null }),
+          fuel({ fueled_at: "2026-03-01", cost_cents: 7500 }),
+        ],
+      }),
+      YEAR_2026,
+      END_OF_2026
+    );
+    // 0 statt 7500 wäre falsch — aber 7500 + 0 auch, wenn daraus „getankt für
+    // 0 €" würde. Erwartet ist genau der eine bekannte Betrag.
+    expect(result.categories.find((c) => c.key === "fuel")?.totalCents).toBe(7500);
+  });
+
+  it("meldet die Anzahl der Tankvorgänge ohne Betrag", () => {
+    const result = analyzeCosts(
+      input({
+        fuelEntries: [
+          fuel({ fueled_at: "2026-02-01", cost_cents: null }),
+          fuel({ fueled_at: "2026-03-01", cost_cents: null }),
+          fuel({ fueled_at: "2026-04-01", cost_cents: 7500 }),
+        ],
+      }),
+      YEAR_2026,
+      END_OF_2026
+    );
+    // Ohne diesen Hinweis wirkte die Kraftstoffsumme grundlos zu niedrig
+    expect(result.quality.fuelEntriesWithoutCost).toBe(2);
+  });
+
+  it("gilt Kraftstoff als nicht erfasst, wenn kein einziger Betrag vorliegt", () => {
+    // Genau die Lage des neuen Besitzers direkt nach der Übernahme: Historie
+    // vorhanden, Beträge entfernt. „Erfasst" ist die Kostenart für ihn nicht.
+    const result = analyzeCosts(
+      input({
+        fuelEntries: [
+          fuel({ fueled_at: "2026-02-01", cost_cents: null }),
+          fuel({ fueled_at: "2026-03-01", cost_cents: null }),
+        ],
+      }),
+      YEAR_2026,
+      END_OF_2026
+    );
+    expect(result.categories.find((c) => c.key === "fuel")?.tracked).toBe(false);
+  });
+
+  it("gilt Kraftstoff als erfasst, sobald der neue Besitzer selbst tankt", () => {
+    const result = analyzeCosts(
+      input({
+        fuelEntries: [
+          fuel({ fueled_at: "2026-02-01", cost_cents: null }),
+          fuel({ fueled_at: "2026-03-01", cost_cents: 7500 }),
+        ],
+      }),
+      YEAR_2026,
+      END_OF_2026
+    );
+    expect(result.categories.find((c) => c.key === "fuel")?.tracked).toBe(true);
+  });
+
+  it("meldet keine fehlenden Beträge, wenn alle Tankvorgänge einen haben", () => {
+    const result = analyzeCosts(
+      input({ fuelEntries: [fuel({ fueled_at: "2026-02-01" })] }),
+      YEAR_2026,
+      END_OF_2026
+    );
+    expect(result.quality.fuelEntriesWithoutCost).toBe(0);
   });
 });

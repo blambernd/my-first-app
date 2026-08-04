@@ -64,7 +64,9 @@ export default async function KostenUeberblickPage({
 
   const { data: ownedVehicle } = await supabase
     .from("vehicles")
-    .select("id")
+    // costs_cleared_at unterscheidet für den neuen Besitzer „wurde beim
+    // Besitzerwechsel entfernt" von „wurde nie erfasst" (PROJ-32).
+    .select("id, costs_cleared_at")
     .eq("id", id)
     .eq("user_id", user.id)
     .maybeSingle();
@@ -145,6 +147,7 @@ export default async function KostenUeberblickPage({
       periodLabel={period.label}
       shortened={period.shortened}
       lastEntryLabel={lastEntryLabel}
+      costsClearedAt={ownedVehicle.costs_cleared_at ?? null}
     />
   );
 }

@@ -61,7 +61,15 @@ export interface FuelEntry {
   vehicle_id: string;
   fueled_at: string;
   liters: number;
-  cost_cents: number;
+  /**
+   * Betrag in Cent, oder null.
+   *
+   * `null` heißt „kein Betrag bekannt" und entsteht beim Besitzerwechsel
+   * (PROJ-32): Die Beträge des Vorbesitzers werden geleert, die Tankvorgänge
+   * selbst bleiben. Eine 0 stünde dort für „war gratis" und wäre falsch.
+   * Neue Einträge verlangen einen Betrag — das erzwingt das Formular.
+   */
+  cost_cents: number | null;
   mileage_km: number;
   is_full_tank: boolean;
   is_odometer_correction: boolean;
@@ -85,7 +93,7 @@ export function normalizeFuelEntry(row: FuelEntry): FuelEntry {
   return {
     ...row,
     liters: Number(row.liters),
-    cost_cents: Number(row.cost_cents),
+    cost_cents: row.cost_cents === null ? null : Number(row.cost_cents),
     mileage_km: Number(row.mileage_km),
   };
 }
@@ -103,10 +111,12 @@ export function getFuelTypeLabel(type: FuelType): string {
 
 /** Preis pro Liter in Cent — null, wenn keine sinnvolle Berechnung möglich ist */
 export function pricePerLiterCents(
-  costCents: number,
+  costCents: number | null,
   liters: number
 ): number | null {
-  if (liters <= 0) return null;
+  // Ohne Betrag gibt es keinen Literpreis. 0,00 € je Liter zu zeigen wäre
+  // eine Aussage über den Tankvorgang, die niemand getroffen hat.
+  if (costCents === null || liters <= 0) return null;
   return costCents / liters;
 }
 

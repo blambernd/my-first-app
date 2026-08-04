@@ -367,3 +367,31 @@ describe("buildConsumptionSeries", () => {
     expect(buildConsumptionSeries(rows)).toHaveLength(0);
   });
 });
+
+describe("Tankvorgänge ohne Betrag (PROJ-32)", () => {
+  it("zeigt keinen Literpreis, wenn der Betrag fehlt", () => {
+    // 0,00 €/L wäre eine Aussage über den Tankvorgang, die niemand getroffen hat
+    const rows = calculateConsumption([entry({ cost_cents: null, liters: 40 })]);
+    expect(rows[0].pricePerLiterCents).toBeNull();
+  });
+
+  it("lässt fehlende Beträge aus der Gesamtsumme heraus", () => {
+    const rows = calculateConsumption([
+      entry({ mileage_km: 10000, liters: 40, cost_cents: null }),
+      entry({ mileage_km: 10500, liters: 50, cost_cents: 10000 }),
+    ]);
+    expect(calculateStats(rows).totalCostCents).toBe(10000);
+  });
+
+  it("berechnet den Verbrauch unverändert weiter", () => {
+    // Der Kern der Entscheidung, nur die Beträge zu leeren: Die
+    // Verbrauchsrechnung kommt ohne Geld aus, sie rechnet mit Litern und
+    // Kilometern. Nach einem Besitzerwechsel bleibt sie vollständig.
+    const rows = calculateConsumption([
+      entry({ mileage_km: 10000, liters: 40, cost_cents: null }),
+      entry({ mileage_km: 10500, liters: 50, cost_cents: null }),
+    ]);
+    expect(rows[1].consumption).not.toBeNull();
+    expect(rows[1].distanceKm).toBe(500);
+  });
+});

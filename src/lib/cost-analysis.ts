@@ -217,6 +217,14 @@ export interface DataQuality {
   excludedCount: number;
   excludedCents: number;
   serviceEntriesWithoutCost: number;
+  /**
+   * Tankvorgänge ohne Betrag (PROJ-32).
+   *
+   * Entsteht beim Besitzerwechsel: Die Beträge werden geleert, die Vorgänge
+   * bleiben. Ohne diesen Hinweis wirkte die Kraftstoffsumme zu niedrig, ohne
+   * dass ein Grund erkennbar wäre.
+   */
+  fuelEntriesWithoutCost: number;
   overlappingRecurring: number;
   /** Einträge mit einem Datum in der Zukunft — noch nicht angefallen (QA BUG-2) */
   futureDated: number;
@@ -540,9 +548,17 @@ export function analyzeCosts(
   };
 
   // --- Tankbuch ---------------------------------------------------------
+  let fuelEntriesWithoutCost = 0;
   for (const entry of input.fuelEntries) {
     const month = monthOf(entry.fueled_at);
     if (!inPeriod(month, period)) continue;
+    // Ein Tankvorgang ohne Betrag ist seit PROJ-32 möglich: Beim
+    // Besitzerwechsel werden die Beträge geleert, die Vorgänge bleiben. Als 0
+    // mitzuzählen würde die Summe still zu niedrig machen.
+    if (entry.cost_cents === null) {
+      fuelEntriesWithoutCost += 1;
+      continue;
+    }
     addAmount("fuel", month, entry.cost_cents);
   }
 
@@ -593,7 +609,13 @@ export function analyzeCosts(
 
   // --- Wurde die Kostenart überhaupt jemals erfasst? --------------------
   const trackedKeys = new Set<string>();
-  if (input.fuelEntries.length > 0) trackedKeys.add("fuel");
+  // Es zählt der **Betrag**, nicht der Eintrag. Nach einem Besitzerwechsel
+  // (PROJ-32) hat der neue Besitzer die volle Tankhistorie, aber keine
+  // Beträge — „erfasst" ist die Kostenart für ihn dann nicht, und der Hinweis
+  // auf die Lücke soll erscheinen.
+  if (input.fuelEntries.some((e) => e.cost_cents !== null)) {
+    trackedKeys.add("fuel");
+  }
   for (const entry of input.serviceEntries) {
     trackedKeys.add(categoryForServiceEntry(entry.entry_type));
   }
@@ -704,6 +726,7 @@ export function analyzeCosts(
       excludedCount,
       excludedCents,
       serviceEntriesWithoutCost,
+      fuelEntriesWithoutCost,
       overlappingRecurring: overlapping.size,
       futureDated,
     },

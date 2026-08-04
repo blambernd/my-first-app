@@ -150,7 +150,10 @@ export function calculateStats(rows: FuelEntryWithConsumption[]): FuelStats {
   let segmentCount = 0;
 
   for (const row of rows) {
-    totalCostCents += row.entry.cost_cents;
+    // Geleerte Beträge (Besitzerwechsel, PROJ-32) zählen nicht mit. Sie als 0
+    // zu addieren wäre stillschweigend die Behauptung, das Tanken habe nichts
+    // gekostet — die Summe wäre dann zu niedrig, ohne dass es auffiele.
+    totalCostCents += row.entry.cost_cents ?? 0;
     totalLiters += row.entry.liters;
 
     if (row.consumption === null || row.distanceKm === null) continue;

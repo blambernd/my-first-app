@@ -33,6 +33,8 @@ const STATUS_CONFIG = {
   angenommen: { icon: CheckCircle, variant: "default" as const, color: "text-green-600" },
   abgelehnt: { icon: XCircle, variant: "destructive" as const, color: "text-red-600" },
   abgebrochen: { icon: Ban, variant: "secondary" as const, color: "text-muted-foreground" },
+  // Setzt die Datenbank selbst, wenn jemand nach Fristende annehmen will
+  abgelaufen: { icon: Clock, variant: "secondary" as const, color: "text-muted-foreground" },
 };
 
 export function TransferStatus({ transfer, vehicleName, onUpdate }: TransferStatusProps) {

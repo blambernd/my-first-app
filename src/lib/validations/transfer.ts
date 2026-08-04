@@ -1,6 +1,19 @@
 import { z } from "zod";
 
-export const TRANSFER_STATUSES = ["offen", "angenommen", "abgelehnt", "abgebrochen"] as const;
+/**
+ * Zustaende eines Fahrzeug-Transfers.
+ *
+ * `abgelaufen` setzt die Datenbank selbst, sobald jemand einen Transfer nach
+ * Fristende anzunehmen versucht. Der Wert fehlte hier bis zum 2026-08-04 —
+ * siehe die Migration 20260804_proj7_fix_abgelaufen_status.
+ */
+export const TRANSFER_STATUSES = [
+  "offen",
+  "angenommen",
+  "abgelehnt",
+  "abgebrochen",
+  "abgelaufen",
+] as const;
 export type TransferStatus = (typeof TRANSFER_STATUSES)[number];
 
 export const TRANSFER_STATUS_LABELS: Record<TransferStatus, string> = {
@@ -8,6 +21,7 @@ export const TRANSFER_STATUS_LABELS: Record<TransferStatus, string> = {
   angenommen: "Angenommen",
   abgelehnt: "Abgelehnt",
   abgebrochen: "Abgebrochen",
+  abgelaufen: "Abgelaufen",
 };
 
 export const transferSchema = z.object({

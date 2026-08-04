@@ -336,7 +336,11 @@ export function FuelLog({
 
                     <p className="text-sm text-muted-foreground">
                       {formatLiters(entry.liters)} L ·{" "}
-                      {formatCentsToEur(entry.cost_cents)}
+                      {/* Ohne Betrag (Besitzerwechsel, PROJ-32) ein Strich —
+                          „0,00 €" hieße, der Tankvorgang sei gratis gewesen. */}
+                      {entry.cost_cents === null
+                        ? "—"
+                        : formatCentsToEur(entry.cost_cents)}
                       {row.pricePerLiterCents !== null && (
                         <> · {formatCentsToEur(row.pricePerLiterCents)}/L</>
                       )}{" "}

@@ -279,6 +279,68 @@ Dazu Maskierung nach RFC 4180: Notizen enthalten Semikolons, Werkstattnamen Anf�
 
 Bis dahin gilt: Der Vorbesitzer wird gewarnt und kann sichern — entfernt wird noch nichts.
 
+## Backend-Umsetzung (2026-08-04)
+
+Damit ist das Feature vollständig: Der Vorbesitzer wird gewarnt und kann sichern, beim Annehmen verschwinden die Beträge, und der neue Besitzer erfährt, warum sie fehlen.
+
+### Migrationen
+
+| Datei | Inhalt |
+|---|---|
+| `20260804_proj32_clear_costs_on_transfer.sql` | `vehicles.costs_cleared_at`, `fuel_entries.cost_cents` nullable, Entfernen in `accept_vehicle_transfer` |
+| `20260804_proj7_fix_abgelaufen_status.sql` | Vorbestehender Fehler, siehe unten |
+
+### Warum `NULL` und nicht `0` beim Tankbetrag
+
+Der Spec verlangt, den Betrag zu **leeren**. `fuel_entries.cost_cents` war `NOT NULL`, es bliebe also nur die 0 — und die ist eine Aussage: „Dieser Tankvorgang war gratis." Das stünde in jeder Zeile der Tankhistorie, und der Preis je Liter läge bei 0,00 €. Beim Scheckheft ist die Spalte längst nullable; das Tankbuch zieht nach.
+
+Die Umstellung zog fünf Lesestellen nach sich: Typ, Normalisierung, Literpreis, Gesamtsumme, Anzeige und das Bearbeitungsformular. In der Kostenanalyse kam ein Qualitätshinweis dazu (`fuelEntriesWithoutCost`) — ohne ihn wirkte die Kraftstoffsumme grundlos zu niedrig.
+
+**Eine Stelle, die der Typprüfer nicht findet:** `tracked` für Kraftstoff hing an der bloßen Existenz von Einträgen. Nach der Übernahme hat der neue Besitzer die volle Tankhistorie, aber keine Beträge — „erfasst" ist die Kostenart für ihn dann nicht. Jetzt zählt der Betrag, nicht der Eintrag.
+
+### Entscheidung zu F3 umgesetzt
+
+Der Hinweis sitzt im **Kostenüberblick**. Er kennt jetzt drei leere Zustände: nie erfasst, nur ältere Einträge, und neu — beim Besitzerwechsel entfernt. Hat der neue Besitzer bereits selbst erfasst, erscheint der Hinweis als Meldung über den Kennzahlen, damit die Summen nicht als Kostenhistorie des Fahrzeugs gelesen werden.
+
+### Nebenbefund: ein vorbestehender Fehler aus PROJ-7
+
+`accept_vehicle_transfer` setzt bei abgelaufener Frist `status = 'abgelaufen'` — die CHECK-Bedingung erlaubte diesen Wert nicht. Wer einen abgelaufenen Transfer anzunehmen versuchte, bekam einen **Serverfehler** statt der Meldung „Transfer ist abgelaufen". Die App kannte den Zustand ebenfalls nicht.
+
+Aufgefallen beim Prüfen der Gegenprobe, weil dieser Pfad seit PROJ-32 mitentscheidet, ob Kostendaten entfernt werden. **Die Daten waren nie in Gefahr** — die Ausnahme bricht die Transaktion ab, es wird nichts gelöscht. Aber Sicherheit aus Versehen ist keine; der Pfad muss aus eigenem Recht funktionieren. Behoben in Datenbank und App.
+
+### Nachgewiesen
+
+Vollständiger Transfer in einer zurückgerollten Transaktion, mit echtem `accept_vehicle_transfer`:
+
+| Prüfung | Ergebnis |
+|---|---|
+| Kaufpreis, Nebenkosten, laufende Kosten, Einzelkosten, Marktwert | **0** — alle gelöscht |
+| Nebenkosten ohne eigenes DELETE | per `CASCADE` mitgegangen |
+| Scheckheft-Zeile | erhalten; Beschreibung, Werkstatt, Notiz, Kilometerstand unverändert |
+| Tankbuch-Zeile | erhalten; Liter, km, Volltank, Kraftstoffart unverändert |
+| Beträge in Scheckheft und Tankbuch | **NULL** |
+| Besitzer und `costs_cleared_at` | gesetzt |
+| **C3:** verknüpfte Einzelkosten gelöscht | Scheckheft-Eintrag steht |
+| Abgelaufener Transfer | meldet sauber, löscht **nichts** |
+| Transfer an falschen Empfänger | meldet sauber, löscht **nichts** |
+| Mehrere offene Transfers | von einem eindeutigen Index bereits verhindert |
+
+Im Browser mit demselben Datenzustand:
+
+```
+Kostenangaben beim Besitzerwechsel entfernt
+Beim Besitzerwechsel am 4.8.2026 wurden die Beträge des Vorbesitzers entfernt —
+sie gehören zu seinen Finanzen, nicht zum Fahrzeug. Die Wartungs- und
+Verbrauchshistorie ist vollständig erhalten.
+Tankbuch:  45,0 L · — · 52.600 km
+```
+
+Keine falsche Aufforderung zum Anfangen, ein Strich statt „0,00 €", Verbrauchsrechnung unverändert, Scheckheft samt Werkstatt erhalten.
+
+**622 Unit-Tests grün** (8 neu), **110/110 in der Gesamtregression** `chromium-auth`, Lint 0 Fehler, Build erfolgreich.
+
+Die Prüfdaten wurden nach jedem Schritt entfernt und das Entfernen gezählt. Der echte Transfer lief ausschließlich in zurückgerollten Transaktionen — ein Testfahrzeug im Konto eines echten Nutzers abzulegen, wäre der Preis eines bequemeren Nachweises gewesen.
+
 ## QA Test Results
 _To be added by /qa_
 

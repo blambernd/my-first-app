@@ -21,6 +21,14 @@ interface CostOverviewViewProps {
    * keine Kosten erfasst" ist schlicht falsch.
    */
   lastEntryLabel: string | null;
+  /**
+   * Zeitpunkt, zu dem die Beträge des Vorbesitzers entfernt wurden (PROJ-32).
+   *
+   * Ohne diese Angabe sieht ein frisch übernommenes Fahrzeug für den neuen
+   * Besitzer aus wie eines, an dem nie jemand etwas erfasst hat — und die
+   * Aufforderung, endlich anzufangen, ginge an der Lage vorbei.
+   */
+  costsClearedAt: string | null;
 }
 
 const GRUPPEN_SYMBOLE: Record<string, typeof Fuel> = {
@@ -47,8 +55,12 @@ export function CostOverviewView({
   periodLabel,
   shortened,
   lastEntryLabel,
+  costsClearedAt,
 }: CostOverviewViewProps) {
   const basis = `/vehicles/${vehicleId}`;
+  const uebernommenAm = costsClearedAt
+    ? new Date(costsClearedAt).toLocaleDateString("de-DE")
+    : null;
 
   if (overview.isEmpty) {
     // Zwei verschiedene leere Zustände: Wer nie etwas erfasst hat, braucht
@@ -59,7 +71,39 @@ export function CostOverviewView({
         <Ueberschrift periodLabel={periodLabel} />
         <Card>
           <CardContent className="flex flex-col items-center gap-6 py-12 text-center">
-            {lastEntryLabel ? (
+            {uebernommenAm ? (
+              <>
+                <div className="max-w-md space-y-2">
+                  <p className="font-medium">
+                    Kostenangaben beim Besitzerwechsel entfernt
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Beim Besitzerwechsel am <strong>{uebernommenAm}</strong>{" "}
+                    wurden die Beträge des Vorbesitzers entfernt — sie gehören
+                    zu seinen Finanzen, nicht zum Fahrzeug. Die Wartungs- und
+                    Verbrauchshistorie ist vollständig erhalten.
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Was <strong>du</strong> ab jetzt einträgst, erscheint hier.
+                  </p>
+                </div>
+                <div className="flex flex-wrap justify-center gap-2">
+                  <Button variant="outline" size="sm" asChild>
+                    <Link href={`${basis}/tankbuch`}>Tankvorgang erfassen</Link>
+                  </Button>
+                  <Button variant="outline" size="sm" asChild>
+                    <Link href={`${basis}/kosten/laufende`}>
+                      Laufende Kosten
+                    </Link>
+                  </Button>
+                  <Button variant="outline" size="sm" asChild>
+                    <Link href={`${basis}/kosten/einzelkosten`}>
+                      Einzelkosten
+                    </Link>
+                  </Button>
+                </div>
+              </>
+            ) : lastEntryLabel ? (
               <>
                 <div className="max-w-md space-y-2">
                   <p className="font-medium">
@@ -159,6 +203,21 @@ export function CostOverviewView({
           zusatz={overview.km !== null ? "im Zeitraum" : "nicht ermittelbar"}
         />
       </div>
+
+      {/* Auch wenn der neue Besitzer schon selbst erfasst hat, muss klar sein,
+          dass die Summen erst bei der Übernahme beginnen — sonst liest er sie
+          als Kostenhistorie des Fahrzeugs. */}
+      {uebernommenAm && (
+        <Alert>
+          <Info className="h-4 w-4" />
+          <AlertDescription>
+            Beim Besitzerwechsel am <strong>{uebernommenAm}</strong> wurden die
+            Beträge des Vorbesitzers entfernt. Die Zahlen hier umfassen deshalb
+            nur, was seither erfasst wurde — die Wartungs- und
+            Verbrauchshistorie des Fahrzeugs ist davon unberührt.
+          </AlertDescription>
+        </Alert>
+      )}
 
       {shortened && (
         <Alert>
