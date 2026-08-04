@@ -1,6 +1,6 @@
 # PROJ-33: Verkaufspreis-Erhebung beim Transfer
 
-## Status: In Progress
+## Status: In Review
 **Created:** 2026-08-04
 **Last Updated:** 2026-08-04
 
@@ -343,7 +343,76 @@ E2E-Testfahrzeug Wegwerf / 1970 / 50000 km-Klasse / Note 2 / 1850000 Cent / 2026
 **643 Unit-Tests grün**, **Gesamtregression 117 grün und 2 übersprungen** ohne Fehlschläge, Lint 0 Fehler, Build erfolgreich.
 
 ## QA Test Results
-_To be added by /qa_
+
+**Geprüft am:** 2026-08-04 · **Ergebnis: bedingt produktionsreif** (ein mittlerer Fehler offen)
+
+### Akzeptanzkriterien
+
+| Bereich | Ergebnis |
+|---|---|
+| Die Frage beim Annehmen (6) | **6 / 6** |
+| Was der Käufer vorher erfährt (4) | **4 / 4** |
+| Was gespeichert wird (6) | **6 / 6** |
+| Plausibilität (3) | **3 / 3** |
+| Sicherheit (3) | **2 / 3** — siehe BUG-1 |
+
+**21 von 22 Kriterien erfüllt.**
+
+### Was sich nicht prüfen ließ — und warum das benannt gehört
+
+Ein **erfolgreiches** Annehmen über die Oberfläche ist ungeprüft. Es gibt nur ein Testkonto; ein echter Durchlauf hätte entweder ein zweites Konto in der Produktion angelegt oder das Testfahrzeug kurzzeitig einem echten Nutzer zugeschrieben, samt bleibendem Meilenstein in dessen Fahrzeughistorie. Beides stand nicht im Verhältnis.
+
+Stattdessen wurde die Kette in ihren Gliedern belegt:
+
+| Glied | Nachweis |
+|---|---|
+| Formular → Browser | Abgefangener Rumpf: `{"share_anonymously":true,"purchase_price_eur":18500,"mileage_km":52000,"condition_grade":2}` |
+| Route → Datenbankfunktion | Die Funktion antwortete inhaltlich („E-Mail stimmt nicht überein"). Hieße ein Parameter anders, käme stattdessen ein Aufruffehler |
+| Funktion → Tabelle | In zurückgerollten Transaktionen belegt, siehe Backend-Abschnitt |
+
+Offen bleibt allein der Erfolgsfall über HTTP. **Vor oder unmittelbar nach der Auslieferung sollte ein echter Transfer zwischen zwei Konten einmal von Hand durchlaufen werden.**
+
+### Gefundene Fehler
+
+| # | Schwere | Befund |
+|---|---|---|
+| BUG-1 | **Mittel** | **Nichts hindert daran, die Preisdaten zu fluten.** Wer zwei eigene Konten anlegt, kann beliebig viele Fahrzeuge erzeugen, sie hin- und herübertragen und bei jeder Annahme einen frei gewählten Preis zwischen 500 € und 2 Mio. € einwilligen. Jede Annahme erzeugt genau einen Datenpunkt; es gibt keine Begrenzung je Nutzer, je Zeitraum oder je Fahrzeug, und keine Prüfung, ob die beiden Konten zusammenhängen. Bei einem Feature, dessen ganzer Wert an der Belastbarkeit der Zahlen hängt, ist das die naheliegendste Angriffsfläche — und sie trifft PROJ-34 unmittelbar, gerade solange die Datenmenge klein ist. Nicht ausgeführt: Der Nachweis hätte Konten angelegt und die Produktionsdaten verfälscht. |
+| BUG-2 | Gering | **Fehlermeldungen der Eingabeprüfung sind teils englisch.** `Too big: expected number to be <=5`, `Invalid input: expected boolean, received string`. Vorgabetexte der Prüfbibliothek, die in einem rein deutschen Produkt durchschlagen. Über die Oberfläche nicht erreichbar — das Auswahlfeld lässt nur 1–5 zu —, wohl aber bei einer abgewandelten Anfrage. |
+| BUG-3 | Gering | **Ein leerer Rumpf `{}` lässt die Übergabe scheitern** (`400, expected boolean, received undefined`). Die Route ist ausdrücklich so gebaut, dass fehlende Angaben die Übergabe nicht verhindern — bei gar keinem Rumpf greift das auch. Ein leeres Objekt fällt durch, weil die Einwilligung als Pflichtfeld geführt wird. Heute sendet kein Client `{}`; unschön ist, dass ein kritischer Pfad — die Übernahme des eigenen Fahrzeugs — an einem Feld hängt, das nur die Auswertung betrifft. |
+
+### Ein Verdacht, der sich nicht bestätigt hat
+
+Beim ersten Durchlauf schien die Oberfläche nur ein generisches „Fehler" zu zeigen, statt den Grund zu nennen. Genauer angesehen: „Fehler" ist die Überschrift, die Meldung steht vollständig darunter (*„Deine E-Mail-Adresse stimmt nicht mit der Einladung überein"*). Mein Suchmuster hatte die Überschrift zuerst getroffen. Kein Befund.
+
+### Sicherheitsprüfung
+
+| Angriff | Ergebnis |
+|---|---|
+| Annehmen ohne Anmeldung | **401** |
+| Zustandsnote 9 bzw. 0 | **400** |
+| Negativer Preis, negativer Kilometerstand | **400** |
+| SQL-Einschleusung im Preisfeld | **400**, als Zahl abgewiesen |
+| Einwilligung als Text statt Wahrheitswert | **400** |
+| `vehicle_sales` direkt lesen (angemeldet) | **permission denied** — schon auf Tabellenebene |
+| `vehicle_sales` direkt lesen (anonym) | **permission denied** |
+| Datenpunkt nachträglich ändern oder löschen | nicht möglich, keine Rechte |
+| Preisdaten fluten | **möglich** → BUG-1 |
+
+### Beobachtung: Wiederholte Übertragungen desselben Fahrzeugs
+
+Der Spec verlangt, dass aus den Daten nicht hervorgehen darf, dass es sich um dasselbe Fahrzeug handelt. Eine Kennung gibt es nicht — beweisen lässt es sich also nicht. Mehrere Zeilen mit identischer Marke, Modell, Baujahr, Kilometer-Klasse und Note in aufeinanderfolgenden Monaten sind aber ein Hinweis. Das liegt in der Natur des Entwurfs und war so entschieden; es sollte niemanden später überraschen.
+
+### Automatisierte Tests
+
+- **Neu:** `tests/PROJ-33-verkaufspreis-auth.spec.ts` — **10 / 10 grün**
+- Unit-Tests: **643 grün**, davon 17 für Kilometer-Klassen, Verkaufsmonat und Plausibilität
+- Gesamtregression `chromium-auth`: **117 grün, 2 übersprungen**, keine Fehlschläge
+
+### Empfehlung
+
+**Auslieferbar, aber mit Auflage.** Kein kritischer oder hoher Fehler. BUG-1 ist kein Sicherheitsloch im engeren Sinn — es entweicht nichts —, aber es untergräbt den Zweck des Features. Solange nur gesammelt wird, richtet es keinen sichtbaren Schaden an. **Vor PROJ-34 muss es behoben sein**, sonst zeigt die Preisübersicht Zahlen, die jemand nach Belieben gesetzt hat.
+
+BUG-2 und BUG-3 sind gering und können mitlaufen.
 
 ## Deployment
 _To be added by /deploy_
