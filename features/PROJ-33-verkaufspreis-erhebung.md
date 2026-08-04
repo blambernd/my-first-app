@@ -1,6 +1,6 @@
 # PROJ-33: Verkaufspreis-Erhebung beim Transfer
 
-## Status: Planned
+## Status: Architected
 **Created:** 2026-08-04
 **Last Updated:** 2026-08-04
 
@@ -119,7 +119,123 @@ Die Vergröberung wirkt anders, als es zunächst scheint: Sie schützt nicht sel
 <!-- Sections below are added by subsequent skills -->
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture_
+
+**Erstellt:** 2026-08-04
+
+### Entscheidungen des Nutzers (2026-08-04)
+
+| Frage | Entscheidung |
+|---|---|
+| Wo sitzt die Preisfrage | **Vor dem Annehmen**, im selben Vorgang |
+| Fehlende Zustandsnote | **Beim Annehmen miterfragen** |
+| Kilometer-Klassen | **25.000-km-Schritte** |
+
+### A) Aufbau der Oberfläche
+
+```
+Übergabe-Seite  (/transfer/<token>)      ← die Seite gibt es schon
+│
+├── Fahrzeugangaben und Absender          unverändert
+│
+├── [Neuer Abschnitt: „Dein Kaufpreis"]   ← neu, vor den Schaltflächen
+│   ├── Kaufpreis            (freiwillig)
+│   ├── Zustandsnote         (nur wenn am Fahrzeug keine hinterlegt ist)
+│   ├── Kilometerstand       (vorbelegt aus dem letzten Eintrag)
+│   │
+│   └── [Einwilligung]       ← eigenes, NICHT vorausgewähltes Häkchen
+│       „Mein Kaufpreis darf anonym in die Preisübersicht einfließen"
+│       + aufklappbar: was gespeichert wird, was nicht,
+│         und dass es sich danach nicht widerrufen lässt
+│
+├── Schaltfläche „Übernehmen"             unverändert beschriftet
+└── Schaltfläche „Ablehnen"               unverändert
+```
+
+**Die Übergabe bleibt möglich, ohne irgendetwas auszufüllen.** Kein Feld ist Pflicht, kein Häkchen vorbelegt. Wer nur übernehmen will, klickt wie bisher.
+
+**Was das Ausfüllen bewirkt — zwei getrennte Dinge:**
+
+| Eingabe | Wirkung |
+|---|---|
+| Kaufpreis allein | wird als **eigene Anschaffung** gespeichert (PROJ-28), damit die Wertentwicklung von Anfang an stimmt |
+| Kaufpreis **und** Häkchen | zusätzlich entsteht ein anonymer Datenpunkt |
+
+Diese Trennung ist der Kern: Die Einwilligung betrifft die **Weitergabe**, nicht die eigene Erfassung. Sie zu vermengen hieße, dem Nutzer entweder seine Wertentwicklung vorzuenthalten oder ihn zur Datenspende zu drängen.
+
+### B) Welche Angaben gespeichert werden
+
+**Eine neue Tabelle, bewusst ohne jede Verbindung.** Sie trägt keinen Verweis auf Nutzer, Fahrzeug, Transfer oder Vorbesitzer — nicht als versteckte Kennung, nicht als Fremdschlüssel.
+
+```
+Ein Datenpunkt besteht aus:
+- Marke und Modell                (wie am Fahrzeug hinterlegt)
+- Baujahr                         jahresgenau
+- Kilometer-Klasse                25.000er-Schritte, nicht der Einzelwert
+- Zustandsnote                    1–5
+- Kaufpreis                       in Cent
+- Verkaufsmonat                   nur Monat und Jahr, kein Tag
+```
+
+Daneben, unverändert im bestehenden Bereich: der Kaufpreis als **Anschaffung des neuen Besitzers** — mit allen Verbindungen, denn das sind seine eigenen Daten.
+
+### C) Technische Entscheidungen
+
+**C1 — Alles in derselben Übergabe-Funktion, wie schon bei PROJ-32.**
+
+Der Datenpunkt entsteht dort, wo auch der Besitzer wechselt und die Beträge des Vorbesitzers verschwinden. Eine Funktion ist eine Transaktion: Es kann nicht passieren, dass ein Verkauf erfasst wird, dessen Übergabe scheiterte — oder umgekehrt. Dass PROJ-32 diese Funktion gerade erweitert hat, macht den Weg vorgezeichnet.
+
+Daraus folgt der Ablauf: Preis, Zustandsnote und Einwilligung müssen **vor** dem Klick bekannt sein und mit ihm übergeben werden. Deshalb sitzt das Formular davor und nicht danach.
+
+**C2 — Der Zeitpunkt ist die unauffälligste Spur.**
+
+Ein tagesgenauer Zeitstempel neben einem tagesgenauen Transfer ist eine Zuordnung, auch ohne gemeinsame Kennung. Deshalb wird nur **Monat und Jahr** gespeichert, und die Tabelle bekommt **kein Anlagedatum**. Das ist kein Detail — es ist der Unterschied zwischen anonym und pseudonym.
+
+**C3 — Was die Anonymität wirklich trägt, ist die Mindestzahl.**
+
+Baujahr wird jahresgenau gespeichert, weil es bei Oldtimern das entscheidende Vergleichsmerkmal ist. Das ist vertretbar, weil kein einzelner Datenpunkt je sichtbar wird: Die Auswertung (PROJ-34) zeigt erst ab einer Mindestzahl vergleichbarer Verkäufe überhaupt etwas.
+
+Die Vergröberung des Kilometerstands schützt nicht selbst — sie sorgt dafür, dass Gruppen diese Mindestzahl **häufiger erreichen**. Beim Kilometerstand ist der Tausch sinnvoll (52.000 und 54.000 km sind gleichwertig), beim Baujahr nicht.
+
+**C4 — Niemand darf Einzelsätze lesen, auch nicht der eigene.**
+
+Die Tabelle ist für normale Nutzer vollständig gesperrt — kein Lesen, kein Schreiben, kein Ändern, kein Löschen. Geschrieben wird ausschließlich durch die Übergabe-Funktion, die mit erhöhten Rechten läuft. Gelesen wird später (PROJ-34) nur über eine Funktion, die zusammenfasst und die Mindestzahl selbst durchsetzt.
+
+Ein Datenpunkt lässt sich auch nicht nachträglich ändern oder löschen — auch nicht von dem, der ihn ausgelöst hat. Das ist keine Härte, sondern die Kehrseite gelungener Anonymisierung: Was niemandem mehr zuzuordnen ist, lässt sich auch nicht mehr auf Zuruf herausfinden.
+
+**C5 — Deshalb muss der Widerruf vorher zur Sprache kommen.**
+
+Eine Einwilligung ist widerruflich; ein anonymer Datensatz ist nicht auffindbar. Beides zugleich geht nicht. Der einzige ehrliche Umgang damit ist, es **vor** der Zustimmung zu sagen — nicht auf Nachfrage danach. Der aufklappbare Text nennt es ausdrücklich.
+
+**C6 — Plausibilitätsprüfung auf dem Server, nicht nur im Formular.**
+
+Ein Tippfehler wiegt bei kleiner Datenmenge schwer: Ein einzelner Verkauf zu 1 € oder 10 Mio. € verzieht eine junge Auswertung sichtbar. Geprüft wird deshalb auf dem Server, mit einer verständlichen Rückmeldung statt einer stillen Ablehnung.
+
+Ein Preis von 0 € oder eine leere Angabe erzeugt **keinen** Datenpunkt: Schenkung, Erbschaft und Übergabe im Familienkreis sind keine Marktpreise und dürfen die Auswertung nicht verzerren. Der Kaufpreis 0 € wird trotzdem als eigene Anschaffung gespeichert, wenn der Nutzer ihn einträgt — für seine Wertentwicklung ist er richtig.
+
+**C7 — Der Vorbesitzer wird nicht informiert.**
+
+Ihm mitzuteilen, dass aus seinem Verkauf ein Datenpunkt entstand, würde genau die Verbindung herstellen, die dieses Feature vermeidet: Wer die Nachricht bekommt, weiß, dass es zu diesem Zeitpunkt einen Eintrag gibt. Der Verkaufspreis ist ohnehin eine Angabe des Käufers über sich selbst.
+
+### D) Abhängigkeiten
+
+**Keine neuen Pakete.** Die Erhebung nutzt das vorhandene Formular-Handwerkszeug und die bestehende Übergabe-Funktion.
+
+### E) Was dieses Feature bewusst NICHT tut
+
+- **Keine Auswertung.** Die Preisübersicht ist PROJ-34 und kann erst sinnvoll erscheinen, wenn genug Datenpunkte vorliegen
+- **Keine Rückwirkung.** Aus früheren Transfers entstehen keine Datenpunkte; niemand hat dafür eingewilligt
+- **Keine Änderung am Übergabe-Ablauf selbst.** Fristen, Einladung, Rollen und das Entfernen der Kostendaten (PROJ-32) bleiben, wie sie sind
+- **Keine Pflicht.** Weder zur Preisangabe noch zur Einwilligung
+
+### F) Offene Punkte für die Umsetzung
+
+**F1 — Der plausible Preisbereich.** Vorschlag: 500 € bis 2.000.000 €. Weit genug für einen Scheunenfund wie für einen Sammlerwagen, eng genug, um Tippfehler um Zehnerpotenzen zu fangen. Beim Bauen zu bestätigen.
+
+**F2 — Die oberste Kilometer-Klasse braucht ein offenes Ende.** „Über 250.000 km" statt weiterer Schritte — darüber wird die Laufleistung als Merkmal ohnehin stumpf, und die Klassen blieben leer.
+
+**F3 — Eine Restgefahr, die offen benannt gehört.** Der Schutz richtet sich gegen **Nutzer**, nicht gegen den Betreiber der Datenbank. Wer direkten Zugriff auf beide Tabellen hat, könnte die Reihenfolge der Einträge mit den Transferzeitpunkten abgleichen. Das lässt sich nicht restlos ausschließen, ohne die Daten regelmäßig umzuschichten — ein Aufwand, der hier nicht im Verhältnis stünde. Wichtig ist, es zu wissen, statt Anonymität zu behaupten, die so weit nicht reicht.
+
+**F4 — Marke und Modell sind Freitext.** „Mercedes-Benz", „Mercedes" und „MB" wären drei Gruppen. Für die Erhebung ist das noch kein Problem, für die Auswertung (PROJ-34) wird es eines. Ob schon hier vereinheitlicht wird oder erst dort, ist beim Bauen zu entscheiden.
 
 ## QA Test Results
 _To be added by /qa_
