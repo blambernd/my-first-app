@@ -49,6 +49,7 @@ PROJ-33 sammelt bei jedem Transfer einen anonymen Datenpunkt: was tatsächlich g
 - [ ] Stattdessen erscheint eine Erklärung, dass die Datenlage noch nicht ausreicht
 - [ ] Die Erklärung nennt nicht, wie viele Verkäufe bereits vorliegen — die Zahl selbst verrät bei seltenen Modellen zu viel
 - [ ] Die Mindestzahl gilt ausnahmslos, auch für den, der selbst beigetragen hat
+- [ ] Sie wird auch dann eingehalten, wenn dadurch bei seltenen Modellen dauerhaft nichts erscheint — das Baujahr wird jahresgenau verglichen (PROJ-33), die Mindestzahl ist deshalb die einzige Schranke gegen einen erkennbaren Einzelverkauf
 
 ### Einordnung der Aussagekraft
 - [ ] Beruht die Spanne auf wenigen Verkäufen, wird sie als eingeschränkt belastbar gekennzeichnet
@@ -84,7 +85,8 @@ PROJ-33 sammelt bei jedem Transfer einen anonymen Datenpunkt: was tatsächlich g
 
 ## Offene Entscheidungen
 
-- **Höhe der Mindestzahl** — 5 ist ein üblicher Ausgangswert; die richtige Zahl hängt davon ab, wie fein die Klassen aus PROJ-33 geschnitten sind
+- **Höhe der Mindestzahl** — 5 ist ein üblicher Ausgangswert. Sie trägt hier die Hauptlast des Schutzes: Da das Baujahr jahresgenau gespeichert wird (PROJ-33), ist sie die einzige Schranke, die einen einzelnen Verkauf unsichtbar hält
+- **Ob bei zu dünner Lage benachbarte Baujahre zusammengefasst werden dürfen**, um überhaupt eine Aussage zu ermöglichen — und ob das dann kenntlich gemacht wird
 - **Wo die Übersicht erscheint** — in der Wertentwicklung des Fahrzeugs, als eigener Bereich oder an beiden Stellen
 - **Ob sie den manuell eingetragenen Marktwert (PROJ-28) ersetzt, ergänzt oder vorschlägt**
 - **Welche Kennzahl gezeigt wird** — Spanne, Median, beides

@@ -23,7 +23,17 @@ Bei jedem Fahrzeug-Transfer entsteht dagegen etwas, das kein Portal hat: ein **t
 
 Ein Datensatz ohne Namen ist noch nicht anonym. Bei einem 1970er Mercedes SL mit 52.000 km ist die Kombination aus Marke, Modell, Baujahr und Kilometerstand oft **genau ein Fahrzeug** — und über ein öffentliches Kurzprofil oder ein Inserat rückführbar auf eine Person und deren Verkaufspreis. Genau das soll PROJ-32 gerade verhindern.
 
-Der Datensatz muss deshalb so grob und so entkoppelt abgelegt werden, dass eine Rückführung auch dann nicht gelingt, wenn jemand Zugriff auf die Tabelle hat und das Fahrzeug kennt.
+Der Datensatz muss deshalb so entkoppelt abgelegt werden, dass eine Rückführung auch dann nicht gelingt, wenn jemand Zugriff auf die Tabelle hat und das Fahrzeug kennt.
+
+### Den Schutz trägt die Mindestbesetzung, nicht die Vergröberung (2026-08-04)
+
+Das **Baujahr wird jahresgenau** gespeichert. Bei Oldtimern ist es das wichtigste Vergleichsmerkmal — zwischen einem 1967er und einem 1972er Modell liegen oft Welten in Technik und Preis. Eine Baujahr-Spanne würde die spätere Auswertung entwerten, also genau den Zweck der Erhebung.
+
+Das ist vertretbar, weil die Anonymität nicht an der Körnung der Merkmale hängt, sondern an der **Mindestzahl vergleichbarer Verkäufe** (PROJ-34): Solange weniger als die festgelegte Zahl vorliegt, erscheint überhaupt kein Wert. Ein einzelner Verkauf bleibt damit unsichtbar, gleichgültig wie fein oder grob er abgelegt ist.
+
+Die Vergröberung wirkt anders, als es zunächst scheint: Sie schützt nicht selbst, sie sorgt nur dafür, dass Gruppen die Mindestzahl **häufiger erreichen**. Der Preis dafür ist Genauigkeit. Beim Kilometerstand ist dieser Tausch sinnvoll — 52.000 und 54.000 km sind praktisch gleichwertig. Beim Baujahr ist er es nicht.
+
+**Folge, die offen benannt gehört:** Bei seltenen Modellen wird die Auswertung dadurch länger — womöglich dauerhaft — nichts anzeigen. Das ist die gewollte Richtung: lieber keine Zahl als eine, die auf ein bestimmtes Fahrzeug zurückführt.
 
 ## Entscheidungen (2026-08-04)
 
@@ -63,7 +73,8 @@ Der Datensatz muss deshalb so grob und so entkoppelt abgelegt werden, dass eine 
 - [ ] Gespeichert werden ausschließlich: Marke, Modell, Baujahr, Kilometerstand, Zustandsnote, Kaufpreis und der Verkaufszeitpunkt
 - [ ] Der Datensatz enthält **keine** Kennung des Nutzers, des Fahrzeugs, des Transfers oder des Vorbesitzers
 - [ ] Der Verkaufszeitpunkt wird nur monatsgenau abgelegt, nicht tagesgenau
-- [ ] Kilometerstand und Baujahr werden in Klassen abgelegt, nicht als Einzelwert
+- [ ] Das **Baujahr wird jahresgenau** abgelegt — es ist bei Oldtimern das wichtigste Vergleichsmerkmal, eine Spanne würde die Auswertung entwerten
+- [ ] Der Kilometerstand wird in Klassen abgelegt, nicht als Einzelwert
 - [ ] Aus einem Datensatz lässt sich der zugehörige Transfer nicht bestimmen, auch nicht über den Zeitpunkt
 
 ### Plausibilität
@@ -99,7 +110,7 @@ Der Datensatz muss deshalb so grob und so entkoppelt abgelegt werden, dass eine 
 
 ## Offene Entscheidungen
 
-- **Zuschnitt der Klassen** — wie grob Baujahr und Kilometerstand abgelegt werden. Zu fein gefährdet die Anonymität, zu grob macht die spätere Auswertung wertlos. Entscheidung für `/architecture`
+- **Zuschnitt der Kilometer-Klassen** — das Baujahr ist entschieden (jahresgenau), der Kilometerstand nicht. Zu fein lässt Gruppen die Mindestzahl seltener erreichen, zu grob macht den Vergleich beliebig. Entscheidung für `/architecture`
 - **Plausibler Preisbereich** — feste Grenzen oder abhängig vom Fahrzeug
 - **Umgang mit fehlender Zustandsnote** — Datenpunkt verwerfen oder mit gekennzeichneter Lücke aufnehmen
 - **Ob der Vorbesitzer informiert wird**, dass ein Datenpunkt aus seinem Verkauf entstanden ist
