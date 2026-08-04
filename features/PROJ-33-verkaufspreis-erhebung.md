@@ -289,6 +289,59 @@ Beim Text zu niedrigen Preisen steht ausdrücklich „Dein Kaufpreis wird trotzd
 
 **Bis dahin gilt:** Der Käufer kann die Angaben machen, sie werden aber noch nicht gespeichert. Die Übergabe selbst funktioniert unverändert.
 
+## Backend-Umsetzung (2026-08-04)
+
+Damit ist das Feature vollständig: Der Käufer wird gefragt, seine Angaben werden gespeichert, und der anonyme Datenpunkt entsteht gemeinsam mit dem Besitzerwechsel.
+
+### Migrationen
+
+| Datei | Inhalt |
+|---|---|
+| `20260804_proj33_vehicle_sales.sql` | die anonyme Tabelle |
+| `20260804_proj33_accept_with_sale.sql` | vier neue Parameter an `accept_vehicle_transfer` |
+| `20260804_proj33_transfer_info_fields.sql` | Zustandsnote und Kilometerstand in der Auskunft |
+
+### Die Tabelle
+
+Keine Spalte verweist auf Nutzer, Fahrzeug, Transfer oder Vorbesitzer — und es gibt **kein Anlagedatum**. Gespeichert wird `sold_month` im Format `2026-08`. Prüfregeln in der Datenbank erzwingen, was der Entwurf verlangt: Die Kilometer-Klasse muss durch 25.000 teilbar sein, der Preis zwischen 500 € und 2 Mio. € liegen, der Monat dem Muster entsprechen.
+
+**Zugriff:** keine einzige Policy, dazu `REVOKE ALL` für `anon` und `authenticated`. Geschrieben wird ausschließlich durch die Übergabe-Funktion, die als `SECURITY DEFINER` läuft.
+
+### Die Trennung in der Funktion
+
+Zwei Bedingungen, bewusst getrennt:
+
+- **Kaufpreis** → wird gespeichert, sobald er angegeben ist, unabhängig von der Einwilligung. Er steht **nach** dem Löschen der Vorbesitzer-Beträge (PROJ-32) — davor stehend würde er mitgelöscht
+- **Anonymer Datenpunkt** → nur mit Einwilligung **und** vollständigen, plausiblen Angaben
+
+Zustandsnote und Kilometerstand: Die Angabe des Käufers hat Vorrang, sonst gilt, was am Fahrzeug steht.
+
+### Nebenbefund
+
+`get_transfer_by_token` meldete den Status `abgelaufen` (seit PROJ-32 möglich) nicht als „expired", sondern ließ ihn durch alle Zweige fallen. Mit derselben Migration berichtigt.
+
+### Nachgewiesen
+
+Echte Aufrufe von `accept_vehicle_transfer`, jeweils in zurückgerollten Transaktionen:
+
+| Fall | Datenpunkt | Eigene Anschaffung |
+|---|---|---|
+| 18.500 €, Note 2, 52.000 km, **mit** Einwilligung | **1** | **1** |
+| 18.500 €, **ohne** Einwilligung | 0 | **1** |
+| 1 €, mit Einwilligung (Schenkung) | 0 | **1** |
+
+Der erzeugte Datenpunkt, vollständig ausgelesen:
+
+```
+E2E-Testfahrzeug Wegwerf / 1970 / 50000 km-Klasse / Note 2 / 1850000 Cent / 2026-08
+```
+
+52.000 km sind zur Klasse 50.000 geworden, der Zeitpunkt ist auf den Monat verkürzt, und keine Spalte verweist zurück.
+
+**Zugriffstest mit Positivkontrolle:** mit erhöhten Rechten 1 Zeile sichtbar; als angemeldeter Nutzer und als anonymer Besucher jeweils `permission denied for table vehicle_sales`. Die Sperre greift schon vor den Zeilenregeln, auf Tabellenebene.
+
+**643 Unit-Tests grün**, **Gesamtregression 117 grün und 2 übersprungen** ohne Fehlschläge, Lint 0 Fehler, Build erfolgreich.
+
 ## QA Test Results
 _To be added by /qa_
 

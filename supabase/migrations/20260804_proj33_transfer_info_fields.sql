@@ -1,0 +1,11 @@
+-- PROJ-33: Zustandsnote und letzter Kilometerstand in der Transfer-Auskunft.
+--
+-- Ist die Zustandsnote am Fahrzeug hinterlegt, entfällt die Frage danach — der
+-- Käufer soll nicht angeben müssen, was schon dasteht. Der Kilometerstand
+-- dient dem Vorbelegen.
+--
+-- Beides sind Angaben über das Fahrzeug, das der Empfänger ohnehin gleich
+-- übernimmt. Beträge sind nicht dabei.
+--
+-- Nebenbei berichtigt: Der Status `abgelaufen` (seit PROJ-32 möglich) wurde
+-- nicht als „expired" gemeldet, sondern fiel durch alle Zweige.

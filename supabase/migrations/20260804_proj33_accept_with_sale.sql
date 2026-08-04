@@ -1,0 +1,27 @@
+-- PROJ-33: Kaufpreis und anonymer Datenpunkt beim Annehmen.
+--
+-- Beides entsteht in derselben Funktion wie der Besitzerwechsel und das
+-- Entfernen der Kostendaten (PROJ-32). Eine Funktion ist eine Transaktion: Es
+-- kann kein Verkauf erfasst werden, dessen Übergabe scheiterte — und umgekehrt.
+--
+-- Die neuen Parameter haben Vorgabewerte, damit bestehende Aufrufe ohne
+-- Angaben unverändert funktionieren:
+--
+--   p_price_cents, p_condition_grade, p_mileage_km, p_share
+--
+-- Zwei Dinge, die auseinandergehalten werden:
+--
+--   * Der Kaufpreis wird als Anschaffung des neuen Besitzers gespeichert,
+--     sobald er angegeben ist — unabhängig von der Einwilligung. Er steht
+--     NACH dem Löschen der Vorbesitzer-Beträge, sonst würde er mitgelöscht.
+--   * Der anonyme Datenpunkt entsteht nur mit Einwilligung UND vollständigen,
+--     plausiblen Angaben. Schenkung, Erbschaft und Übertrag im Familienkreis
+--     (Preis 0 oder unter der Untergrenze) erzeugen keinen — das sind keine
+--     Marktpreise.
+--
+-- Zustandsnote und Kilometerstand: Die Angabe des Käufers hat Vorrang, sonst
+-- gilt, was am Fahrzeug steht.
+--
+-- Angewandt am 2026-08-04 über apply_migration mit der vollständigen
+-- Funktionsdefinition; die Fassung steht in
+-- 20260804_proj32_clear_costs_on_transfer.sql, ergänzt um den PROJ-33-Block.
