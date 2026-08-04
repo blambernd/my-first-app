@@ -435,6 +435,27 @@ Zweig `feat/proj-31-kosten-ueberblick` per Fast-Forward nach `main` (Commits `56
 | `/kosten/laufende` in Produktion | erreichbar, zeigt die Erfassung |
 | Browser-Konsole | keine Fehler |
 
+### Nachtrag (2026-08-03): Der Überblick ist frei, die Tiefe kostet
+
+Der unten beschriebene Punkt ist entschieden — **die Schranke ist vom Überblick entfernt**. Auswertung und Wertentwicklung bleiben Premium.
+
+Begründung: Der Überblick ist der Einstieg in den Kostenbereich. Eine Werbewand an dieser Stelle verstellt einem Nutzer ohne Premium den Blick auf seine eigenen Daten, obwohl die freien Unterbereiche „Laufende Kosten" und „Einzelkosten" direkt darunter stehen. Und gerade die Kennzahl, die zum Weiterklicken verführt, wirbt hinter einer Schranke für nichts.
+
+Damit gilt im Kostenbereich:
+
+| Bereich | Zugang |
+|---|---|
+| Überblick | frei |
+| Laufende Kosten · Einzelkosten · Tankbuch | frei |
+| Auswertung · Wertentwicklung | Premium |
+
+Die Wege vom Überblick in die Auswertung und die Wertentwicklung bleiben sichtbar und führen ohne Premium auf den Upsell — das ist der beabsichtigte Weg zur Umwandlung, kein Fehler.
+
+**Nicht durch die lokalen Tests abgedeckt:** `NEXT_PUBLIC_BETA_MODE=true` macht dort jeden Zugriff zu Premium, und die Variable wird zur Bauzeit eingebacken. Der freie Pfad wurde deshalb in der Produktion mit dem Testnutzer nachgewiesen, der dort tatsächlich kein Premium hat.
+
+<details>
+<summary>Ursprüngliche Beschreibung des Punktes</summary>
+
 ### Offener Punkt: Der Kostenbereich beginnt jetzt hinter der Premium-Schranke
 
 In Produktion zeigt `/kosten` einem Nutzer ohne Premium den Upsell („Dieses Feature ist Teil von Premium — Coming Soon!"). Das fiel lokal nicht auf, weil dort `NEXT_PUBLIC_BETA_MODE=true` jeden Zugriff zu Premium macht.
@@ -442,3 +463,5 @@ In Produktion zeigt `/kosten` einem Nutzer ohne Premium den Upsell („Dieses Fe
 Die Schranke selbst ist stimmig — der Überblick fasst Auswertung und Wertentwicklung zusammen, beide sind seit PROJ-27/28 Premium. **Die Nebenwirkung ist die Änderung des Einstiegs:** Vor PROJ-31 landete ein Klick auf „Kosten" bei den laufenden Kosten, die frei sind. Jetzt landet er auf dem Überblick — ein Nutzer ohne Premium sieht dort eine Werbewand statt seiner Daten, obwohl „Laufende Kosten" und „Einzelkosten" direkt darunter weiterhin frei sind.
 
 Der Spec sagt zur Premium-Frage nichts; die Schranke wurde in Anlehnung an die Auswertung gesetzt. Zu entscheiden ist, ob der Einstieg in den Kostenbereich frei bleiben soll.
+
+</details>

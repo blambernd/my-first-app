@@ -1,11 +1,5 @@
 import { redirect, notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase-server";
-import {
-  getEffectivePlan,
-  hasPremiumAccess,
-  isBetaMode,
-} from "@/lib/subscription";
-import { PremiumUpsell } from "@/components/premium-upsell";
 import { CostOverviewView } from "@/components/cost-overview-view";
 import {
   analyzeCosts,
@@ -42,6 +36,14 @@ const MAX_ROWS = 2000;
  * in die Detailbereiche. Bis zum 2026-08-03 lag hier „Laufende Kosten"; die
  * Liste hat einen eigenen Unterpfad bekommen.
  *
+ * **Frei zugänglich, anders als Auswertung und Wertentwicklung.** Der Überblick
+ * ist der Einstieg in den Kostenbereich: Vor PROJ-31 landete ein Klick auf
+ * „Kosten" bei den laufenden Kosten, die frei sind. Läge hier eine Schranke,
+ * sähe ein Nutzer ohne Premium eine Werbewand statt seiner eigenen Daten —
+ * obwohl die freien Unterbereiche direkt darunter stehen. Die Tiefe kostet
+ * weiterhin: Von hier führen Wege in die Auswertung und die Wertentwicklung,
+ * und dort greift die Schranke.
+ *
  * Serverseitig gerechnet wie Auswertung und Wertentwicklung: Die Seite kommt
  * fertig an, es gibt kein Nachladen und keine springenden Zahlen. Die
  * Aggregation kostet unter 4 ms (in PROJ-27 an 868 Datensätzen gemessen) —
@@ -60,40 +62,18 @@ export default async function KostenUeberblickPage({
     redirect("/login");
   }
 
-  const [{ data: ownedVehicle }, { data: subscription }] = await Promise.all([
-    supabase
-      .from("vehicles")
-      .select("id")
-      .eq("id", id)
-      .eq("user_id", user.id)
-      .maybeSingle(),
-    supabase
-      .from("subscriptions")
-      .select("plan, status, trial_end, referral_bonus_until")
-      .eq("user_id", user.id)
-      .maybeSingle(),
-  ]);
+  const { data: ownedVehicle } = await supabase
+    .from("vehicles")
+    .select("id")
+    .eq("id", id)
+    .eq("user_id", user.id)
+    .maybeSingle();
 
   // Der gesamte Kostenbereich ist dem Besitzer vorbehalten (PROJ-27, C10).
   // Die Regeln in der Datenbank setzen dasselbe durch — diese Prüfung sorgt
   // nur dafür, dass ein Mitglied eine klare Absage bekommt.
   if (!ownedVehicle) {
     notFound();
-  }
-
-  const effectivePlan = subscription
-    ? getEffectivePlan(subscription)
-    : isBetaMode
-      ? "premium"
-      : "free";
-
-  if (!hasPremiumAccess(effectivePlan)) {
-    return (
-      <PremiumUpsell
-        feature="Kostenüberblick"
-        description="Was dich dein Fahrzeug im letzten Jahr gekostet hat — Gesamtkosten, Durchschnitt je Monat, Kosten je Kilometer und die Aufteilung nach Quelle."
-      />
-    );
   }
 
   const [fuelResult, serviceResult, recurringResult, oneOffResult] =
