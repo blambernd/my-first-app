@@ -21,12 +21,23 @@ import {
 } from "@/components/ui/card";
 import { BrandLogoWithText } from "@/components/brand-logo";
 import { createClient } from "@/lib/supabase";
+import { TransferPurchaseForm } from "@/components/transfer-purchase-form";
+import type { SaleReportInput } from "@/lib/validations/sale-report";
 
 interface TransferInfo {
   vehicleName: string;
   fromEmail: string;
   expiresAt: string;
   keepAsViewer: boolean;
+  /**
+   * Zustandsnote des Fahrzeugs, falls hinterlegt (PROJ-33).
+   *
+   * Ist sie bekannt, entfällt die Frage danach. Wird von `/backend`
+   * nachgeliefert; bis dahin `null`, die Frage erscheint dann immer.
+   */
+  conditionGrade: number | null;
+  /** Letzter bekannter Kilometerstand zum Vorbelegen (PROJ-33) */
+  lastMileageKm: number | null;
 }
 
 type TransferState =
@@ -43,6 +54,12 @@ export default function TransferAcceptPage() {
   const { token } = useParams<{ token: string }>();
   const [state, setState] = useState<TransferState>({ status: "loading" });
   const [processing, setProcessing] = useState(false);
+  // PROJ-33: Kaufpreis und Einwilligung werden VOR dem Annehmen erfasst, damit
+  // der Datenpunkt in derselben Transaktion entstehen kann wie der
+  // Besitzerwechsel. Das Haekchen ist nie vorbelegt.
+  const [kaufangaben, setKaufangaben] = useState<SaleReportInput>({
+    share_anonymously: false,
+  });
 
   useEffect(() => {
     loadTransfer();
@@ -78,6 +95,11 @@ export default function TransferAcceptPage() {
         fromEmail: data.fromEmail,
         expiresAt: data.expiresAt,
         keepAsViewer: data.keepAsViewer,
+        // Liefert die Auskunft diese Felder noch nicht, wird die Zustandsnote
+        // eben gefragt und der Kilometerstand nicht vorbelegt — beides ist
+        // richtig, nur unbequemer.
+        conditionGrade: data.conditionGrade ?? null,
+        lastMileageKm: data.lastMileageKm ?? null,
       };
 
       const supabase = createClient();
@@ -104,6 +126,10 @@ export default function TransferAcceptPage() {
     try {
       const res = await fetch(`/api/transfers/${token}/accept`, {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        // Die Angaben gehen mit dem Annehmen zusammen an den Server, damit
+        // Besitzerwechsel und Datenpunkt in einem Vorgang entstehen (PROJ-33).
+        body: JSON.stringify(kaufangaben),
       });
 
       if (!res.ok) {
@@ -207,7 +233,20 @@ export default function TransferAcceptPage() {
                   </div>
                 </div>
               ) : (
-                <div className="flex gap-2">
+                <div className="space-y-4">
+                  {/* Vor den Schaltflächen: Die Angaben müssen beim Klick
+                      bekannt sein, sonst entstünde der Datenpunkt in einem
+                      zweiten Schritt und nicht mehr gemeinsam mit dem
+                      Besitzerwechsel. */}
+                  <TransferPurchaseForm
+                    wert={kaufangaben}
+                    onChange={setKaufangaben}
+                    vorhandeneZustandsnote={state.info.conditionGrade}
+                    letzterKmStand={state.info.lastMileageKm}
+                    disabled={processing}
+                  />
+
+                  <div className="flex gap-2">
                   <Button
                     className="flex-1"
                     onClick={handleAccept}
@@ -230,6 +269,7 @@ export default function TransferAcceptPage() {
                   >
                     Ablehnen
                   </Button>
+                  </div>
                 </div>
               )}
             </CardContent>

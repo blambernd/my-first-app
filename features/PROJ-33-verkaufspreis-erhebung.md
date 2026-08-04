@@ -1,6 +1,6 @@
 # PROJ-33: Verkaufspreis-Erhebung beim Transfer
 
-## Status: Architected
+## Status: In Progress
 **Created:** 2026-08-04
 **Last Updated:** 2026-08-04
 
@@ -236,6 +236,58 @@ Ihm mitzuteilen, dass aus seinem Verkauf ein Datenpunkt entstand, würde genau d
 **F3 — Eine Restgefahr, die offen benannt gehört.** Der Schutz richtet sich gegen **Nutzer**, nicht gegen den Betreiber der Datenbank. Wer direkten Zugriff auf beide Tabellen hat, könnte die Reihenfolge der Einträge mit den Transferzeitpunkten abgleichen. Das lässt sich nicht restlos ausschließen, ohne die Daten regelmäßig umzuschichten — ein Aufwand, der hier nicht im Verhältnis stünde. Wichtig ist, es zu wissen, statt Anonymität zu behaupten, die so weit nicht reicht.
 
 **F4 — Marke und Modell sind Freitext.** „Mercedes-Benz", „Mercedes" und „MB" wären drei Gruppen. Für die Erhebung ist das noch kein Problem, für die Auswertung (PROJ-34) wird es eines. Ob schon hier vereinheitlicht wird oder erst dort, ist beim Bauen zu entscheiden.
+
+## Frontend-Umsetzung (2026-08-04)
+
+**Umgesetzt ist die Erfassung: das Formular vor dem Annehmen samt Einwilligung und Plausibilitätsprüfung.** Das Speichern — die anonyme Tabelle und das Anlegen in der Übergabe-Funktion — steht noch aus, siehe „Offen für /backend".
+
+### Neue Dateien
+
+| Datei | Zweck |
+|---|---|
+| `src/lib/validations/sale-report.ts` | Kilometer-Klassen, Verkaufsmonat, Plausibilitätsprüfung |
+| `src/lib/validations/sale-report.test.ts` | 17 Tests |
+| `src/components/transfer-purchase-form.tsx` | Der Abschnitt vor den Schaltflächen |
+
+### Die Trennung, auf die es ankommt
+
+Das Häkchen ist ein **eigenes** Bedienelement, deutlich abgesetzt und nie vorbelegt. Der Kaufpreis steht darüber und funktioniert ohne es. In der Oberfläche ist damit sichtbar, was der Entwurf verlangt: Die Einwilligung betrifft die Weitergabe, nicht die eigene Erfassung.
+
+Der Plausibilitätshinweis erscheint **nur, wenn das Häkchen gesetzt ist**. Wer die Weitergabe nicht will, soll keine Belehrung über Preisgrenzen lesen, die ihn nichts angehen.
+
+Beim Text zu niedrigen Preisen steht ausdrücklich „Dein Kaufpreis wird trotzdem gespeichert" — sonst befürchtet der Nutzer, seine Eingabe sei ganz verworfen worden.
+
+### Kilometer-Klassen
+
+`kmKlasse()` gibt immer die **Untergrenze** zurück, nie den Einzelwert — der wäre ein Wiedererkennungsmerkmal. Ein Test prüft genau das für mehrere Werte. Oberhalb von 250.000 km gibt es nur noch eine offene Klasse (F2).
+
+`verkaufsmonat()` liefert `2026-08`, nie einen Tag.
+
+### Nachgewiesen
+
+| Prüfung | Ergebnis |
+|---|---|
+| Häkchen vorbelegt | **nein** |
+| Übernehmen ohne jede Eingabe möglich | ja |
+| Ohne Einwilligung kein Plausibilitätshinweis | ja |
+| Mit Einwilligung, leer → „Ohne Kaufpreis …" | ja |
+| Preis 1 € → „unter 500 € fließen nicht ein … trotzdem gespeichert" | ja |
+| Preis und km gesetzt → „Ohne Zustandsnote …" | ja |
+| Aufklapptext nennt Speicherung, Nicht-Speicherung, Mindestzahl, fehlenden Widerruf | ja |
+| 375 / 768 / 1440 px | kein Querscrollen |
+| Konsole | keine Fehler |
+| Unit-Tests | **643 / 643 grün** (17 neu) |
+| Lint / Build | 0 Fehler / erfolgreich |
+
+### Offen für /backend
+
+1. **Die anonyme Tabelle** — ohne Verweis auf Nutzer, Fahrzeug, Transfer oder Vorbesitzer, ohne Anlagedatum, für normale Nutzer vollständig gesperrt (C2, C4)
+2. **Das Anlegen in `accept_vehicle_transfer`**, gemeinsam mit dem Besitzerwechsel (C1). Die Annahme-Route nimmt die Angaben bereits entgegen und reicht sie weiter; verarbeitet werden sie noch nicht
+3. **Der Kaufpreis als eigene Anschaffung** (PROJ-28), unabhängig von der Einwilligung
+4. **Plausibilitätsprüfung serverseitig** — die Prüfung im Formular ist Bequemlichkeit, nicht Schutz (C6)
+5. **Zwei Felder in der Transfer-Auskunft:** Zustandsnote und letzter Kilometerstand. Bis dahin wird die Zustandsnote immer gefragt und der Kilometerstand nicht vorbelegt — richtig, nur unbequemer
+
+**Bis dahin gilt:** Der Käufer kann die Angaben machen, sie werden aber noch nicht gespeichert. Die Übergabe selbst funktioniert unverändert.
 
 ## QA Test Results
 _To be added by /qa_

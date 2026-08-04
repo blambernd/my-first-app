@@ -47,7 +47,7 @@
 | PROJ-30 | Fahrzeug-Navigation & UX-Überarbeitung | Deployed | [PROJ-30-fahrzeug-navigation.md](PROJ-30-fahrzeug-navigation.md) | 2026-08-01 |
 | PROJ-31 | Kosten-Überblicksseite | Deployed | [PROJ-31-kosten-ueberblick.md](PROJ-31-kosten-ueberblick.md) | 2026-08-01 |
 | PROJ-32 | Kostendaten beim Fahrzeug-Transfer | Deployed | [PROJ-32-kostendaten-beim-transfer.md](PROJ-32-kostendaten-beim-transfer.md) | 2026-08-01 |
-| PROJ-33 | Verkaufspreis-Erhebung beim Transfer | Architected | [PROJ-33-verkaufspreis-erhebung.md](PROJ-33-verkaufspreis-erhebung.md) | 2026-08-04 |
+| PROJ-33 | Verkaufspreis-Erhebung beim Transfer | In Progress | [PROJ-33-verkaufspreis-erhebung.md](PROJ-33-verkaufspreis-erhebung.md) | 2026-08-04 |
 | PROJ-34 | Preisübersicht aus echten Verkäufen | Planned | [PROJ-34-preisuebersicht.md](PROJ-34-preisuebersicht.md) | 2026-08-04 |
 
 <!-- Add features above this line -->
