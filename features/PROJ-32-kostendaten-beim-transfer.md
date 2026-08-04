@@ -1,6 +1,6 @@
 # PROJ-32: Kostendaten beim Fahrzeug-Transfer
 
-## Status: In Review
+## Status: Approved
 **Created:** 2026-08-01
 **Last Updated:** 2026-08-04
 
@@ -343,7 +343,7 @@ Die Prüfdaten wurden nach jedem Schritt entfernt und das Entfernen gezählt. De
 
 ## QA Test Results
 
-**Geprüft am:** 2026-08-04 · **Ergebnis: bedingt produktionsreif** (ein mittlerer Fehler offen)
+**Geprüft am:** 2026-08-04 · **Ergebnis: produktionsreif** (BUG-1 behoben, ein geringer Fehler offen)
 
 ### Akzeptanzkriterien
 
@@ -353,9 +353,9 @@ Die Prüfdaten wurden nach jedem Schritt entfernt und das Entfernen gezählt. De
 | Was erhalten bleibt (3) | **3 / 3** |
 | Hinweis und Export (5) | **5 / 5** |
 | Verhalten nach dem Transfer (3) | **3 / 3** |
-| Sicherheit und Zuverlässigkeit (3) | **2 / 3** — siehe BUG-1 |
+| Sicherheit und Zuverlässigkeit (3) | **3 / 3** (nach der Nachbesserung) |
 
-**19 von 20 Kriterien erfüllt.**
+**20 von 20 Kriterien erfüllt** — 19 im ersten Durchgang, das letzte nach der Nachbesserung zu BUG-1.
 
 ### Wie geprüft wurde
 
@@ -397,11 +397,34 @@ Das Versprechen „der Käufer sieht nicht, was der Vorbesitzer ausgegeben hat" 
 
 **Zu den drei übersprungenen Tests:** Sie prüfen den Inhalt des Hinweises und setzen Kostendaten voraus. Im Gesamtlauf läuft `PROJ-27` vorher und leert das Wegwerf-Fahrzeug — die drei überspringen sich dann selbst, statt fehlzuschlagen. Einzeln, mit Daten, sind es **10 / 10**. Das ist die gewollte Bauart: Ein Test, der von der Reihenfolge anderer Specs abhängt, meldet sonst Fehler, die keine sind. Der Preis ist, dass diese drei im Gesamtlauf nichts beweisen — geprüft sind sie im Einzellauf.
 
+### Nachbesserung (2026-08-04) — BUG-1 behoben
+
+Die Marktpreis-Analysen werden beim Annehmen **mitgelöscht**, in derselben Funktion und damit derselben Transaktion wie alles andere.
+
+**Warum löschen und nicht die Zugriffsregel ändern.** Beides hätte den Käufer ausgesperrt. Eine nutzergebundene Regel ließe die Analysen aber als unerreichbaren Rest an einem fremden Fahrzeug zurück — für den Vorbesitzer nicht mehr aufrufbar, für niemanden sonst sichtbar, aber weiterhin gespeichert. Dazu kommt die Gleichbehandlung: Der selbst eingetragene Marktwert wird bereits gelöscht; die berechnete Einschätzung anders zu behandeln wäre nicht begründbar.
+
+**Zwei Folgeänderungen, die dazugehören:**
+
+- Die Analysen erscheinen jetzt im **Hinweis** vor dem Transfer („12 Marktpreis-Analysen"). Etwas zu löschen, ohne es anzukündigen, wäre schlechter als der ursprüngliche Fehler.
+- Sie stehen im **Export**. Der Grundsatz „der Export ist das Gegenstück zum Verlust" gilt auch hier. Dabei eine Falle: `market_analyses` speichert **Euro**, nicht Cent — anders als jede andere Tabelle des Kostenbereichs. Ohne Umrechnung stünde der hundertfache Betrag in der Tabelle.
+
+**Gegenprobe an demselben echten Fahrzeug:** vorher 12 sichtbare Analysen für den neuen Besitzer, **nachher 0**.
+
+### Prüfstand nach der Nachbesserung
+
+| Prüfung | Ergebnis |
+|---|---|
+| Sichtbare Analysen für den neuen Besitzer | 12 → **0** |
+| `tests/PROJ-32-kostendaten-transfer-auth.spec.ts` | 8 grün, 2 übersprungen (Fahrzeug abgeräumt) |
+| Unit-Tests | **626 grün** (4 neu) |
+| Gesamtregression `chromium-auth` | **117 grün, 2 übersprungen**, keine Fehlschläge |
+| Lint / Build | 0 Fehler / erfolgreich |
+
 ### Empfehlung
 
-**Noch nicht ausliefern.** BUG-1 ist mittelschwer und betrifft genau das, wofür dieses Feature gebaut wurde: Preisdaten des Vorbesitzers, die der Käufer nicht sehen soll. Dass die Oberfläche sie derzeit nicht zeigt, ist ein Zufall der ausgesetzten Marktüberblick-Funktion — kein Schutz.
+**Auslieferbar.** Kein kritischer, hoher oder mittlerer Fehler mehr.
 
-BUG-2 kann warten, solange der Verkaufsassistent ausgesetzt ist. Er sollte aber behoben sein, **bevor** dieser wieder eingeschaltet wird.
+Offen bleibt **BUG-2** (gering): verwaiste Inserate und Preis-Alarme beim Vorbesitzer. Der Käufer sieht sie nicht, beide Tabellen sind nutzergebunden, und heute gibt es weder ein veröffentlichtes Inserat noch einen Alarm. Er sollte behoben sein, **bevor** der Verkaufsassistent wieder eingeschaltet wird — ein veröffentlichtes Inserat, das einen Transfer überdauert, wäre eine öffentlich erreichbare Anzeige für ein fremdes Fahrzeug.
 
 ## Deployment
 _To be added by /deploy_

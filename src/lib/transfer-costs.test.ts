@@ -24,6 +24,7 @@ describe("hasAnything", () => {
       { recurring: 1 },
       { oneOff: 1 },
       { marketValues: 1 },
+      { marketAnalyses: 1 },
       { serviceWithCost: 1 },
       { fuelWithCost: 1 },
     ];
@@ -183,5 +184,30 @@ describe("exportFilename", () => {
 
   it("fällt auf einen Ersatznamen zurück, wenn nichts übrig bleibt", () => {
     expect(exportFilename("///", tag)).toBe("Kostendaten-Fahrzeug-2026-08-04.csv");
+  });
+});
+
+describe("describeStock — Marktpreis-Analysen (QA BUG-1)", () => {
+  it("nennt die Analysen als eigenen Posten", () => {
+    // Sie werden seit der BUG-1-Korrektur mitgelöscht, also muss der
+    // Vorbesitzer davon erfahren, bevor er absendet.
+    const posten = describeStock(bestand({ marketAnalyses: 12 }));
+    expect(posten.map((p) => p.label)).toEqual(["12 Marktpreis-Analysen"]);
+  });
+
+  it("beugt die Einzahl richtig", () => {
+    expect(describeStock(bestand({ marketAnalyses: 1 }))[0].label).toBe(
+      "1 Marktpreis-Analyse"
+    );
+  });
+
+  it("zählt sie zu den Dingen, die es zu verlieren gibt", () => {
+    // Sonst erschiene der Abschnitt bei einem Fahrzeug, das nur Analysen hat,
+    // gar nicht — und die Löschung käme unangekündigt
+    expect(hasAnything(bestand({ marketAnalyses: 3 }))).toBe(true);
+  });
+
+  it("gehört zu den vollständig gelöschten, nicht zu den Nur-Betrag-Posten", () => {
+    expect(describeStock(bestand({ marketAnalyses: 2 }))[0].onlyAmount).toBe(false);
   });
 });

@@ -58,7 +58,7 @@ export async function GET(
     return NextResponse.json({ error: "Nicht gefunden" }, { status: 404 });
   }
 
-  const [purchase, extras, recurring, oneOff, marketValues, service, fuel] =
+  const [purchase, extras, recurring, oneOff, marketValues, analyses, service, fuel] =
     await Promise.all([
       supabase
         .from("vehicle_purchases")
@@ -84,6 +84,13 @@ export async function GET(
         .select("value_cents, valued_on, note")
         .eq("vehicle_id", id)
         .order("valued_on", { ascending: true }),
+      // Marktpreis-Analysen werden beim Transfer mitgelöscht (QA BUG-1) und
+      // gehören deshalb in den Export — er ist das Gegenstück zum Verlust.
+      supabase
+        .from("market_analyses")
+        .select("median_price, recommended_price_low, recommended_price_high, listing_count, created_at")
+        .eq("vehicle_id", id)
+        .order("created_at", { ascending: true }),
       supabase
         .from("service_entries")
         .select("service_date, entry_type, description, cost_cents, workshop_name")
@@ -124,6 +131,25 @@ export async function GET(
       bezeichnung: "Eingetragener Marktwert",
       amountCents: m.value_cents,
       anmerkung: m.note ?? "",
+    });
+  }
+  for (const a of analyses.data ?? []) {
+    // Achtung: market_analyses speichert **Euro**, nicht Cent — anders als
+    // jede andere Tabelle hier. Ohne die Umrechnung stünde der hundertfache
+    // Betrag in der Tabelle.
+    rows.push({
+      bereich: "Marktpreis-Analyse",
+      datum: a.created_at ?? "",
+      bezeichnung: "Median vergleichbarer Angebote",
+      amountCents: Math.round((a.median_price ?? 0) * 100),
+      anmerkung: [
+        a.recommended_price_low != null && a.recommended_price_high != null
+          ? `Empfehlung ${a.recommended_price_low}–${a.recommended_price_high} €`
+          : "",
+        a.listing_count != null ? `${a.listing_count} Angebote` : "",
+      ]
+        .filter(Boolean)
+        .join(" · "),
     });
   }
   for (const r of recurring.data ?? []) {

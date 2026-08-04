@@ -1,0 +1,25 @@
+-- QA BUG-1 (PROJ-32): Marktpreis-Analysen beim Transfer mitlöschen.
+--
+-- Die Zugriffsregel von market_analyses lautet `vehicles.user_id = auth.uid()`
+-- und hängt damit am **Fahrzeug**, nicht am Nutzer. Mit dem Besitzerwechsel
+-- wanderte der Zugriff mit: An einem echten Fahrzeug gemessen sah der neue
+-- Besitzer vorher 0, nachher 12 Analysen des Vorbesitzers, davon 6 mit
+-- Preisempfehlung. Genau das soll dieses Feature verhindern.
+--
+-- Von den zwei möglichen Wegen — mitlöschen oder die Regel an den Nutzer
+-- binden — fällt die Wahl auf das Löschen: Eine nutzergebundene Regel ließe die
+-- Analysen als unerreichbaren Rest an einem fremden Fahrzeug zurück. Der selbst
+-- eingetragene Marktwert (`vehicle_market_values`) wird bereits gelöscht; die
+-- berechnete Einschätzung anders zu behandeln wäre nicht begründbar.
+--
+-- Der Export enthält die Analysen seit dieser Änderung, damit auch hier gilt:
+-- Was verschwindet, lässt sich vorher sichern.
+--
+-- Die vollständige Funktion steht in
+-- 20260804_proj32_clear_costs_on_transfer.sql; hier ist nur die eine Zeile
+-- ergänzt:
+--
+--   DELETE FROM market_analyses WHERE vehicle_id = v_transfer.vehicle_id;
+--
+-- Angewandt am 2026-08-04 über apply_migration mit der vollständigen
+-- Funktionsdefinition.

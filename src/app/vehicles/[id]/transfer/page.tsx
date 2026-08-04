@@ -105,6 +105,7 @@ async function zaehleKostendaten(
     recurring,
     oneOff,
     marketValues,
+    marketAnalyses,
     serviceWithCost,
     fuelWithCost,
   ] = await Promise.all([
@@ -113,6 +114,7 @@ async function zaehleKostendaten(
     basis("recurring_costs"),
     basis("one_off_costs"),
     basis("vehicle_market_values"),
+    basis("market_analyses"),
     // Nur Einträge, an denen tatsächlich ein Betrag hängt: Ein Scheckheft-
     // Eintrag ohne Kostenangabe bleibt unverändert, es gibt nichts zu entfernen.
     basis("service_entries").not("cost_cents", "is", null),
@@ -125,6 +127,7 @@ async function zaehleKostendaten(
     recurring: recurring.count ?? 0,
     oneOff: oneOff.count ?? 0,
     marketValues: marketValues.count ?? 0,
+    marketAnalyses: marketAnalyses.count ?? 0,
     serviceWithCost: serviceWithCost.count ?? 0,
     fuelWithCost: fuelWithCost.count ?? 0,
   };

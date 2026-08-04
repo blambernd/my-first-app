@@ -34,6 +34,15 @@ export interface CostStock {
   oneOff: number;
   /** Selbst eingetragene Marktwerte (PROJ-28) */
   marketValues: number;
+  /**
+   * Marktpreis-Analysen (PROJ-11), QA BUG-1.
+   *
+   * Ihre Zugriffsregel hing am Fahrzeug, nicht am Nutzer — mit dem
+   * Besitzerwechsel wanderte der Zugriff mit, und der Käufer sah die
+   * Preisempfehlungen des Verkäufers. Sie werden deshalb mitgelöscht, wie der
+   * selbst eingetragene Marktwert auch.
+   */
+  marketAnalyses: number;
   /** Scheckheft-Einträge **mit** Betrag — nur deren Betrag wird geleert */
   serviceWithCost: number;
   /** Tankvorgänge **mit** Betrag — nur deren Betrag wird geleert */
@@ -46,6 +55,7 @@ export const LEERER_BESTAND: CostStock = {
   recurring: 0,
   oneOff: 0,
   marketValues: 0,
+  marketAnalyses: 0,
   serviceWithCost: 0,
   fuelWithCost: 0,
 };
@@ -63,6 +73,7 @@ export function hasAnything(stock: CostStock): boolean {
     stock.recurring > 0 ||
     stock.oneOff > 0 ||
     stock.marketValues > 0 ||
+    stock.marketAnalyses > 0 ||
     stock.serviceWithCost > 0 ||
     stock.fuelWithCost > 0
   );
@@ -97,6 +108,12 @@ export function describeStock(stock: CostStock): StockItem[] {
   if (stock.marketValues > 0) {
     items.push({
       label: anzahl(stock.marketValues, "eingetragener Marktwert", "eingetragene Marktwerte"),
+      onlyAmount: false,
+    });
+  }
+  if (stock.marketAnalyses > 0) {
+    items.push({
+      label: anzahl(stock.marketAnalyses, "Marktpreis-Analyse", "Marktpreis-Analysen"),
       onlyAmount: false,
     });
   }

@@ -125,6 +125,11 @@ BEGIN
   -- kein eigener Kaufpreis.
   DELETE FROM vehicle_market_values WHERE vehicle_id = v_transfer.vehicle_id;
 
+  -- Auch die berechneten Marktpreis-Analysen (QA BUG-1). Ihre Zugriffsregel
+  -- haengt am Fahrzeug, nicht am Nutzer — ohne dieses DELETE saehe der neue
+  -- Besitzer die Preisempfehlungen des Verkaeufers.
+  DELETE FROM market_analyses WHERE vehicle_id = v_transfer.vehicle_id;
+
   -- Nur der Betrag, die Zeile bleibt: Ein Scheckheft-Eintrag ist ein Ereignis
   -- am Fahrzeug, das zufällig Geld gekostet hat. Datum, Typ, Beschreibung,
   -- Kilometerstand, Werkstatt, Notizen und verknüpfte Dokumente sind
