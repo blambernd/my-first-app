@@ -1,8 +1,8 @@
 # PROJ-32: Kostendaten beim Fahrzeug-Transfer
 
-## Status: Architected
+## Status: In Progress
 **Created:** 2026-08-01
-**Last Updated:** 2026-08-01
+**Last Updated:** 2026-08-04
 
 ## Dependencies
 - Requires: PROJ-7 (Fahrzeug-Transfer) — die Übergabe selbst existiert bereits
@@ -215,6 +215,69 @@ Hat ein Fahrzeug keinerlei Kostenerfassung, darf der Abschnitt nicht so wirken, 
 Vorgesehen ist der Kosten-Bereich, weil dort die Lücke auffällt. Denkbar wäre auch die Fahrzeug-Historie, wo der Besitzerwechsel ohnehin steht. Entscheidung in `/frontend`, wenn die Wirkung sichtbar ist.
 
 **F4 — Diese Aufgabe schließt zugleich zwei ältere offene Punkte:** die Transfer-Frage aus PROJ-27 (Kostenhistorie) und die aus PROJ-28 (Kaufpreis). Beide verweisen auf genau diese Spec.
+
+## Frontend-Umsetzung (2026-08-04)
+
+**Umgesetzt ist der Teil vor dem Transfer: Hinweis mit echten Anzahlen und Export.** Das Entfernen selbst gehört in die Datenbank und steht noch aus — siehe „Offen für /backend".
+
+### Neue Dateien
+
+| Datei | Zweck |
+|---|---|
+| `src/lib/transfer-costs.ts` | Bestandsbeschreibung und CSV-Erzeugung |
+| `src/lib/transfer-costs.test.ts` | 25 Tests |
+| `src/components/transfer-cost-notice.tsx` | Der Abschnitt „Kostendaten" |
+| `src/app/api/vehicles/[id]/kosten-export/route.ts` | Die Tabelle, besitzergebunden |
+
+### Entscheidung zur offenen Frage F3
+
+Der Hinweis für den **neuen** Besitzer gehört in den **Kostenüberblick** (PROJ-31), nicht in die Fahrzeug-Historie. Grund: Der Überblick ist seit PROJ-31 der Einstieg in den Kostenbereich und damit die Stelle, an der die Lücke tatsächlich auffällt. Er unterscheidet seit der BUG-1-Korrektur bereits zwei leere Zustände („nie erfasst" und „nur ältere Einträge"); der Besitzerwechsel wird der dritte. In der Historie stünde die Erklärung dort, wo niemand sie sucht, wenn er sich über fehlende Beträge wundert.
+
+**Diese Anzeige ist noch nicht gebaut**, weil sie den Zeitpunkt am Fahrzeug voraussetzt, den es noch nicht gibt.
+
+### Erweiterung gegenüber dem Spec: der eingetragene Marktwert
+
+`vehicle_market_values` entstand am 2026-08-03 mit der PROJ-28-Überarbeitung, also **nach** diesem Spec, und fehlt deshalb in dessen Aufzählung. Der Wert wird jetzt mitgezählt, mitexportiert und ist zum Löschen vorgesehen.
+
+Begründung: Er ist die Einschätzung des Vorbesitzers und Grundlage seiner Wertentwicklung. Das Kriterium „Die Wertentwicklung verlangt vom neuen Besitzer einen eigenen Kaufpreis" setzt voraus, dass sie leer startet — mit altem Marktwert und ohne Kaufpreis stünde sie halb gefüllt da. Vom Nutzer am 2026-08-04 bestätigt.
+
+### Was beim Bauen geprüft wurde
+
+**C3 — die Verknüpfung reißt nichts mit.** Der Fremdschlüssel `one_off_costs.service_entry_id` steht auf `ON DELETE SET NULL`, und er zeigt von den Einzelkosten **auf** den Scheckheft-Eintrag. Das Löschen der Einzelkosten kann den Wartungseintrag also gar nicht erreichen. Die im Entwurf benannte Gefahr besteht in dieser Richtung nicht.
+
+**`vehicle_purchase_costs.purchase_id` steht auf `CASCADE`** — die Nebenkosten verschwinden mit dem Kaufpreis von selbst.
+
+### Drei Details, die über den Nutzen der Datei entscheiden
+
+- **Semikolon als Trennzeichen** — deutsches Excel erwartet es, weil das Komma hier das Dezimalzeichen ist
+- **BOM am Dateianfang** — ohne die drei Bytes wird aus „Anhängerkupplung" ein „AnhÃ¤ngerkupplung"
+- **Betrag als `1240,00`**, ohne Tausenderpunkt und ohne Eurozeichen — sonst liest Excel Text statt einer Zahl, und die Spalte ließe sich nicht summieren. Genau dafür ist der Export da
+
+Dazu Maskierung nach RFC 4180: Notizen enthalten Semikolons, Werkstattnamen Anführungszeichen. Ohne Maskierung verrutscht ab dieser Zeile die ganze Tabelle. Im Browser mit `Werkstatt "Zum Kolben"` und `Überführung; inkl. Anhänger` nachgewiesen.
+
+**Beim Prüfen nachgebessert:** Die erste Fassung schrieb `Intervall: yearly` und `gültig bis 2027-01-01` — rohe Enum-Werte und ISO-Datum in einer sonst deutschen Tabelle. Jetzt „jährlich" und „01.01.2027".
+
+### Nachgewiesen
+
+| Prüfung | Ergebnis |
+|---|---|
+| Hinweis nennt echte Anzahlen | „Kaufpreis und 2 Nebenkosten-Posten · 1 eingetragener Marktwert · 3 laufende Kostenpositionen · 2 Einzelkosten-Einträge · Beträge aus 1 Scheckheft-Eintrag · Beträge aus 2 Tankvorgängen" |
+| Export vollständig | 12 Zeilen, alle sechs Bereiche |
+| Maskierung | Semikolon und Anführungszeichen korrekt |
+| Fahrzeug ohne Kosten (F2) | Abschnitt erscheint gar nicht, Formular bleibt |
+| Export für fremdes Fahrzeug | **404**, kein Betrag ausgeliefert |
+| Export ohne Anmeldung | **401** |
+| 375 / 768 / 1440 px | kein Querscrollen |
+| Unit-Tests | 614 / 614 grün (25 neu) |
+| Lint / Build | 0 Fehler / erfolgreich |
+
+### Offen für /backend
+
+1. **Spalte am Fahrzeug** für den Zeitpunkt des Entfernens (C4)
+2. **Das Entfernen in `accept_vehicle_transfer`** — in derselben Transaktion wie der Besitzerwechsel (C1). Löschen: `vehicle_purchases` (Nebenkosten folgen per CASCADE), `recurring_costs`, `one_off_costs`, `vehicle_market_values`. Nur Betrag leeren: `service_entries.cost_cents`, `fuel_entries.cost_cents`
+3. **Der Hinweis im Kostenüberblick**, sobald die Spalte existiert (F3, siehe oben)
+
+Bis dahin gilt: Der Vorbesitzer wird gewarnt und kann sichern — entfernt wird noch nichts.
 
 ## QA Test Results
 _To be added by /qa_

@@ -52,7 +52,7 @@ Eine SaaS-Plattform für Oldtimer-Besitzer, die es ermöglicht, die komplette Hi
 | P1 | PROJ-29: Belastbarer Marktüberblick | Zurückgestellt |
 | P1 | PROJ-30: Fahrzeug-Navigation & UX-Überarbeitung | Deployed |
 | P2 | PROJ-31: Kosten-Überblicksseite | Deployed |
-| P1 | PROJ-32: Kostendaten beim Fahrzeug-Transfer | Architected |
+| P1 | PROJ-32: Kostendaten beim Fahrzeug-Transfer | In Progress |
 
 ## Success Metrics
 - **Registrierungen:** 500 Nutzer in den ersten 3 Monaten
