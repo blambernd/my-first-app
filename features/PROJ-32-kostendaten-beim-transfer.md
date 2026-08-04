@@ -1,6 +1,6 @@
 # PROJ-32: Kostendaten beim Fahrzeug-Transfer
 
-## Status: Approved
+## Status: Deployed
 **Created:** 2026-08-01
 **Last Updated:** 2026-08-04
 
@@ -427,4 +427,42 @@ Die Marktpreis-Analysen werden beim Annehmen **mitgelöscht**, in derselben Funk
 Offen bleibt **BUG-2** (gering): verwaiste Inserate und Preis-Alarme beim Vorbesitzer. Der Käufer sieht sie nicht, beide Tabellen sind nutzergebunden, und heute gibt es weder ein veröffentlichtes Inserat noch einen Alarm. Er sollte behoben sein, **bevor** der Verkaufsassistent wieder eingeschaltet wird — ein veröffentlichtes Inserat, das einen Transfer überdauert, wäre eine öffentlich erreichbare Anzeige für ein fremdes Fahrzeug.
 
 ## Deployment
-_To be added by /deploy_
+
+**Ausgeliefert am:** 2026-08-04 · **Produktion:** https://www.oldtimer-docs.com · **Tag:** `v1.32.0-PROJ-32`
+
+### Datenbank
+
+Vier Änderungen, alle **vor** dem Code angewandt und vor dem Deploy nachgeprüft:
+
+| Änderung | Zustand |
+|---|---|
+| `vehicles.costs_cleared_at` | vorhanden |
+| `fuel_entries.cost_cents` nullable | ja |
+| `accept_vehicle_transfer` löscht Marktpreis-Analysen | ja |
+| `vehicle_transfers`-Status erlaubt `abgelaufen` | ja |
+
+**Zur Reihenfolge:** Zwischen dem Anwenden der Migrationen und diesem Deploy lief in der Produktion die neue Datenbankfunktion mit der alten Oberfläche. Unkritisch, weil die Funktion in sich vollständig ist — es fehlte allein der Hinweis vor dem Transfer. Beim nächsten Mal gehört beides enger zusammen.
+
+### Vor der Auslieferung geprüft
+
+Build erfolgreich, Lint 0 Fehler, 626 Unit-Tests grün, Gesamtregression 117 grün und 2 übersprungen, keine Secrets im Repository, QA auf **Approved**, kein kritischer oder hoher Fehler offen.
+
+### Nach der Auslieferung geprüft
+
+| Prüfung | Ergebnis |
+|---|---|
+| Transfer-Seite | 200 |
+| Hinweis mit echten Anzahlen | „Kaufpreis · 1 laufende Kostenposition" |
+| Export | 200, `text/csv`, BOM vorhanden |
+| Exportinhalt | `Anschaffung;12.05.2023;Kaufpreis;18500,00` · `Laufende Kosten;01.01.2026;Versicherung;480,00;Intervall: jährlich` |
+| Export für ein fremdes Fahrzeug | **404**, kein Betrag in der Antwort |
+| Export ohne Anmeldung | **401** |
+| Browser-Konsole | keine Fehler |
+
+Die Prüfdaten wurden anschließend entfernt und das Entfernen gezählt.
+
+### Was bewusst offen bleibt
+
+**BUG-2** (gering): Der Vorbesitzer behält Inserat und Preis-Alarme zu einem Fahrzeug, das ihm nicht mehr gehört. Der Käufer sieht sie nicht — beide Tabellen sind nutzergebunden. Zu beheben, **bevor** der Verkaufsassistent wieder eingeschaltet wird.
+
+**Rechnungen im Dokumenten-Archiv** zeigen weiterhin die Beträge, die daneben entfernt wurden. Das ist eine ausdrückliche Festlegung des Specs, keine Lücke der Umsetzung — aber das Versprechen gilt damit für die erfassten Felder, nicht für die Belege.
