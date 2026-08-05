@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { cookieHinweisWegklicken } from "./helpers";
 
 // E2E tests for PROJ-15: Kontakt & Feedback
 
@@ -47,6 +48,8 @@ test.describe("PROJ-15: Kontakt & Feedback", () => {
     page,
   }) => {
     await page.goto("/kontakt");
+    // Der Cookie-Hinweis ueberdeckt die Absenden-Schaltflaeche
+    await cookieHinweisWegklicken(page);
     await page.getByRole("button", { name: "Nachricht senden" }).click();
     // At least one validation error message should appear (red text)
     const errorMessages = page.locator("p.text-destructive");

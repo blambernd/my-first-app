@@ -32,21 +32,50 @@ test.describe("PROJ-17: Landing Page", () => {
     await expect(loginBtn).toHaveAttribute("href", "/login");
   });
 
-  test("Hero has visual placeholder element", async ({ page }) => {
+  test("Hero zeigt eine echte Abbildung der Anwendung", async ({ page }) => {
+    // Bis 1f35ac2 stand hier ein Kasten mit der Aufschrift „App-Vorschau";
+    // seither ist es ein Bildschirmfoto. Der Test suchte weiter nach dem Text.
     await page.goto("/");
-    await expect(page.getByText("App-Vorschau")).toBeVisible();
+    await expect(
+      page.getByRole("img", { name: /Oldtimer Docs Dashboard/i })
+    ).toBeVisible();
   });
 
   // === Features Section ===
 
-  test("Features section has 6 feature cards", async ({ page }) => {
+  test("Die sechs Funktionskarten nennen, was es tatsächlich gibt", async ({
+    page,
+  }) => {
     await page.goto("/");
-    await expect(page.getByText("Digitales Scheckheft")).toBeVisible();
-    await expect(page.getByText("Dokumenten-Archiv")).toBeVisible();
-    await expect(page.getByText("Fahrzeug-Timeline")).toBeVisible();
-    await expect(page.getByText("Kurzprofil teilen")).toBeVisible();
-    await expect(page.getByText("Verkaufsinserat")).toBeVisible();
-    await expect(page.getByText("Fahrzeug-Transfer")).toBeVisible();
+    for (const titel of [
+      "Digitales Scheckheft",
+      "Dokumenten-Archiv",
+      "Fahrzeug-Timeline",
+      "Kosten im Blick",
+      "Wertentwicklung",
+      "Fahrzeug-Transfer",
+    ]) {
+      await expect(page.getByText(titel, { exact: true }).first(), titel).toBeVisible();
+    }
+  });
+
+  test("Abgeschaltete Funktionen werden nicht beworben", async ({ page }) => {
+    // Der wichtigste Test dieses Specs: Die Seite hatte Kurzprofil,
+    // Verkaufsinserat und Verkaufsassistent angepriesen, während alle drei
+    // über feature-flags.ts abgeschaltet sind. Ein neu registrierter Nutzer
+    // hätte sie gesucht und nicht gefunden.
+    await page.goto("/");
+    const text = await page.locator("body").innerText();
+    for (const begriff of [
+      "Kurzprofil",
+      "Verkaufsinserat",
+      "Verkaufsassistent",
+      "Marktüberblick",
+    ]) {
+      expect(text, `„${begriff}" darf nicht beworben werden`).not.toContain(
+        begriff
+      );
+    }
   });
 
   // === Pricing Section ===
@@ -77,16 +106,42 @@ test.describe("PROJ-17: Landing Page", () => {
     await expect(page.getByText("49,99")).toBeVisible();
   });
 
-  test("Premium plan has 'Empfohlen' badge", async ({ page }) => {
+  test("Der Premium-Tarif ist hervorgehoben", async ({ page }) => {
+    // Die Beschriftung wechselt mit NEXT_PUBLIC_MVP_MODE: „Coming Soon"
+    // solange nicht verkauft wird, sonst „Beliebt". Der frühere Test suchte
+    // „Empfohlen" — das stand dort nie.
     await page.goto("/");
-    await expect(page.getByText("Empfohlen")).toBeVisible();
+    await expect(page.getByText(/Coming Soon|Beliebt/)).toBeVisible();
   });
 
-  test("Premium CTA says '14 Tage kostenlos testen'", async ({ page }) => {
+  test("Der Unterschied der Tarife ist die Fahrzeuganzahl", async ({ page }) => {
+    // Das ist das eigentliche Kaufargument und muss an erster Stelle beider
+    // Listen stehen — nicht zwischen Speicherplatz und Nebensächlichkeiten.
     await page.goto("/");
-    const trialBtn = page.getByRole("link", {
-      name: "14 Tage kostenlos testen",
-    });
+    await expect(page.getByText("1 Fahrzeug", { exact: true })).toBeVisible();
+    await expect(
+      page.getByText("Unbegrenzt Fahrzeuge", { exact: true })
+    ).toBeVisible();
+  });
+
+  test("Die Tarifliste nennt nur Funktionen, die es gibt", async ({ page }) => {
+    await page.goto("/");
+    // Frei: Erfassung und Überblick. Kostenpflichtig: Auswertung und
+    // Wertentwicklung — so steht es auch in den Seitenprüfungen.
+    await expect(
+      page.getByText("Kostenerfassung und Überblick").first()
+    ).toBeVisible();
+    await expect(page.getByText("Kostenauswertung").first()).toBeVisible();
+    await expect(page.getByText("Wertentwicklung").first()).toBeVisible();
+  });
+
+  test("Premium CTA führt zur Registrierung", async ({ page }) => {
+    await page.goto("/");
+    // Früher „14 Tage kostenlos testen"; die Schaltfläche heißt inzwischen
+    // wie im Hero und führt ebenfalls zur Registrierung.
+    const trialBtn = page
+      .getByRole("link", { name: "Kostenlos starten", exact: true })
+      .last();
     await expect(trialBtn).toBeVisible();
     await expect(trialBtn).toHaveAttribute("href", "/register");
   });
@@ -107,18 +162,33 @@ test.describe("PROJ-17: Landing Page", () => {
 
   // === Social Proof ===
 
-  test("Social proof shows statistics", async ({ page }) => {
+  test("Es werden keine erfundenen Zahlen als Tatsachen ausgegeben", async ({
+    page,
+  }) => {
+    // Der Abschnitt nannte „500+ Fahrzeuge", „10.000+ Scheckheft-Einträge" und
+    // „98 % zufriedene Nutzer". Tatsächlich waren es am 2026-08-05 6 Fahrzeuge,
+    // 5 Einträge und 7 Nutzer. Öffentlich war das nie — der Abschnitt hängt an
+    // NEXT_PUBLIC_MVP_MODE, und in der Produktion steht es auf „true".
+    //
+    // Dieser Test hält die Lücke zu: Wer den Abschnitt einschaltet, soll
+    // gezwungen sein, echte Zahlen einzutragen.
     await page.goto("/");
-    await expect(page.getByText("500+")).toBeVisible();
-    await expect(page.getByText("10.000+")).toBeVisible();
-    await expect(page.getByText("98%")).toBeVisible();
+    const text = await page.locator("body").innerText();
+    for (const behauptung of ["500+", "10.000+", "98%", "98 %"]) {
+      expect(text, `„${behauptung}" ist nicht belegt`).not.toContain(
+        behauptung
+      );
+    }
   });
 
-  test("Social proof shows 3 testimonials", async ({ page }) => {
+  test("Die Kennzahlen sind erkennbar Platzhalter", async ({ page }) => {
     await page.goto("/");
-    await expect(page.getByText("Thomas M.")).toBeVisible();
-    await expect(page.getByText("Sabine K.")).toBeVisible();
-    await expect(page.getByText("Markus R.")).toBeVisible();
+    const abschnitt = page.getByText(/Zahl eintragen/);
+    // Entweder ausgeblendet (Produktionsmodus) oder unmissverständlich offen
+    const sichtbar = await abschnitt.count();
+    if (sichtbar > 0) {
+      expect(sichtbar).toBeGreaterThanOrEqual(3);
+    }
   });
 
   // === FAQ Teaser ===

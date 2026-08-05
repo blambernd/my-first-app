@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { cookieHinweisWegklicken } from "./helpers";
 
 // These E2E tests verify the auth UI flows without a real Supabase backend.
 // They test page rendering, navigation, client-side validation, and form behavior.
@@ -13,8 +14,11 @@ test.describe("PROJ-1: User Authentication", () => {
     await expect(
       page.getByRole("banner").getByRole("link", { name: "Registrieren" })
     ).toBeVisible();
+    // Die Beschriftung kommt mehrfach vor (Hero, beide Tarifkarten, Schluss-
+    // aufruf) und einmal als „Jetzt kostenlos starten" — ohne exact und first
+    // trifft der Zugriff vier Elemente.
     await expect(
-      page.getByRole("link", { name: "Kostenlos starten" })
+      page.getByRole("link", { name: "Kostenlos starten", exact: true }).first()
     ).toBeVisible();
   });
 
@@ -60,6 +64,7 @@ test.describe("PROJ-1: User Authentication", () => {
     page,
   }) => {
     await page.goto("/register");
+    await cookieHinweisWegklicken(page);
     await page.getByLabel("E-Mail").fill("test@example.com");
     await page.getByLabel("Passwort", { exact: true }).fill("short");
     await page.getByLabel("Passwort bestätigen").fill("short");
@@ -77,6 +82,11 @@ test.describe("PROJ-1: User Authentication", () => {
     await page.getByLabel("E-Mail").fill("test@example.com");
     await page.getByLabel("Passwort", { exact: true }).fill("password123");
     await page.getByLabel("Passwort bestätigen").fill("different456");
+    // Das AGB-Häkchen gehört dazu: Ohne es scheitert schon die Feldprüfung,
+    // und der Abgleich der beiden Passwörter läuft gar nicht erst an. Der
+    // Test suchte deshalb eine Meldung, die nie erscheinen konnte.
+    await page.getByRole("checkbox").check();
+    await cookieHinweisWegklicken(page);
     await page.getByRole("button", { name: "Registrieren" }).click();
     await expect(
       page.getByText("Passwörter stimmen nicht überein")
@@ -106,6 +116,7 @@ test.describe("PROJ-1: User Authentication", () => {
   // AC: Magic Link mode toggle works
   test("Login page toggles to Magic Link mode", async ({ page }) => {
     await page.goto("/login");
+    await cookieHinweisWegklicken(page);
     await page.getByRole("button", { name: "Magic Link senden" }).click();
     // In magic link mode, password field should be gone
     await expect(page.getByLabel("Passwort")).not.toBeVisible();
@@ -158,6 +169,9 @@ test.describe("PROJ-1: User Authentication", () => {
   // Navigation: Login page links to register
   test("Login page links to register page", async ({ page }) => {
     await page.goto("/login");
+    // Der Cookie-Hinweis liegt ueber dem unteren Seitenrand und faengt den
+    // Klick ab. Ein Nutzer klickt ihn weg — der Test tat es nie.
+    await cookieHinweisWegklicken(page);
     await page.getByRole("link", { name: "Registrieren" }).click();
     await page.waitForURL("**/register");
     expect(page.url()).toContain("/register");
@@ -166,6 +180,7 @@ test.describe("PROJ-1: User Authentication", () => {
   // Navigation: Register page links to login
   test("Register page links to login page", async ({ page }) => {
     await page.goto("/register");
+    await cookieHinweisWegklicken(page);
     await page.getByRole("link", { name: "Anmelden" }).click();
     await page.waitForURL("**/login");
     expect(page.url()).toContain("/login");
@@ -174,6 +189,7 @@ test.describe("PROJ-1: User Authentication", () => {
   // Navigation: Login page links to forgot-password
   test("Login page links to forgot password page", async ({ page }) => {
     await page.goto("/login");
+    await cookieHinweisWegklicken(page);
     await page.getByRole("link", { name: "Passwort vergessen?" }).click();
     await page.waitForURL("**/forgot-password");
     expect(page.url()).toContain("/forgot-password");

@@ -9,8 +9,8 @@ import {
   FileText,
   Clock,
   Newspaper,
-  Share2,
-  ShoppingBag,
+  Wallet,
+  TrendingUp,
   ArrowRightLeft,
   Check,
   X,
@@ -51,31 +51,54 @@ const features = [
       "Die komplette Geschichte Ihres Fahrzeugs auf einen Blick \u2014 von der Erstzulassung bis heute.",
   },
   {
-    icon: Share2,
-    title: "Kurzprofil teilen",
+    icon: Wallet,
+    title: "Kosten im Blick",
     description:
-      "Erstellen Sie ein \u00f6ffentliches Fahrzeugprofil und teilen Sie es per Link mit Interessenten.",
+      "Tankbuch, Versicherung, Steuer, Ersatzteile \u2014 alles an einer Stelle. Der \u00dcberblick zeigt, was Ihr Fahrzeug im Jahr kostet.",
   },
   {
-    icon: ShoppingBag,
-    title: "Verkaufsinserat",
+    icon: TrendingUp,
+    title: "Wertentwicklung",
     description:
-      "Professionelle Verkaufsinserate erstellen \u2014 Fahrzeugdaten werden automatisch \u00fcbernommen.",
+      "Kaufpreis, Investitionen und laufende Kosten getrennt betrachtet \u2014 damit Sie sehen, was in das Fahrzeug geflossen ist.",
   },
   {
     icon: ArrowRightLeft,
     title: "Fahrzeug-Transfer",
     description:
-      "Fahrzeug inklusive kompletter Historie digital an den neuen Besitzer \u00fcbertragen.",
+      "Fahrzeug samt Historie digital an den neuen Besitzer \u00fcbergeben. Ihre Kostendaten bleiben dabei bei Ihnen.",
   },
 ];
 
+/**
+ * \u26a0\ufe0f PLATZHALTER \u2014 vor dem Einschalten durch echte Zahlen ersetzen.
+ *
+ * Dieser Block erscheint nur, wenn `NEXT_PUBLIC_MVP_MODE` **nicht** \u201etrue" ist;
+ * in der Produktion steht es auf true, die Zahlen sind also derzeit nicht
+ * \u00f6ffentlich. Das ist auch gut so: Die vorherigen Werte (\u201e500+ Fahrzeuge",
+ * \u201e10.000+ Eintr\u00e4ge", \u201e98 % zufriedene Nutzer") waren erfunden \u2014 tats\u00e4chlich
+ * waren es am 2026-08-05 **6 Fahrzeuge, 5 Scheckheft-Eintr\u00e4ge, 7 Nutzer**.
+ *
+ * Sie sind bewusst durch offensichtliche Platzhalter ersetzt: Wer das Flag
+ * umlegt, soll eine Baustelle sehen und keine plausibel klingende Unwahrheit.
+ */
 const stats = [
-  { value: "500+", label: "Fahrzeuge dokumentiert" },
-  { value: "10.000+", label: "Scheckheft-Eintr\u00e4ge" },
-  { value: "98%", label: "zufriedene Nutzer" },
+  { value: "\u2014", label: "Fahrzeuge dokumentiert (Zahl eintragen)" },
+  { value: "\u2014", label: "Scheckheft-Eintr\u00e4ge (Zahl eintragen)" },
+  { value: "\u2014", label: "aktive Nutzer (Zahl eintragen)" },
 ];
 
+/**
+ * ⚠️ PLATZHALTER — diese Stimmen sind nicht von echten Nutzern.
+ *
+ * Sie erscheinen nur bei abgeschaltetem `NEXT_PUBLIC_MVP_MODE` und sind
+ * derzeit nicht öffentlich. Vor dem Einschalten durch echte, freigegebene
+ * Zitate ersetzen oder den Abschnitt streichen — erfundene Kundenstimmen als
+ * echte auszugeben ist etwas anderes als eine unfertige Zahl.
+ *
+ * Die dritte Stimme lobte das Verkaufsinserat; die Funktion ist abgeschaltet
+ * (siehe `feature-flags.ts`) und die Stimme deshalb entfernt.
+ */
 const testimonials = [
   {
     name: "Thomas M.",
@@ -89,23 +112,29 @@ const testimonials = [
     quote:
       "Den Fahrzeug-Transfer beim Kauf meines K\u00e4fers fand ich genial. Die gesamte Dokumentation des Vorbesitzers war sofort in meinem Konto.",
   },
-  {
-    name: "Markus R.",
-    role: "Porsche 911, Bj. 1989",
-    quote:
-      "Das Verkaufsinserat hat mir viel Arbeit erspart. Alle Daten wurden automatisch \u00fcbernommen und der K\u00e4ufer war von der l\u00fcckenlosen Historie beeindruckt.",
-  },
 ];
 
+/**
+ * Die Tarifleisten spiegeln die tatsächlichen Grenzen aus `PLANS` und die
+ * Prüfungen in den Seiten wider — nicht die Wunschliste.
+ *
+ * **Was hier NICHT steht:** Verkaufsassistent, Marktüberblick und Kurzprofil.
+ * Alle drei sind derzeit abgeschaltet (`src/lib/feature-flags.ts`). Etwas zu
+ * bewerben, das ein neu registrierter Nutzer nicht vorfindet, wäre ein
+ * Versprechen, das die Anwendung nicht hält.
+ *
+ * Der entscheidende Unterschied ist die **Fahrzeuganzahl**: 1 gegen
+ * unbegrenzt. Er steht deshalb an erster Stelle.
+ */
 const freePlanFeatures = [
   { text: "1 Fahrzeug", included: true },
   { text: "100 MB Speicher", included: true },
   { text: "Digitales Scheckheft", included: true },
   { text: "Dokumenten-Archiv", included: true },
   { text: "Fahrzeug-Timeline", included: true },
-  { text: "Kurzprofil teilen", included: true },
-  { text: "Verkaufsassistent", included: false },
-  { text: "Marktüberblick", included: false },
+  { text: "Kostenerfassung und Überblick", included: true },
+  { text: "Kostenauswertung", included: false },
+  { text: "Wertentwicklung", included: false },
 ];
 
 const premiumPlanFeatures = [
@@ -114,9 +143,9 @@ const premiumPlanFeatures = [
   { text: "Digitales Scheckheft", included: true },
   { text: "Dokumenten-Archiv", included: true },
   { text: "Fahrzeug-Timeline", included: true },
-  { text: "Kurzprofil teilen", included: true },
-  { text: "Verkaufsassistent", included: true },
-  { text: "Marktüberblick", included: true },
+  { text: "Kostenerfassung und Überblick", included: true },
+  { text: "Kostenauswertung", included: true },
+  { text: "Wertentwicklung", included: true },
 ];
 
 /**
