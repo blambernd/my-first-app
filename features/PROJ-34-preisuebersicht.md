@@ -51,6 +51,13 @@ PROJ-33 sammelt bei jedem Transfer einen anonymen Datenpunkt: was tatsächlich g
 - [ ] Die Mindestzahl gilt ausnahmslos, auch für den, der selbst beigetragen hat
 - [ ] Sie wird auch dann eingehalten, wenn dadurch bei seltenen Modellen dauerhaft nichts erscheint — das Baujahr wird jahresgenau verglichen (PROJ-33), die Mindestzahl ist deshalb die einzige Schranke gegen einen erkennbaren Einzelverkauf
 
+### Robustheit gegen einzelne falsche Werte
+- [ ] Die gezeigte Kennzahl beruht auf dem **Median**, nicht auf dem Mittelwert — ein einzelner Ausreißer darf sie kaum bewegen
+- [ ] Die gezeigte Spanne ist **gestutzt**: Die extremsten Werte am oberen und unteren Rand bleiben außen vor
+- [ ] Auch mehrere gezielt gesetzte Werte verschieben das Ergebnis nicht in einem Maß, das die Aussage umkehrt
+
+> **Warum das hier steht:** Die QA zu PROJ-33 hat gezeigt, dass sich die Erhebung mit Aufwand fluten lässt. Die dort eingebauten Grenzen — ein Datenpunkt je Fahrzeug, höchstens drei je Kontopaar — verteuern das erheblich, sind aber keine dichte Wand. **Keine Strukturregel ist dicht.** Die Statistik ist die zweite, unabhängige Schranke, und sie macht die Auswertung ohnehin belastbarer.
+
 ### Einordnung der Aussagekraft
 - [ ] Beruht die Spanne auf wenigen Verkäufen, wird sie als eingeschränkt belastbar gekennzeichnet
 - [ ] Sind die Verkäufe überwiegend alt, wird darauf hingewiesen

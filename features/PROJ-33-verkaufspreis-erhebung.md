@@ -1,6 +1,6 @@
 # PROJ-33: Verkaufspreis-Erhebung beim Transfer
 
-## Status: In Review
+## Status: Approved
 **Created:** 2026-08-04
 **Last Updated:** 2026-08-04
 
@@ -344,7 +344,7 @@ E2E-Testfahrzeug Wegwerf / 1970 / 50000 km-Klasse / Note 2 / 1850000 Cent / 2026
 
 ## QA Test Results
 
-**Geprüft am:** 2026-08-04 · **Ergebnis: bedingt produktionsreif** (ein mittlerer Fehler offen)
+**Geprüft am:** 2026-08-04 · **Ergebnis: produktionsreif** (BUG-1 behoben, zwei geringe Fehler offen)
 
 ### Akzeptanzkriterien
 
@@ -354,9 +354,9 @@ E2E-Testfahrzeug Wegwerf / 1970 / 50000 km-Klasse / Note 2 / 1850000 Cent / 2026
 | Was der Käufer vorher erfährt (4) | **4 / 4** |
 | Was gespeichert wird (6) | **6 / 6** |
 | Plausibilität (3) | **3 / 3** |
-| Sicherheit (3) | **2 / 3** — siehe BUG-1 |
+| Sicherheit (3) | **3 / 3** (nach der Nachbesserung) |
 
-**21 von 22 Kriterien erfüllt.**
+**22 von 22 Kriterien erfüllt** — 21 im ersten Durchgang, das letzte nach der Nachbesserung zu BUG-1.
 
 ### Was sich nicht prüfen ließ — und warum das benannt gehört
 
@@ -404,15 +404,56 @@ Der Spec verlangt, dass aus den Daten nicht hervorgehen darf, dass es sich um da
 
 ### Automatisierte Tests
 
-- **Neu:** `tests/PROJ-33-verkaufspreis-auth.spec.ts` — **10 / 10 grün**
+- **Neu:** `tests/PROJ-33-verkaufspreis-auth.spec.ts` — **12 / 12 grün**
+
+> **Die erste Fassung dieses Specs taugte nichts.** Sie hing an einem Token, den ich beim Prüfen von Hand in die Datenbank gelegt hatte. Sechs der zehn Tests schlugen fehl, sobald er wieder weg war — als Regressionstests waren sie wertlos. Aufgefallen ist es nur, weil ich das Spec nach dem Aufräumen noch einmal einzeln laufen ließ.
+>
+> Die jetzige Fassung **legt ihren Transfer selbst über die Maske an** und bricht ihn am Ende wieder ab. Damit prüft der Lauf nebenbei, dass das Anlegen und das Abbrechen überhaupt noch funktionieren. Zweimal hintereinander ausgeführt: beide Male 12/12, danach kein offener Transfer, Besitzer unverändert.
 - Unit-Tests: **643 grün**, davon 17 für Kilometer-Klassen, Verkaufsmonat und Plausibilität
 - Gesamtregression `chromium-auth`: **117 grün, 2 übersprungen**, keine Fehlschläge
 
+### Nachbesserung (2026-08-04) — BUG-1 behoben
+
+**Der erste Vorschlag war falsch.** Eine Grenze je Konto und Zeitraum hätte Händler getroffen, die täglich mehrere Fahrzeuge übertragen — genau die Nutzer, die man nicht treffen will. Der Einwand kam vom Nutzer und war berechtigt.
+
+Der zweite Anlauf zielte auf das Kontopaar. Auch daran zeigte sich eine Lücke: **Händler A verkauft zwanzig Fahrzeuge an Händler B** — dasselbe Paar, viele Übertragungen, strukturell nicht von einem Ring zu unterscheiden. Aus dem Übertragungsmuster allein ist das nicht trennbar.
+
+Zwei Überlegungen lösen es auf:
+
+1. **Händler-zu-Händler-Preise gehören ohnehin nicht hinein.** Was zwischen zwei Händlern gezahlt wird, ist ein Einkaufspreis und liegt systematisch unter dem, was ein privater Käufer zahlt. Sie auszuschließen ist sachlich richtig, nicht bloß ein hinnehmbarer Fehlalarm.
+2. **Der Schnitt muss weich sein.** Die Grenze lässt den Datenpunkt entfallen, nie die Übergabe. Ein Fehlalarm kostet damit einen Datenpunkt, kein blockiertes Fahrzeug.
+
+**Umgesetzt sind zwei Regeln:**
+
+| Regel | Händler | Ring |
+|---|---|---|
+| Ein Fahrzeug trägt höchstens **einmal** bei (`vehicles.sale_reported`) | unberührt — jedes Fahrzeug wird einmal verkauft | Hin- und Herübertragen bringt nichts mehr |
+| Höchstens **drei** Datenpunkte je Kontopaar, **ungerichtet** gezählt | Einkaufspreise fallen ab dem vierten heraus — erwünscht | erzwingt für jeden weiteren Datenpunkt ein neues Konto mit bestätigter E-Mail |
+
+Dazu in PROJ-34 aufgenommen: **Median statt Mittelwert und gestutzte Spannen.** Keine Strukturregel ist dicht; die Statistik ist die zweite, unabhängige Schranke.
+
+#### Zwei Fehler, die dabei auffielen
+
+**Die Zählung war richtungsabhängig.** A→B und B→A hätten sich zwei getrennte Budgets geteilt, ein Ring hätte durch Abwechseln der Richtung die doppelte Menge gehabt. Zugesagt war „je Kontopaar" — jetzt ungerichtet.
+
+**Die alte `accept_vehicle_transfer(uuid)` existierte noch neben der neuen fünfargumentigen.** `CREATE OR REPLACE` ersetzt nur bei gleicher Signatur, sonst entsteht eine **Überladung**. Ein Aufruf mit nur `p_token` hätte die exakt passende alte Fassung getroffen und die Angaben des Käufers still verworfen — ohne Fehlermeldung. Entfernt; die neue deckt den Aufruf über Vorgabewerte mit ab.
+
+#### Nachgewiesen
+
+| Prüfung | Ergebnis |
+|---|---|
+| Hin- und Rückübertragung desselben Fahrzeugs | **1** Datenpunkt statt 2, Fahrzeug gesperrt |
+| Vier Verkäufe zwischen demselben Kontopaar | **3** Datenpunkte |
+| … und laufen die vier Übergaben trotzdem durch? | **alle vier erfolgreich** — die Regel ist weich |
+| Fassungen der Funktion in der Datenbank | **1** (vorher 2) |
+
 ### Empfehlung
 
-**Auslieferbar, aber mit Auflage.** Kein kritischer oder hoher Fehler. BUG-1 ist kein Sicherheitsloch im engeren Sinn — es entweicht nichts —, aber es untergräbt den Zweck des Features. Solange nur gesammelt wird, richtet es keinen sichtbaren Schaden an. **Vor PROJ-34 muss es behoben sein**, sonst zeigt die Preisübersicht Zahlen, die jemand nach Belieben gesetzt hat.
+**Auslieferbar.** Kein kritischer, hoher oder mittlerer Fehler mehr.
 
-BUG-2 und BUG-3 sind gering und können mitlaufen.
+Offen bleiben **BUG-2** und **BUG-3**, beide gering: englische Vorgabetexte der Eingabeprüfung und ein leerer Rumpf `{}`, der die Übergabe scheitern lässt. Über die Oberfläche ist keiner von beiden erreichbar.
+
+Weiterhin gilt die Auflage aus dem Abschnitt oben: **Ein erfolgreiches Annehmen über die Oberfläche ist ungeprüft** und sollte einmal von Hand zwischen zwei Konten durchlaufen werden.
 
 ## Deployment
 _To be added by /deploy_
