@@ -1,8 +1,8 @@
 # PROJ-33: Verkaufspreis-Erhebung beim Transfer
 
-## Status: Approved
+## Status: Deployed
 **Created:** 2026-08-04
-**Last Updated:** 2026-08-04
+**Last Updated:** 2026-08-05
 
 ## Dependencies
 - Requires: PROJ-7 (Fahrzeug-Transfer) — die Übergabe ist der Anlass der Frage
@@ -456,4 +456,42 @@ Offen bleiben **BUG-2** und **BUG-3**, beide gering: englische Vorgabetexte der 
 Weiterhin gilt die Auflage aus dem Abschnitt oben: **Ein erfolgreiches Annehmen über die Oberfläche ist ungeprüft** und sollte einmal von Hand zwischen zwei Konten durchlaufen werden.
 
 ## Deployment
-_To be added by /deploy_
+
+**Ausgeliefert am:** 2026-08-05 · **Produktion:** https://www.oldtimer-docs.com · **Tag:** `v1.33.0-PROJ-33`
+
+### Datenbank
+
+Alle Änderungen vor dem Deploy einzeln nachgeprüft:
+
+| Prüfung | Zustand |
+|---|---|
+| Tabelle `vehicle_sales` | vorhanden |
+| `vehicles.sale_reported` | vorhanden |
+| Fassungen von `accept_vehicle_transfer` | **1** (die Überladung ist entfernt) |
+| Paar-Grenze in der Funktion | aktiv |
+| Zustandsnote und Kilometerstand in der Auskunft | vorhanden |
+| Policies auf `vehicle_sales` | **0** — dazu `REVOKE ALL` |
+
+### Nach der Auslieferung geprüft
+
+Über die echte Maske, mit einem angelegten und danach wieder abgebrochenen Transfer:
+
+| Prüfung | Ergebnis |
+|---|---|
+| Transfer über die Maske anlegen | erfolgreich |
+| Häkchen vorbelegt | **nein** |
+| Kaufpreis-Feld leer, Annehmen trotzdem möglich | ja |
+| Aufklapptext nennt den fehlenden Widerruf | ja |
+| Zustandsnote 9 an der Route | **400** |
+| Transfer abbrechen | **200** |
+| Browser-Konsole | keine Fehler |
+
+Danach: kein offener Transfer, keine Datenpunkte, Besitzer unverändert.
+
+### Was bewusst offen bleibt
+
+**Ein erfolgreiches Annehmen über die Oberfläche ist weiterhin ungeprüft.** Dafür braucht es zwei Konten; danach gehört das Fahrzeug einem anderen. Die Wirkung der Datenbankfunktion ist in zurückgerollten Transaktionen belegt, die Kette bis dorthin über den abgefangenen Rumpf und die inhaltliche Antwort der Funktion. **Ein Durchlauf zwischen zwei echten Konten sollte einmal von Hand erfolgen.**
+
+**BUG-2** (gering): teils englische Vorgabetexte der Eingabeprüfung. **BUG-3** (gering): ein leerer Rumpf `{}` lässt die Übergabe scheitern. Über die Oberfläche ist keiner von beiden erreichbar.
+
+**Für PROJ-34 vorgemerkt:** Median statt Mittelwert und gestutzte Spannen. Die Strukturregeln gegen das Fluten verteuern den Angriff erheblich, aber keine Strukturregel ist dicht.
