@@ -1,8 +1,8 @@
 # PROJ-17: Landing Page
 
-## Status: In Progress
+## Status: In Review
 **Created:** 2026-04-08
-**Last Updated:** 2026-04-08
+**Last Updated:** 2026-08-05
 
 ## Dependencies
 - None (statische Seite, kein Backend)
@@ -188,7 +188,61 @@ Ein einzelner Fehlschlag im ersten `chromium`-Lauf trat in zwei Folgeläufen nic
 - **Es werden keine erfundenen Zahlen als Tatsachen ausgegeben**
 
 ## QA Test Results
-_To be added by /qa_
+
+**Geprüft am:** 2026-08-05 · **Ergebnis: bedingt produktionsreif** (zwei mittlere Fehler offen)
+
+### Akzeptanzkriterien
+
+| Bereich | Ergebnis |
+|---|---|
+| Hero (5) | **5 / 5** |
+| Features (3) | **2 / 3** — ein Kriterium ist überholt, siehe unten |
+| Preistabelle (7) | **6 / 7** — siehe BUG-1 |
+| Social Proof (3) | **3 / 3** |
+| FAQ-Teaser (2) | **2 / 2** |
+| Abschluss-CTA (2) | **2 / 2** |
+| Allgemein (7) | **5 / 7** — siehe BUG-2 und „Überholte Kriterien" |
+
+### Gefundene Fehler
+
+| # | Schwere | Befund |
+|---|---|---|
+| BUG-1 | **Mittel** | **Der 14-tägige Testzeitraum wird nirgends erwähnt, obwohl es ihn gibt.** Der Auslöser in `20260408_subscriptions.sql` setzt für **jeden** neuen Nutzer `plan='trial'` und `trial_end = NOW() + 14 Tage`; `getEffectivePlan` liefert währenddessen „trial" mit unbegrenzten Fahrzeugen und 5 GB. Ein Besucher sieht auf der Seite nur „1 Fahrzeug" im Free-Tarif und erfährt nicht, dass er den Premium-Umfang zwei Wochen lang umsonst bekommt. Das Kriterium verlangt den Hinweis ausdrücklich — und es ist das stärkste Argument für genau das Merkmal, um das es geht: die Fahrzeuganzahl. |
+| BUG-2 | **Mittel** | **Die Seitenbeschreibung bewirbt weiter eine abgeschaltete Funktion.** `src/app/page.tsx` nennt „Erstelle Verkaufsinserate und teile die Fahrzeughistorie". Das ist der Text, den Suchmaschinen anzeigen — er erreicht Menschen, bevor die Seite selbst es tut. Beim Überarbeiten des Seiteninhalts blieb er zurück; **das habe ich selbst übersehen.** |
+
+### Überholte Akzeptanzkriterien
+
+Diese Kriterien sind nicht verletzt, sondern **veraltet**. Sie stammen aus dem April und sollten angepasst werden, statt die Umsetzung daran zu messen:
+
+| Kriterium | Warum überholt |
+|---|---|
+| „Features: … Kurzprofil teilen, Verkaufsinserat …" | Alle drei Funktionen sind abgeschaltet. Sie zu bewerben war der Hauptbefund der Überarbeitung |
+| „Premium: … alle Features" | Verkaufsassistent und Marktüberblick werden gar nicht mehr angeboten |
+| „Smooth Scroll zwischen Sektionen" | Es gibt keine Sprungmarken auf der Seite (0 Anker geprüft), `scroll-behavior` steht auf `auto`. Das Kriterium beschreibt etwas, das nie gebaut wurde und heute keinen Zweck hätte |
+
+### Sicherheitsprüfung
+
+| Angriff | Ergebnis |
+|---|---|
+| HTML-Einschleusung über `?registered=<img onerror=…>` | **abgewehrt** — kein Element im DOM, kein Dialog |
+| Angemeldete Besucher auf `/` | Weiterleitung nach `/dashboard` |
+| Doppelter Footer | nein, genau einer |
+| Browser-Konsole | keine Fehler |
+
+**Ein Fehlalarm, den ich korrigiert habe:** Die erste Prüfung suchte die Zeichenfolge „onerror" im HTML und meldete „durchlässig". Tatsächlich stand der Wert nur **URL-kodiert im Router-Zustand** von Next.js — kein Element, kein Dialog. Der Test prüft jetzt auf das Element, nicht auf den Text.
+
+### Automatisierte Tests
+
+- `tests/PROJ-17-landing-page.spec.ts` — **26 grün, 2 rot**. Die zwei roten sind BUG-1 und BUG-2; sie sind bewusst so geschrieben, dass sie erst nach der Behebung grün werden
+- `chromium` **178 grün**, `Mobile Safari` **178 grün**, `chromium-auth` **128 grün**
+- Unit-Tests **643 grün**
+
+### Empfehlung
+
+**Noch nicht ausliefern.** Beide Fehler sind mittelschwer und beide betreffen dasselbe: Was die Seite über das Produkt behauptet, stimmt nicht mit dem überein, was das Produkt tut. BUG-2 wirkt dabei über die Suchergebnisse nach außen, auch ohne dass jemand die Seite besucht.
+
+Beide sind klein zu beheben. Danach sollten die drei überholten Kriterien im Spec angepasst werden — sonst misst der nächste Durchgang wieder gegen einen Stand vom April.
+
 
 ## Deployment
 _To be added by /deploy_

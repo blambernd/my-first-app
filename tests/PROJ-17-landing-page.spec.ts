@@ -261,3 +261,64 @@ test.describe("PROJ-17: Landing Page", () => {
     expect(count).toBeGreaterThanOrEqual(10);
   });
 });
+
+// === Ergänzt bei der QA am 2026-08-05 ===
+
+test.describe("PROJ-17: Landing Page — Metadaten und Sicherheit", () => {
+  test("Die Seitenbeschreibung bewirbt keine abgeschalteten Funktionen", async ({
+    page,
+  }) => {
+    // Die Beschreibung ist das, was Suchmaschinen anzeigen — sie erreicht
+    // Menschen, bevor die Seite selbst es tut. Beim Überarbeiten des
+    // Seiteninhalts blieb sie zurück und nannte weiter „Verkaufsinserate".
+    await page.goto("/");
+    const beschreibung = await page
+      .locator('meta[name="description"]')
+      .getAttribute("content");
+    expect(beschreibung).toBeTruthy();
+    for (const begriff of ["Verkaufsinserat", "Kurzprofil", "Marktüberblick"]) {
+      expect(beschreibung, `„${begriff}" ist abgeschaltet`).not.toContain(
+        begriff
+      );
+    }
+  });
+
+  test("Der Testzeitraum wird genannt, weil es ihn gibt", async ({ page }) => {
+    // Jeder neue Nutzer bekommt 14 Tage vollen Zugang — der Auslöser in
+    // 20260408_subscriptions.sql setzt trial_end auf NOW() + 14 Tage, und
+    // getEffectivePlan gibt währenddessen „trial" mit unbegrenzten Fahrzeugen
+    // zurück. Das nicht zu erwähnen verschenkt das stärkste Argument für den
+    // Premium-Tarif.
+    await page.goto("/");
+    await expect(page.getByText(/14 Tage/)).toBeVisible();
+  });
+
+  test("SICHERHEIT: Der registered-Parameter wird nicht als HTML ausgeführt", async ({
+    page,
+  }) => {
+    let dialog = false;
+    page.on("dialog", async (d) => {
+      dialog = true;
+      await d.dismiss();
+    });
+    await page.goto(
+      "/?registered=%3Cimg%20src%3Dx%20onerror%3Dalert(1)%3E"
+    );
+    // Auf das Element prüfen, nicht auf die Zeichenfolge im Quelltext: Der
+    // kodierte Wert steht im Router-Zustand und ergibt bei reiner Textsuche
+    // einen Fehlalarm.
+    await expect(page.locator("img[onerror]")).toHaveCount(0);
+    expect(dialog).toBe(false);
+  });
+
+  test("Angemeldete Besucher landen auf dem Dashboard", async ({ browser }) => {
+    const angemeldet = await browser.newContext({
+      storageState: "playwright/.auth/user.json",
+    });
+    const seite = await angemeldet.newPage();
+    await seite.goto("/");
+    await seite.waitForURL("**/dashboard", { timeout: 30000 });
+    expect(new URL(seite.url()).pathname).toBe("/dashboard");
+    await angemeldet.close();
+  });
+});
