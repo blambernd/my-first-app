@@ -31,7 +31,7 @@
 | PROJ-14 | FAQ-Seite | Deployed | [PROJ-14-faq.md](PROJ-14-faq.md) | 2026-04-08 |
 | PROJ-15 | Kontakt & Feedback | Deployed | [PROJ-15-kontakt-feedback.md](PROJ-15-kontakt-feedback.md) | 2026-04-08 |
 | PROJ-16 | Verkaufsassistent | Deployed | [PROJ-16-verkaufsassistent.md](PROJ-16-verkaufsassistent.md) | 2026-04-08 |
-| PROJ-17 | Landing Page | In Review | [PROJ-17-landing-page.md](PROJ-17-landing-page.md) | 2026-04-08 |
+| PROJ-17 | Landing Page | Approved | [PROJ-17-landing-page.md](PROJ-17-landing-page.md) | 2026-04-08 |
 | PROJ-18 | Empfehlungsprogramm (Referral) | Deployed | [PROJ-18-empfehlungsprogramm.md](PROJ-18-empfehlungsprogramm.md) | 2026-04-09 |
 | PROJ-19 | Veranstaltungsübersicht | Deployed | [PROJ-19-veranstaltungsuebersicht.md](PROJ-19-veranstaltungsuebersicht.md) | 2026-04-09 |
 | PROJ-20 | Mobile Responsive Optimierung | In Progress | [PROJ-20-mobile-responsive.md](PROJ-20-mobile-responsive.md) | 2026-04-09 |

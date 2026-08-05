@@ -307,8 +307,19 @@ export function LandingPage() {
             <h2 className="text-2xl sm:text-3xl font-bold mb-4">
               {"Einfache, transparente Preise"}
             </h2>
-            <p className="text-muted-foreground text-base sm:text-lg max-w-xl mx-auto mb-8">
+            <p className="text-muted-foreground text-base sm:text-lg max-w-xl mx-auto mb-4">
               {"Starten Sie kostenlos und upgraden Sie, wenn Sie mehr brauchen."}
+            </p>
+            {/* Jeder neue Zugang beginnt mit 14 Tagen vollem Umfang — der
+                Auslöser in 20260408_subscriptions.sql setzt trial_end auf
+                NOW() + 14 Tage. Das nicht zu sagen verschenkt das stärkste
+                Argument für den Premium-Tarif: Wer mehrere Fahrzeuge hat,
+                merkt den Unterschied in diesen zwei Wochen. */}
+            <p className="text-base font-medium mb-8">
+              <span className="text-primary">
+                {"14 Tage kostenlos testen"}
+              </span>
+              {" — voller Umfang, unbegrenzt Fahrzeuge, keine Zahlungsdaten nötig."}
             </p>
 
             {/* Billing toggle */}

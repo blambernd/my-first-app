@@ -1,6 +1,6 @@
 # PROJ-17: Landing Page
 
-## Status: In Review
+## Status: Approved
 **Created:** 2026-04-08
 **Last Updated:** 2026-08-05
 
@@ -29,13 +29,18 @@ Die bestehende minimalistische Startseite (/) wird durch eine professionelle Lan
 
 ### Features/Vorteile-Sektion
 - [ ] Mindestens 4-6 Feature-Karten mit Icon, Titel und kurzer Beschreibung
-- [ ] Features: Digitales Scheckheft, Dokumenten-Archiv, Fahrzeug-Timeline, Kurzprofil teilen, Verkaufsinserat, Fahrzeug-Transfer
+- [ ] Features: Digitales Scheckheft, Dokumenten-Archiv, Fahrzeug-Timeline, Kosten im Blick, Wertentwicklung, Fahrzeug-Transfer
+- [ ] **Es werden nur Funktionen beworben, die eingeschaltet sind** — nichts aus `feature-flags.ts`, was auf `false` steht
 - [ ] Visuell ansprechend mit Icons (Lucide-Icons)
+
+> **Geändert am 2026-08-05.** Bis dahin verlangte dieses Kriterium „Kurzprofil teilen" und „Verkaufsinserat". Beide sind seit der Zurückstellung von PROJ-29 abgeschaltet; die Seite bewarb sie trotzdem. Das dritte Kriterium ist neu und soll verhindern, dass das wieder passiert.
 
 ### Freemium-Preistabelle
 - [ ] Zwei Spalten: Free vs. Premium
 - [ ] Free: 1 Fahrzeug, 100 MB Speicher, Basis-Features
-- [ ] Premium: Unbegrenzt Fahrzeuge, 5 GB Speicher, alle Features
+- [ ] Premium: Unbegrenzt Fahrzeuge, 5 GB Speicher, Kostenauswertung und Wertentwicklung
+- [ ] Die **Fahrzeuganzahl** steht in beiden Listen an erster Stelle — sie ist der Unterschied, auf den es ankommt
+- [ ] Die genannten Grenzen stimmen mit `PLANS` in `stripe.ts` überein
 - [ ] Konkreter Preis: 4,99 €/Monat oder 49,99 €/Jahr (2 Monate gratis)
 - [ ] "14 Tage kostenlos testen" Hinweis
 - [ ] CTA-Buttons: Free → /register, Premium → /register (solange PROJ-8 nicht live)
@@ -57,10 +62,13 @@ Die bestehende minimalistische Startseite (/) wird durch eine professionelle Lan
 ### Allgemein
 - [ ] Header mit Logo + Login/Registrieren Buttons (wie bisher)
 - [ ] Seite ist responsive (Mobile 375px, Tablet 768px, Desktop 1440px)
-- [ ] Smooth Scroll zwischen Sektionen
 - [ ] Eingeloggte Nutzer werden automatisch zum Dashboard redirected
 - [ ] Seite hat optimierten `<title>` und Meta-Description für SEO
+- [ ] **Die Meta-Description bewirbt ebenfalls nur eingeschaltete Funktionen** — sie ist der Text, den Suchmaschinen zeigen
+
 - [ ] Footer wird über Root-Layout bereitgestellt (kein doppelter Footer)
+
+> **Geändert am 2026-08-05.** „Smooth Scroll zwischen Sektionen" ist gestrichen: Die Seite hat keine Sprungmarken (0 Anker geprüft), das Kriterium beschrieb etwas, das nie gebaut wurde. Das Kriterium zur Meta-Description ist neu — sie hatte den Wechsel des Seiteninhalts nicht mitgemacht und nannte weiter „Verkaufsinserate".
 
 ## Edge Cases
 - Was passiert, wenn ein eingeloggter Nutzer direkt / aufruft? → Redirect zu /dashboard
@@ -189,19 +197,19 @@ Ein einzelner Fehlschlag im ersten `chromium`-Lauf trat in zwei Folgeläufen nic
 
 ## QA Test Results
 
-**Geprüft am:** 2026-08-05 · **Ergebnis: bedingt produktionsreif** (zwei mittlere Fehler offen)
+**Geprüft am:** 2026-08-05 · **Ergebnis: produktionsreif** (beide Fehler behoben)
 
 ### Akzeptanzkriterien
 
 | Bereich | Ergebnis |
 |---|---|
 | Hero (5) | **5 / 5** |
-| Features (3) | **2 / 3** — ein Kriterium ist überholt, siehe unten |
-| Preistabelle (7) | **6 / 7** — siehe BUG-1 |
+| Features (4, angepasst) | **4 / 4** |
+| Preistabelle (9, angepasst) | **9 / 9** |
 | Social Proof (3) | **3 / 3** |
 | FAQ-Teaser (2) | **2 / 2** |
 | Abschluss-CTA (2) | **2 / 2** |
-| Allgemein (7) | **5 / 7** — siehe BUG-2 und „Überholte Kriterien" |
+| Allgemein (7, angepasst) | **7 / 7** |
 
 ### Gefundene Fehler
 
@@ -237,11 +245,42 @@ Diese Kriterien sind nicht verletzt, sondern **veraltet**. Sie stammen aus dem A
 - `chromium` **178 grün**, `Mobile Safari` **178 grün**, `chromium-auth` **128 grün**
 - Unit-Tests **643 grün**
 
+### Nachbesserung (2026-08-05) — beide Fehler behoben
+
+**BUG-1:** Über der Tarifübersicht steht jetzt „**14 Tage kostenlos testen** — voller Umfang, unbegrenzt Fahrzeuge, keine Zahlungsdaten nötig." Der Zusatz zu den Zahlungsdaten ist geprüft: Das Abo entsteht durch den Auslöser beim Anlegen des Kontos, ohne Stripe.
+
+Die erste Fassung lautete „Jeder Start beginnt mit 14 Tage kostenlos testen" — grammatisch schief. Umgestellt.
+
+**BUG-2:** Die Beschreibung nennt jetzt den Kostenbereich statt der Verkaufsinserate: „Dokumentiere Wartungen, Restaurierungen und Kosten — vom Tankbuch bis zur Wertentwicklung. 14 Tage kostenlos testen."
+
+### Angepasste Akzeptanzkriterien
+
+Drei überholte Kriterien sind ersetzt, vier neue kamen hinzu — jeweils mit einer Notiz im Spec, warum:
+
+| Alt | Neu |
+|---|---|
+| „Features: … Kurzprofil teilen, Verkaufsinserat" | „… Kosten im Blick, Wertentwicklung" **+ es werden nur eingeschaltete Funktionen beworben** |
+| „Premium: … alle Features" | „… Kostenauswertung und Wertentwicklung" **+ Fahrzeuganzahl an erster Stelle** **+ Grenzen stimmen mit `PLANS` überein** |
+| „Smooth Scroll zwischen Sektionen" | gestrichen **+ die Meta-Description bewirbt ebenfalls nur eingeschaltete Funktionen** |
+
+Die drei neuen Kriterien sind genau die, die die beiden Fehler und den Hauptbefund der Überarbeitung verhindert hätten.
+
+### Prüfstand nach der Nachbesserung
+
+| Prüfung | Ergebnis |
+|---|---|
+| `tests/PROJ-17-landing-page.spec.ts` | **28 / 28 grün** |
+| `chromium` | **182 grün**, 0 Fehlschläge |
+| `Mobile Safari` | **182 grün**, 0 Fehlschläge |
+| Unit-Tests | **643 grün** |
+| Lint / Typen / Build | 0 Fehler |
+| 375 / 768 / 1440 px | kein Querscrollen |
+
 ### Empfehlung
 
-**Noch nicht ausliefern.** Beide Fehler sind mittelschwer und beide betreffen dasselbe: Was die Seite über das Produkt behauptet, stimmt nicht mit dem überein, was das Produkt tut. BUG-2 wirkt dabei über die Suchergebnisse nach außen, auch ohne dass jemand die Seite besucht.
+**Auslieferbar.** Kein offener Fehler.
 
-Beide sind klein zu beheben. Danach sollten die drei überholten Kriterien im Spec angepasst werden — sonst misst der nächste Durchgang wieder gegen einen Stand vom April.
+Ein Punkt bleibt bewusst liegen: Die beiden Kundenstimmen sind erfunden und als Platzhalter gekennzeichnet. Sie sind über `NEXT_PUBLIC_MVP_MODE` ausgeblendet und derzeit nicht öffentlich. **Vor dem Einschalten dieses Abschnitts** braucht es echte, freigegebene Zitate — oder er wird gestrichen.
 
 
 ## Deployment
