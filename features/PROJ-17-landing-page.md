@@ -1,6 +1,6 @@
 # PROJ-17: Landing Page
 
-## Status: Approved
+## Status: Deployed
 **Created:** 2026-04-08
 **Last Updated:** 2026-08-05
 
@@ -284,4 +284,40 @@ Ein Punkt bleibt bewusst liegen: Die beiden Kundenstimmen sind erfunden und als 
 
 
 ## Deployment
-_To be added by /deploy_
+
+**Ausgeliefert am:** 2026-08-05 · **Produktion:** https://www.oldtimer-docs.com · **Tag:** `v1.34.0-PROJ-17`
+
+Keine Datenbankänderung — reine Frontend-Auslieferung.
+
+### Vor der Auslieferung geprüft
+
+Build erfolgreich, Lint und Typen ohne Fehler, `chromium` 182 grün, `Mobile Safari` 182 grün, 643 Unit-Tests, keine Secrets im Repository, QA auf **Approved**.
+
+### Der Vergleichspunkt
+
+Die Live-Beschreibung lautete **vor** dem Deploy:
+
+> „… Dokumentiere Wartungen, Restaurierungen und Besitzerwechsel. **Erstelle Verkaufsinserate** und teile die Fahrzeughistorie."
+
+und **danach**:
+
+> „… Dokumentiere Wartungen, Restaurierungen und **Kosten — vom Tankbuch bis zur Wertentwicklung. 14 Tage kostenlos testen**."
+
+Damit ist auch das behoben, was Suchmaschinen anzeigen. Der alte Text hatte für eine abgeschaltete Funktion geworben, und zwar an der Stelle, die Menschen erreicht, bevor sie die Seite überhaupt öffnen.
+
+### Nach der Auslieferung geprüft
+
+| Prüfung | Ergebnis |
+|---|---|
+| Hero-CTA → `/register`, Hero-Bild vorhanden | ja |
+| „14 Tage kostenlos testen" sichtbar | ja |
+| Kurzprofil, Verkaufsinserat, Verkaufsassistent, Marktüberblick | **alle weg** |
+| „500+", „10.000+" | **weg** |
+| Kundenstimmen | ausgeblendet, wie vorgesehen |
+| Tarife | „1 Fahrzeug" und „Unbegrenzt Fahrzeuge" beide sichtbar |
+| 375 / 768 / 1440 px | kein Querscrollen |
+| Browser-Konsole | keine Fehler |
+
+### Was bewusst offen bleibt
+
+Die beiden **Kundenstimmen sind erfunden** und als Platzhalter gekennzeichnet, ebenso die Kennzahlen. Beide Blöcke hängen an `NEXT_PUBLIC_MVP_MODE` und sind in der Produktion ausgeblendet — in der Live-Prüfung bestätigt. **Vor dem Einschalten** brauchen sie echte Zahlen und echte, freigegebene Zitate.
