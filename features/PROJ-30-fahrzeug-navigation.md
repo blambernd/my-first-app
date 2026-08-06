@@ -532,3 +532,50 @@ Die Farbtoken werden ausschließlich von dieser Navigation verwendet; andere Ans
 ### Offen
 
 Die **Premium-Kennzeichnung** ist weiterhin ungeprüft, weil der Verkaufsassistent als einziger kostenpflichtiger Bereich ausgesetzt ist. Nachzuholen, sobald er zurückkehrt.
+
+## Nachbesserung (2026-08-05) — drei Formatierungsfehler
+
+Vom Nutzer mit Bildschirmfotos gemeldet.
+
+### 1. Der Kostenbereich klappt jetzt immer auf
+
+Vorher hing es an `defaultOpen={imBereich}`, also daran, ob man **schon** im Kostenbereich stand. Wer ihn von außen suchte, sah nur „Kosten" und musste erst den Pfeil finden.
+
+Dazu kam ein zweiter, unauffälligerer Fehler: `defaultOpen` greift nur beim Einhängen der Komponente. Die Seitenleiste bleibt beim Navigieren stehen — **das Hineinnavigieren klappte den Bereich also gar nicht auf**, obwohl die Bedingung dann zutraf. Aufgefallen wäre das kaum, weil beim ersten Laden einer Kostenseite alles richtig aussah.
+
+Jetzt: `defaultOpen`, ohne Bedingung.
+
+### 2. Der Footer lag unter der Seitenleiste
+
+Aus „© 2026 Oldtimer Docs. Alle Rechte vorbehalten." war sichtbar nur „er Docs. Alle Rechte vorbehalten." — gemessen **127 px verdeckt**: Der Text begann bei x = 96, die Seitenleiste reichte bis x = 223.
+
+Ursache: Der Footer aus dem Wurzel-Layout hängt direkt am `body` und damit außerhalb des Sidebar-Providers. Der Hauptbereich hält sich über den Fluss innerhalb des Providers frei; der Footer bekommt davon nichts mit, und die Seitenleiste ist `fixed`.
+
+**Gewählte Lösung:** Der Provider trägt jetzt `data-app-shell`; eine Regel in `globals.css` blendet den äußeren Footer auf solchen Seiten aus, und das Fahrzeug-Layout gibt ihn innerhalb von `SidebarInset` aus.
+
+Die naheliegendere Alternative — dem Footer einen linken Abstand in Höhe der Seitenleiste geben — wurde verworfen: Diese Breite müsste an zwei Stellen gepflegt werden und ändert sich beim Einklappen und auf dem Smartphone. Im Inhaltsfluss ordnet er sich von selbst richtig ein; auf allen drei Breiten geprüft.
+
+### 3. Modellname und Datum flossen ineinander
+
+„Mercedes-Benz SL380 1.1.1980" — ohne Trennzeichen und mit einstelligen Tagen las sich die Zeile als ein einziger Ausdruck. Jetzt ein Mittelpunkt als Trenner und zweistellige Tage: „Mercedes-Benz SL380 · 01.01.1980".
+
+### Angepasste Tests
+
+Zwei Tests prüften das alte Verhalten und mussten nachziehen — der Pfeil öffnete dort aus dem geschlossenen Zustand, jetzt schließt er zuerst:
+
+- „Der Pfeil klappt auf, ohne zu navigieren" → **„klappt zu und wieder auf"**: Erst wird geprüft, dass er ohne Zutun offen ist, dann beide Richtungen
+- „Auch ein Unterbereich schließt das Panel (BUG-1)": Der Klick auf den Pfeil ist entfallen — er hätte den Unterpunkt jetzt versteckt
+
+**Neu:** „Der Kostenbereich ist von Anfang an aufgeklappt" — geprüft auf der Übersicht, im Scheckheft und im Tankbuch, also ausdrücklich auch von außerhalb des Bereichs.
+
+### Prüfstand
+
+| Prüfung | Ergebnis |
+|---|---|
+| `chromium-auth` | **129 grün**, 0 Fehlschläge |
+| `chromium` | **182 grün** |
+| Unit-Tests | **643 grün** |
+| Lint / Typen / Build | 0 Fehler |
+| Footer auf 375 / 768 / 1440 px | genau einer sichtbar, keine Überlappung, kein Querscrollen |
+
+Ein Fehlschlag in einem früheren Gesamtlauf ließ sich im nachfolgenden Lauf nicht reproduzieren; aus der abgeschnittenen Ausgabe ging nicht hervor, welcher Test es war.

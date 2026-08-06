@@ -112,3 +112,20 @@
     display: none;
   }
 }
+
+/**
+ * Seiten mit Fahrzeug-Seitenleiste bringen ihren Footer selbst mit.
+ *
+ * Der Footer aus dem Wurzel-Layout hängt direkt am `body` und liegt damit
+ * außerhalb des Sidebar-Providers. Die Seitenleiste ist `fixed` — sie legte
+ * sich über seine linken 127 px, aus „© 2026 Oldtimer Docs" wurde sichtbar
+ * nur „er Docs".
+ *
+ * Ihn hier auszublenden und im Inhaltsbereich auszugeben ist robuster, als
+ * ihm einen Abstand in Höhe der Seitenleiste zu geben: Diese Breite müsste
+ * an zwei Stellen gepflegt werden und ändert sich beim Einklappen und auf
+ * dem Smartphone.
+ */
+body:has([data-app-shell]) > footer {
+  display: none;
+}

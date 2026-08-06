@@ -228,8 +228,12 @@ function AreaWithChildren({
   }
 
   return (
-    // Steht man auf einer Unterseite, ist der Bereich beim Laden bereits offen
-    <Collapsible defaultOpen={imBereich} className="group/collapsible">
+    // Immer aufgeklappt. Vorher hing es an `imBereich`, also daran, ob man
+    // schon in dem Bereich stand — wer ihn von außen suchte, sah nur „Kosten"
+    // und musste erst den Pfeil finden. Dazu kam, dass `defaultOpen` nur beim
+    // Einhängen greift: Die Seitenleiste bleibt beim Navigieren stehen, das
+    // Hineinnavigieren klappte den Bereich also gar nicht auf.
+    <Collapsible defaultOpen className="group/collapsible">
       <SidebarMenuItem>
         {/* Der Name führt in den Bereich, der Pfeil klappt auf.
             Beides auf denselben Klick zu legen wäre eine Verschlechterung:

@@ -13,6 +13,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { Toaster } from "@/components/ui/sonner";
+import { SiteFooter } from "@/components/site-footer";
 import type { VehicleWithImages } from "@/lib/validations/vehicle";
 import type { MemberRole } from "@/lib/validations/member";
 
@@ -106,7 +107,14 @@ export default async function VehicleLayout({
   const vehicleName = `${typedVehicle.make} ${typedVehicle.model}`;
 
   return (
-    <SidebarProvider defaultOpen={sidebarOffen}>
+    // `data-app-shell` markiert eine Seite mit Seitenleiste. Der Footer aus
+    // dem Wurzel-Layout hängt am `body` und damit außerhalb dieses Providers —
+    // die Seitenleiste ist `fixed` und legte sich über seine linken 127 px.
+    // Statt die Breite an zwei Stellen zu pflegen, wird der äußere Footer auf
+    // solchen Seiten ausgeblendet (globals.css) und hier im Inhaltsfluss
+    // ausgegeben, wo er sich von selbst richtig einordnet — auch beim
+    // Einklappen und auf dem Smartphone.
+    <SidebarProvider defaultOpen={sidebarOffen} data-app-shell>
       <VehicleSidebar
         vehicleId={id}
         isOwner={isOwner}
@@ -128,11 +136,21 @@ export default async function VehicleLayout({
                 <SidebarTrigger className="-ml-1" />
                 <h1 className="text-xl font-medium tracking-tight truncate">
                   {typedVehicle.make} {typedVehicle.model}
+                  {/* Trennzeichen und zweistellige Tage: Ohne beides las sich
+                      die Zeile als „SL380 1.1.1980" — die Modellnummer und das
+                      Datum flossen ineinander. */}
                   <span className="text-muted-foreground font-light ml-2">
+                    <span aria-hidden="true" className="mr-2">
+                      ·
+                    </span>
                     {typedVehicle.first_registration_date
                       ? new Date(
                           typedVehicle.first_registration_date
-                        ).toLocaleDateString("de-DE")
+                        ).toLocaleDateString("de-DE", {
+                          day: "2-digit",
+                          month: "2-digit",
+                          year: "numeric",
+                        })
                       : typedVehicle.year}
                   </span>
                 </h1>
@@ -158,6 +176,8 @@ export default async function VehicleLayout({
               Leiste liegt. */}
           <div className="pt-4 sm:pt-6 pb-20 md:pb-10">{children}</div>
         </div>
+
+        <SiteFooter />
 
         <MobileBottomNav />
         <Toaster />

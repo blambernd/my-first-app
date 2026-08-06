@@ -78,24 +78,56 @@ test.describe("PROJ-30: Fahrzeug-Navigation", () => {
     await expect(kosten).toHaveAttribute("href", `${BASIS}/kosten`);
   });
 
-  test("AC: Der Pfeil klappt auf, ohne zu navigieren", async ({ page }) => {
+  test("AC: Der Pfeil klappt zu und wieder auf, ohne zu navigieren", async ({
+    page,
+  }) => {
+    // Seit dem 2026-08-05 ist der Kostenbereich **immer** aufgeklappt — vorher
+    // hing es daran, ob man schon darin stand. Der Pfeil schließt jetzt also
+    // zuerst. Geprüft bleibt das Eigentliche: Er schaltet um, ohne zu
+    // navigieren.
     await page.goto(`${BASIS}/scheckheft`);
     await expect(page.getByRole("link", { name: "Scheckheft", exact: true })).toBeVisible({
       timeout: 30000,
     });
 
-    await page
-      .getByRole("button", { name: /Kosten auf- oder zuklappen/ })
-      .click();
-
-    await expect(page).toHaveURL(new RegExp(`${BASIS}/scheckheft$`));
-    for (const unter of [
+    const unterbereiche = [
       "Laufende Kosten",
       "Einzelkosten",
       "Auswertung",
       "Wertentwicklung",
-    ]) {
+    ];
+
+    // Ohne Zutun bereits offen
+    for (const unter of unterbereiche) {
       await expect(page.getByRole("link", { name: unter })).toBeVisible();
+    }
+
+    const pfeil = page.getByRole("button", {
+      name: /Kosten auf- oder zuklappen/,
+    });
+
+    await pfeil.click();
+    await expect(page).toHaveURL(new RegExp(`${BASIS}/scheckheft$`));
+    await expect(page.getByRole("link", { name: "Einzelkosten" })).toHaveCount(0);
+
+    await pfeil.click();
+    await expect(page).toHaveURL(new RegExp(`${BASIS}/scheckheft$`));
+    for (const unter of unterbereiche) {
+      await expect(page.getByRole("link", { name: unter })).toBeVisible();
+    }
+  });
+
+  test("AC: Der Kostenbereich ist von Anfang an aufgeklappt", async ({
+    page,
+  }) => {
+    // Auch von außerhalb des Bereichs: Wer ihn sucht, soll die Unterpunkte
+    // sehen und nicht erst den Pfeil finden müssen.
+    for (const pfad of ["", "/scheckheft", "/tankbuch"]) {
+      await page.goto(`${BASIS}${pfad}`);
+      await expect(
+        page.getByRole("link", { name: "Überblick" }),
+        `Pfad ${pfad || "/"}`
+      ).toBeVisible({ timeout: 30000 });
     }
   });
 
@@ -256,9 +288,8 @@ test.describe("PROJ-30: Fahrzeug-Navigation", () => {
     await page.locator('[data-sidebar="trigger"]').first().click();
     await expect(page.getByRole("dialog")).toBeVisible();
 
-    await page
-      .getByRole("button", { name: /Kosten auf- oder zuklappen/ })
-      .click();
+    // Kein Klick auf den Pfeil mehr nötig: Der Bereich ist offen. Ihn zu
+    // klicken würde ihn jetzt zuklappen und den Unterpunkt verstecken.
     await page.getByRole("link", { name: "Einzelkosten" }).click();
 
     await expect(page).toHaveURL(new RegExp(`${BASIS}/kosten/einzelkosten$`));
