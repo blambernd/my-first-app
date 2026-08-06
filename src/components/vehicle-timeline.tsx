@@ -83,6 +83,11 @@ const CATEGORY_ICONS: Record<MilestoneCategory, typeof FileCheck> = {
 
 const ITEMS_PER_PAGE = 50;
 
+/** Sprungziel eines Meilensteins in der Liste */
+function meilensteinAnker(id: string): string {
+  return `meilenstein-${id}`;
+}
+
 function ImageLightbox({
   images,
   initialIndex,
@@ -221,16 +226,23 @@ function MilestoneCard({
       type="button"
       onClick={onClick}
       className={`flex flex-col items-center text-center w-28 sm:w-32 shrink-0 cursor-pointer group transition-all duration-200 ${
-        isSelected ? "opacity-100 scale-105" : "opacity-60 hover:opacity-90 hover:scale-[1.02]"
+        isSelected ? "scale-105" : "hover:scale-[1.02]"
       }`}
     >
       {/* Node on the line */}
       <div className="relative mb-3">
+        {/* Die Kategoriefarbe steht jetzt auf **jedem** Punkt, nicht nur auf
+            dem ausgewählten. Vorher war die Leiste durchweg grau: Rot für
+            einen Unfall und Orange für eine Restaurierung gab es zwar in
+            CATEGORY_CONFIG, sichtbar wurde beides aber erst nach dem Klick.
+            Damit war die Farbe wertlos — man sah nicht, wo im Leben des
+            Fahrzeugs etwas passiert ist. Der ausgewählte Punkt hebt sich
+            weiter ab, jetzt über den Ring statt über die Farbe. */}
         <div
-          className={`h-10 w-10 rounded-full flex items-center justify-center transition-all duration-200 shadow-sm ${
+          className={`h-10 w-10 rounded-full flex items-center justify-center transition-all duration-200 shadow-sm ${config.color} ${
             isSelected
-              ? `${config.color} ring-2 ring-offset-2 ring-offset-background ring-current shadow-md`
-              : "bg-muted text-muted-foreground"
+              ? "ring-2 ring-offset-2 ring-offset-background ring-current shadow-md"
+              : "opacity-80 group-hover:opacity-100"
           }`}
         >
           <Icon className="h-4.5 w-4.5" />
@@ -935,6 +947,24 @@ export function VehicleTimeline({
     }
   }, [visibleMilestones, selectedMilestone]);
 
+  /** Alle Restaurationen im gefilterten Zeitraum, chronologisch */
+  const restaurationen = useMemo(
+    () => filteredMilestones.filter((m) => m.category === "restauration"),
+    [filteredMilestones]
+  );
+
+  /**
+   * Ein Klick in der Übersichtsleiste springt zum Eintrag, statt ihn als
+   * einzigen sichtbar zu machen. Die Auswahl bleibt erhalten — sie hebt den
+   * Punkt in der Leiste hervor.
+   */
+  const springeZuMeilenstein = useCallback((id: string) => {
+    setSelectedMilestoneId(id);
+    document
+      .getElementById(meilensteinAnker(id))
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
+
   // Scroll state tracking
   const updateScrollState = useCallback(() => {
     const el = scrollRef.current;
@@ -1218,7 +1248,7 @@ export function VehicleTimeline({
                     supabaseUrl={supabaseUrl}
                     isSelected={selectedMilestoneId === ms.id}
                     docCount={(documentsByMilestone[ms.id] ?? []).length}
-                    onClick={() => setSelectedMilestoneId(ms.id)}
+                    onClick={() => springeZuMeilenstein(ms.id)}
                   />
                 ))}
               </div>
@@ -1239,37 +1269,67 @@ export function VehicleTimeline({
             )}
           </div>
 
-          {/* Selected milestone detail */}
-          {selectedMilestone && (
-            selectedMilestone.category === "restauration" ? (
-              <RestorationDetail
-                milestone={selectedMilestone}
-                allRestorations={filteredMilestones.filter((m) => m.category === "restauration")}
-                supabaseUrl={supabaseUrl}
-                documents={documentsByMilestone[selectedMilestone.id] ?? []}
-                canEdit={canEdit && (canEditAll || selectedMilestone.created_by === userId)}
-                onEdit={handleEditMilestone}
-                onDelete={handleDeleteMilestone}
-                onDeleteImage={handleDeleteImage}
-                onDeleteDocument={handleDeleteDocument}
-                onUpdateCaption={handleUpdateCaption}
-                onUpdateDocument={handleUpdateDocument}
-                onSelectMilestone={setSelectedMilestoneId}
-              />
-            ) : (
-              <MilestoneDetail
-                milestone={selectedMilestone}
-                supabaseUrl={supabaseUrl}
-                documents={documentsByMilestone[selectedMilestone.id] ?? []}
-                canEdit={canEdit && (canEditAll || selectedMilestone.created_by === userId)}
-                onEdit={() => handleEditMilestone(selectedMilestone)}
-                onDelete={() => handleDeleteMilestone(selectedMilestone.id)}
-                onDeleteImage={handleDeleteImage}
-                onDeleteDocument={handleDeleteDocument}
-                onUpdateDocument={handleUpdateDocument}
-              />
-            )
-          )}
+          {/* Alle Meilensteine untereinander, chronologisch.
+
+              Bis zum 2026-08-06 stand hier nur der **ausgewählte** Eintrag.
+              Bei sieben Meilensteinen war einer lesbar und sechs waren es
+              nicht — ihre Beschreibungen standen nicht einmal im Quelltext,
+              also auch nicht für die Suche im Browser. Wer die Historie lesen
+              wollte, musste sie durchklicken; herzeigen ließ sie sich gar
+              nicht. Für ein Produkt, das mit „lückenloser Historie" wirbt,
+              war das die falsche Voreinstellung.
+
+              Die Leiste oben bleibt — als Übersicht, die zum Eintrag
+              springt, statt ihn als einzigen zu zeigen. */}
+          <div className="space-y-4">
+            {visibleMilestones.map((ms) => {
+              const eigen =
+                canEdit && (canEditAll || ms.created_by === userId);
+
+              if (ms.category === "restauration") {
+                // Der „Restaurationsverlauf" fasst alle Restaurationen
+                // zusammen. In der durchgehenden Liste würde er sich bei
+                // jedem Eintrag wiederholen — deshalb nur beim ersten.
+                const istErste =
+                  restaurationen.length > 0 &&
+                  restaurationen[0].id === ms.id;
+                return (
+                  <div key={ms.id} id={meilensteinAnker(ms.id)}>
+                    <RestorationDetail
+                      milestone={ms}
+                      allRestorations={istErste ? restaurationen : []}
+                      supabaseUrl={supabaseUrl}
+                      documents={documentsByMilestone[ms.id] ?? []}
+                      canEdit={eigen}
+                      onEdit={handleEditMilestone}
+                      onDelete={handleDeleteMilestone}
+                      onDeleteImage={handleDeleteImage}
+                      onDeleteDocument={handleDeleteDocument}
+                      onUpdateCaption={handleUpdateCaption}
+                      onUpdateDocument={handleUpdateDocument}
+                      onSelectMilestone={springeZuMeilenstein}
+                    />
+                  </div>
+                );
+              }
+
+              return (
+                <div key={ms.id} id={meilensteinAnker(ms.id)}>
+                  <MilestoneDetail
+                    milestone={ms}
+                    supabaseUrl={supabaseUrl}
+                    documents={documentsByMilestone[ms.id] ?? []}
+                    canEdit={eigen}
+                    onEdit={() => handleEditMilestone(ms)}
+                    onDelete={() => handleDeleteMilestone(ms.id)}
+                    onDeleteImage={handleDeleteImage}
+                    onDeleteDocument={handleDeleteDocument}
+                    onUpdateDocument={handleUpdateDocument}
+                  />
+                </div>
+              );
+            })}
+          </div>
         </>
       )}
 
