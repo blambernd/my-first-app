@@ -579,3 +579,25 @@ Zwei Tests prüften das alte Verhalten und mussten nachziehen — der Pfeil öff
 | Footer auf 375 / 768 / 1440 px | genau einer sichtbar, keine Überlappung, kein Querscrollen |
 
 Ein Fehlschlag in einem früheren Gesamtlauf ließ sich im nachfolgenden Lauf nicht reproduzieren; aus der abgeschnittenen Ausgabe ging nicht hervor, welcher Test es war.
+
+### Auslieferung der Nachbesserung
+
+**Ausgeliefert am:** 2026-08-06 · **Produktion:** https://www.oldtimer-docs.com · **Tag:** `v1.34.1-PROJ-30`
+
+Keine Datenbankänderung.
+
+**Zur Prüfung vor der Auslieferung:** Es wurde bewusst *kein* neuer lokaler Build gemacht. Im Arbeitsverzeichnis lag zu diesem Zeitpunkt fremde, unfertige Arbeit an PROJ-35 (Import-Assistent, Validierung, geänderte `service-log.tsx`) — ein Build daraus hätte etwas anderes geprüft als das, was ausgeliefert wird. Die Messungen weiter oben (Build, 129 / 182 / 643, Lint) liefen gegen genau diesen Commit; die PROJ-35-Quelldateien sind erst danach entstanden. Vercel baut ohnehin den gepushten Stand.
+
+**Ein Fehler, der dabei auffiel und behoben wurde:** Der erste Commit hatte per `git add -A` die PROJ-35-Spec samt PRD- und INDEX-Einträgen mit eingesammelt — fremde Arbeit unter der Überschrift „Drei Formatierungsfehler beheben". Der Commit wurde aufgelöst und neu gesetzt, mit genau fünf Dateien. Gepusht war zu dem Zeitpunkt nichts.
+
+#### In der Produktion nachgeprüft
+
+| Prüfung | Ergebnis |
+|---|---|
+| Kostenbereich von `/scheckheft` aus, also von außerhalb | alle fünf Unterpunkte sichtbar |
+| Sichtbare Footer | genau **1** |
+| Footer-Text ab x = 240, Seitenleiste bis x = 223 | **keine Überlappung** |
+| Vollständiger Text | „© 2026 Oldtimer Docs. Alle Rechte vorbehalten." |
+| Kopfzeile | Trennzeichen vorhanden |
+| 375 / 768 / 1440 px | je ein Footer, kein Querscrollen |
+| Browser-Konsole | keine Fehler |
