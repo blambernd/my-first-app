@@ -129,7 +129,148 @@ Eine Währung pro Fahrzeug löst den tatsächlichen Bedarf (ein Schweizer Halter
 <!-- Sections below are added by subsequent skills -->
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture_
+
+### Der Befund, der alles andere bestimmt
+
+Bevor irgendetwas entworfen wird, die eine Frage: Wie oft steht „Euro" eigentlich im Programm? Die Antwort entscheidet, ob diese Funktion einen Nachmittag oder zwei Wochen kostet.
+
+**Es gibt genau eine Stelle, die Geld zur Anzeige bringt.** Ein einziger Helfer wird **46 Mal aus 11 Komponenten** aufgerufen — Kostenüberblick, Auswertung, Wertentwicklung, Diagramme, Tankbuch, laufende Kosten, Einzelkosten, Scheckheft und Kaufpreis. Alle bekommen ihr Euro-Zeichen von dort.
+
+Das ist der Glücksfall dieser Aufgabe: Diese eine Stelle erfährt, welche Währung gilt, und **46 Anzeigen stimmen auf einen Schlag.** Ohne diesen gemeinsamen Helfer wären es 46 einzelne Entscheidungen gewesen, von denen erfahrungsgemäß zwei oder drei vergessen werden — und genau die fallen dann als falsch beschriftete Beträge auf.
+
+**Der zweite Glücksfall:** Das gemeinsame Grundgerüst aller Fahrzeugseiten (`vehicles/[id]/layout.tsx`) lädt bereits **alle Spalten des Fahrzeugs**, für jede Unterseite, bei jedem Aufruf. Die neue Währungsspalte ist dort also automatisch vorhanden — **ohne eine einzige zusätzliche Datenbankabfrage.**
+
+### A) Komponentenstruktur
+
+```
+Fahrzeug-Grundgerüst  (lädt das Fahrzeug bereits vollständig)
++-- NEU: Währungs-Bereitsteller
+|      Kennt die Währung des Fahrzeugs und stellt sie allen
+|      Unterseiten zur Verfügung. Kostet keine Abfrage.
+|
++-- Kostenüberblick ........... liest die Währung
++-- Kostenauswertung .......... liest die Währung
++-- Wertentwicklung ........... liest die Währung
++-- Laufende Kosten ........... liest die Währung
++-- Einzelkosten .............. liest die Währung
++-- Tankbuch .................. liest die Währung
++-- Scheckheft (Kostenfeld) ... liest die Währung
++-- Kaufpreis-Bereich ......... liest die Währung
+|
++-- Ersatzteile ............... bleibt Euro (fremder Markt)
++-- Marktpreis-Analyse ........ bleibt Euro (fremder Markt)
+
+Fahrzeug anlegen / bearbeiten
++-- NEU: Auswahlfeld „Währung" (neun Einträge, Code + Klartext)
++-- NEU: Warnhinweis beim Wechsel
+       Erscheint nur, wenn bereits Beträge erfasst sind.
+       Nennt die Zahl der betroffenen Einträge.
+
+Transfer annehmen  (eigene Seite, außerhalb des Fahrzeug-Grundgerüsts)
++-- NEU: Währungsauswahl, vorbelegt mit der bisherigen Währung
++-- Kaufpreis-Eingabe .......... in der gewählten Währung
+
+Fahrzeugübersicht (Dashboard)
++-- NEU: Währungskennzeichen je Fahrzeug
+       Nur sichtbar, wenn der Nutzer überhaupt gemischt führt.
+```
+
+### B) Datenmodell (in Worten)
+
+**Beim Fahrzeug kommt eine Angabe dazu:**
+
+> Währung — ein dreistelliger Code nach dem internationalen Standard (EUR, CHF, GBP, USD, SEK, DKK, NOK, PLN, CZK). Pflichtangabe, Vorgabe **EUR**.
+
+Die Vorgabe ist der ganze Migrationsplan: **Alle heute vorhandenen Fahrzeuge werden dadurch automatisch zu Euro-Fahrzeugen** — was sie faktisch immer waren. Niemand muss etwas bestätigen, niemand bekommt eine Rückfrage, und für ein reines Euro-Konto sieht die Anwendung danach exakt aus wie vorher.
+
+**Bei den Beträgen ändert sich nichts.** Sie bleiben ganzzahlige Kleinsteinheiten wie bisher. Das ist wichtig zu betonen, weil es der Grund ist, warum diese Funktion keine Datenwanderung braucht: Es wird kein einziger gespeicherter Betrag angefasst. Die Währung ist eine reine Beschriftung — und weil nie umgerechnet wird, bleibt sie das auch.
+
+**Bei der anonymen Verkaufssammlung kommt dieselbe Angabe dazu:**
+
+> Währung des Verkaufs — dreistelliger Code, Vorgabe EUR für die bestehenden Datensätze.
+
+**Die Währungsliste selbst wird nicht gespeichert.** Neun feste Einträge im Programm. Eine Datenbanktabelle für neun Zeilen, die sich nie ändern, wäre eine Abfrage bei jedem Seitenaufruf für einen Inhalt, der schon feststeht.
+
+### C) Tech-Entscheidungen
+
+**1. Die Währung wird bereitgestellt, nicht durchgereicht.**
+
+Zwei Wege führen zum Ziel. Man kann die Währung von Seite zu Komponente zu Unterkomponente weiterreichen — das wären Änderungen an jeder Zwischenstation, auch an solchen, die mit Geld nichts zu tun haben. Oder das Fahrzeug-Grundgerüst stellt sie einmal bereit, und wer sie braucht, holt sie sich.
+
+**Empfehlung: bereitstellen.** Begründung: Das Grundgerüst lädt das Fahrzeug ohnehin schon vollständig, die Angabe ist also gratis da. Und die einzelnen Seiten laden das Fahrzeug heute mit gezielten, schmalen Abfragen (das Tankbuch etwa holt nur Kennung und Kilometerstand) — beim Durchreichen müsste **jede dieser Abfragen erweitert werden**, und jede vergessene wäre ein Fahrzeug, das plötzlich wieder Euro anzeigt.
+
+**2. Der Formatierer zieht um.**
+
+Der Helfer, der 11 Komponenten mit Geldbeträgen versorgt, liegt heute in der Prüfdatei für Scheckheft-Einträge — historisch gewachsen, sachlich am falschen Ort. Er bekommt ein eigenes Zuhause für „Währung und Geldanzeige".
+
+Das ist nicht Ordnungsliebe: Diese Datei wird **gerade parallel für PROJ-35 bearbeitet.** Beide Arbeiten an derselben Datei bedeuten Konflikte beim Zusammenführen. Der Umzug löst das Problem, statt es zu verwalten.
+
+**3. Kein Umrechnungskurs — und das ist eine Architekturentscheidung, keine Sparmaßnahme.**
+
+Ein Kurs bringt eine Kette mit: Kursquelle, Stichtag je Betrag, Zwischenspeicher, Verhalten bei Ausfall der Quelle, Nachvollziehbarkeit im Nachhinein. Und am Ende steht in der Auswertung eine gerundete Schätzung neben einem belegten Rechnungsbetrag, ohne dass man den beiden ansieht, welche welche ist.
+
+Die Entscheidung „eine Währung pro Fahrzeug" **macht die gesamte Kette überflüssig**, weil innerhalb eines Fahrzeugs nie zwei Währungen aufeinandertreffen. Deshalb war die Wahl der Ebene die eigentliche Architekturfrage — nicht die Auswahl der Währungen.
+
+**4. Fahrzeugübergreifende Summen: getrennt oder gar nicht.**
+
+Sobald zwei Fahrzeuge in verschiedenen Währungen geführt werden, gibt es keine gemeinsame Gesamtzahl mehr. Jede Stelle, die heute über Fahrzeuge hinweg addiert, muss entweder je Währung getrennt ausweisen oder die Summe weglassen. **Was nicht passieren darf: eine Zahl, die aussieht wie eine Summe und keine ist.** Beim Bau ist zu prüfen, wo solche Summen überhaupt existieren.
+
+**5. Die Warnung beim Wechsel zählt echt.**
+
+„Einige Einträge sind betroffen" überzeugt niemanden. „47 Einträge sind betroffen" schon. Die Zahl kostet eine Abfrage über die sechs Kostenarten — einmalig, nur beim Öffnen des Auswahlfelds, und nur wenn tatsächlich gewechselt wird. Das ist der Preis wert, weil dieser Hinweis die einzige Schutzlinie gegen ein Missverständnis ist, das sonst still 47 falsch beschriftete Beträge hinterlässt.
+
+**6. Die Verkaufsfunktion in der Datenbank bekommt einen Parameter mehr.**
+
+Die Funktion, die einen Fahrzeugübergang abwickelt, erhält die Währung als zusätzliche Angabe. **Wichtig aus Erfahrung:** Die alte Fassung muss dabei ausdrücklich entfernt werden. Am 2026-08-04 entstand bei genau dieser Funktion versehentlich eine zweite Fassung mit weniger Parametern, die stillschweigend die Daten des Käufers verworfen hätte. Zwei Fassungen nebeneinander sind kein Schönheitsfehler, sondern ein stiller Datenverlust.
+
+### D) Die Grenze: was ausdrücklich **nicht** die Fahrzeugwährung bekommt
+
+| Bereich | Bleibt Euro, weil |
+|---|---|
+| Ersatzteil-Suche und Preis-Alerts (PROJ-9) | Die Angebote kommen aus dem deutschen Markt und sind dort in Euro ausgezeichnet. Sie als Franken zu beschriften wäre eine falsche Behauptung über einen fremden Marktplatz. |
+| Marktpreis-Analyse (PROJ-11) | Dieselbe Quelle, derselbe Grund. |
+| Abo-Preise (4,99 € / 49,99 €) | Gehören zum Anbieter, nicht zum Fahrzeug. |
+
+Architektonisch ist das der einfachste Teil: Diese Bereiche **greifen die Währung schlicht nicht ab**. Sie bleiben, wie sie sind. Zu tun ist nur eines — dort, wo eine solche Euro-Angabe neben Beträgen in Fahrzeugwährung steht, muss sie **sichtbar als Euro** beschriftet sein. Sonst liest der Nutzer eines CHF-Fahrzeugs die Preisgrenze seines Ersatzteil-Alerts als Franken.
+
+### E) Reihenfolge — und die eine Tür, die nur einmal aufgeht
+
+Fast alles an dieser Funktion ist umkehrbar. Eine Sache nicht:
+
+> **Die anonyme Verkaufssammlung ist für niemanden lesbar** — keine Leseregel, ausdrücklich entzogene Rechte. Geschrieben wird nur durch die Übergabefunktion. Landet dort ein Verkauf in Franken ohne Währungsangabe, kann ihn **niemand mehr finden und niemand mehr richtigstellen.** Weder der Nutzer noch der Betreiber.
+
+Daraus folgt eine harte Reihenfolge:
+
+1. **Währungsspalte in der Verkaufssammlung** — zuerst, vor allem anderen. Solange nur Euro-Fahrzeuge existieren, ist sie folgenlos; sobald das erste Fremdwährungs-Fahrzeug übertragen wird, ist sie unersetzlich.
+2. Währungsspalte beim Fahrzeug, Auswahlfeld, Anzeige
+3. Warnung beim Wechsel
+4. Transfer und CSV-Export
+5. **Erst danach PROJ-34**
+
+**PROJ-34 steht auf „Architected" und geht von einer reinen Euro-Sammlung aus.** Wird es vor PROJ-36 gebaut, mittelt es Währungen still zusammen — und weil die Tabelle für niemanden lesbar ist, fällt es niemandem auf. Das Design von PROJ-34 ist entsprechend anzupassen: **Die Mindestanzahl für die Anonymität gilt je Währung.** Acht Euro-Verkäufe und zwei Franken-Verkäufe ergeben eine sichtbare Euro-Übersicht und keine Franken-Übersicht — es wird nicht zusammengezählt, um die Mindestzahl zu erreichen.
+
+### F) Umfang in Zahlen
+
+| Was | Umfang |
+|---|---|
+| Zentraler Geldformatierer | **1 Stelle** — versorgt 46 Anzeigen |
+| Komponenten, die ihn nutzen | 11 (keine muss einzeln umgebaut werden) |
+| Bereitsteller im Fahrzeug-Grundgerüst | 1 neu, **0 zusätzliche Abfragen** |
+| Prüftexte mit „€" (z. B. „Betrag muss zwischen … liegen") | rund 9, in 6 Prüfdateien |
+| Datenbank | 2 neue Spalten, 1 Funktion erweitert |
+| Formulare mit Währungsauswahl | 3 (anlegen, bearbeiten, Transfer annehmen) |
+| Neue Pakete | **keine** |
+
+### G) Dependencies
+
+**Keine neuen Pakete.** Die Währungsformatierung kann der Browser bereits — dieselbe eingebaute Funktion, die heute das Euro-Zeichen setzt, versteht alle neun Codes. Es wird ihr künftig nur gesagt, welcher gemeint ist.
+
+### H) Was beim Bau zu prüfen ist
+
+1. **Gibt es fahrzeugübergreifende Geldsummen?** (Dashboard, Auswertungen) — falls ja, je Währung trennen oder weglassen.
+2. **Zeigt das öffentliche Kurzprofil (PROJ-10) Beträge?** Die Spec vermutet nein — das ist zu prüfen, nicht anzunehmen.
+3. **Der CSV-Export** muss die Währung in Kopfzeile oder Spalte nennen, ohne Währungszeichen in die Zahlenfelder zu schreiben — Tabellenkalkulationen sollen weiter rechnen können.
+4. **Die Plausibilitätsgrenzen** (500 bis 2.000.000) gelten je Währung unverändert. Sie fangen Zehnerpotenz-Vertipper, sie bilden keine Kaufkraft ab — eine Umrechnung wäre hier sinnlos.
 
 ## QA Test Results
 _To be added by /qa_
