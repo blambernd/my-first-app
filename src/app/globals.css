@@ -129,3 +129,24 @@
 body:has([data-app-shell]) > footer {
   display: none;
 }
+
+/**
+ * Der Cookie-Hinweis darf die untere Navigationsleiste nicht verdecken.
+ *
+ * Gemessen auf dem iPhone: Der Hinweis begann bei 371 px und reichte bis zum
+ * unteren Rand, die Leiste ab 607 px — bei z-50 gegen z-40 lag er vollständig
+ * darüber und fing ihre Tipp-Gesten ab. Die untere Navigation war damit tot,
+ * solange niemand den Hinweis wegklickte.
+ *
+ * Die Leiste gibt es nur in der Fahrzeugansicht (`md:hidden`, also nur auf dem
+ * Smartphone). Genau dort — und nur dort — rückt der Hinweis darüber. Auf
+ * Anmeldung, Registrierung oder Kontakt bleibt er unten, sonst verdeckte er
+ * dort ohne Grund zusätzlichen Inhalt.
+ */
+@media (max-width: 767px) {
+  body:has([data-app-shell]) .cookie-hinweis {
+    /* 3.5rem Inhalt + 1 px Rahmenlinie — mit glatten 3.5rem blieb eine
+       Pixelzeile Überlappung stehen. */
+    bottom: calc(3.5rem + 1px);
+  }
+}

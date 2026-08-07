@@ -98,7 +98,15 @@ export function CookieConsentBanner() {
   if (!visible) return null;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background shadow-lg">
+    // `cookie-hinweis` steuert eine Regel in globals.css: Auf Seiten mit
+    // unterer Navigationsleiste rückt der Hinweis darüber, statt sie zu
+    // verdecken. Sonst bleibt er ganz unten.
+    //
+    // Die Leiste gibt es nur in der Fahrzeugansicht. Den Hinweis pauschal auf
+    // allen Smartphone-Seiten anzuheben war der erste Versuch und falsch: Auf
+    // Anmeldung, Registrierung und Kontakt gibt es keine Leiste, dort verdeckte
+    // er dadurch nur zusätzlichen Inhalt — zwei Tests fielen prompt um.
+    <div className="cookie-hinweis fixed bottom-0 left-0 right-0 z-50 border-t bg-background shadow-lg">
       <div className="mx-auto max-w-4xl p-4 sm:p-6">
         <div className="flex items-start gap-4">
           <Cookie className="mt-0.5 hidden h-8 w-8 shrink-0 text-muted-foreground sm:block" />
