@@ -7,7 +7,7 @@ import { ConditionalAnalytics } from "@/components/conditional-analytics";
 import { ServiceWorkerRegister } from "@/components/service-worker-register";
 import "./globals.css";
 
-const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://oldtimer-docs.vercel.app";
+const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://oldtimer-docs.com";
 
 export const metadata: Metadata = {
   metadataBase: new URL(BASE_URL),

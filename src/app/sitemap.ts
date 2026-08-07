@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next";
 import { getAllPosts } from "@/lib/blog";
 
-const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://oldtimer-docs.vercel.app";
+const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://oldtimer-docs.com";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const posts = getAllPosts();

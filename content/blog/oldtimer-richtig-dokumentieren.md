@@ -180,4 +180,4 @@ Beginnen Sie heute — egal ob Ihr Fahrzeug frisch restauriert ist oder seit Jah
 
 ---
 
-*Sie möchten die Dokumentation Ihres Oldtimers digital und professionell aufbauen? Mit Oldtimer Docs erstellen Sie eine vollständige digitale Fahrzeugakte — Scheckheft, Dokumente, Fotos und Fahrzeughistorie an einem Ort. Kostenlos starten unter [oldtimer-docs.vercel.app](https://oldtimer-docs.vercel.app).*
+*Sie möchten die Dokumentation Ihres Oldtimers digital und professionell aufbauen? Mit Oldtimer Docs erstellen Sie eine vollständige digitale Fahrzeugakte — Scheckheft, Dokumente, Fotos und Fahrzeughistorie an einem Ort. Kostenlos starten unter [oldtimer-docs.com](https://oldtimer-docs.com).*

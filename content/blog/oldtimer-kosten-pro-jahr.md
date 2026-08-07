@@ -197,4 +197,4 @@ Konkrete Beträge nennen wir nur dort, wo sie gesetzlich festgelegt oder öffent
 
 *Stand der Angaben: August 2026. Steuersätze, Gebühren und Tarifbedingungen können sich ändern — prüfen Sie die Werte vor einer Kaufentscheidung an der jeweiligen Quelle.*
 
-*Sie möchten die Kosten Ihres Oldtimers vollständig im Blick behalten? Mit Oldtimer Docs erfassen Sie Tankbelege, wiederkehrende Kosten, Einzelkosten und Werkstattrechnungen an einem Ort — mit automatischer Auswertung und Verbindung zur Fahrzeughistorie. Kostenlos starten unter [oldtimer-docs.vercel.app](https://oldtimer-docs.vercel.app).*
+*Sie möchten die Kosten Ihres Oldtimers vollständig im Blick behalten? Mit Oldtimer Docs erfassen Sie Tankbelege, wiederkehrende Kosten, Einzelkosten und Werkstattrechnungen an einem Ort — mit automatischer Auswertung und Verbindung zur Fahrzeughistorie. Kostenlos starten unter [oldtimer-docs.com](https://oldtimer-docs.com).*
