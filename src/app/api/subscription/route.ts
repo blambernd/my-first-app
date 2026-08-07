@@ -34,7 +34,24 @@ export async function GET() {
     ? getEffectivePlan(subscription)
     : isBetaMode ? "premium" : "free";
 
+  // Fehlt der Abo-Datensatz, sind Tarif und Fristen unbekannt — der
+  // **Verbrauch** ist es nicht. Bis zum 2026-08-07 gab dieser Zweig pauschal
+  // `vehicleCount: 0` und `storageMb: 0` zurück, ohne zu zählen. Auf dem
+  // Dashboard stand dann „0 / 1" neben einem sichtbaren Fahrzeug.
+  //
+  // Der Auslöser `on_auth_user_created_subscription` legt den Datensatz
+  // eigentlich bei der Registrierung an und funktioniert auch; fünf von neun
+  // Konten hatten am 2026-08-07 trotzdem keinen. Warum, ließ sich nicht mehr
+  // klären. Diese Route soll darüber jedenfalls nicht hinwegtäuschen.
   if (!subscription) {
+    const [vehicleResult, storageMb] = await Promise.all([
+      supabase
+        .from("vehicles")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id),
+      calculateStorageUsageMb(user.id),
+    ]);
+
     return NextResponse.json({
       plan: effectivePlan,
       status: "active",
@@ -43,8 +60,8 @@ export async function GET() {
       currentPeriodEnd: null,
       stripeCustomerId: null,
       limits: serializeLimits(effectivePlan),
-      vehicleCount: 0,
-      storageMb: 0,
+      vehicleCount: vehicleResult.count ?? 0,
+      storageMb: Math.round(storageMb * 100) / 100,
       referralBonusMonths: 0,
       referralBonusUntil: null,
     });
