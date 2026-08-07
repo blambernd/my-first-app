@@ -62,7 +62,9 @@ export function VehicleHeaderActions({
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 text-muted-foreground hover:text-foreground"
+            // Wie beim Navigations-Schalter: 44 px auf dem Smartphone,
+            // darüber kompakt. Gemessen waren es 32 × 32.
+            className="h-11 w-11 md:h-8 md:w-8 text-muted-foreground hover:text-foreground"
             aria-label="Weitere Aktionen"
           >
             <MoreHorizontal className="h-4 w-4" />

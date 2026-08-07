@@ -188,3 +188,45 @@ _To be added by /qa_
 
 ## Deployment
 _To be added by /deploy_
+
+## Bestandsaufnahme (2026-08-07)
+
+Das Feature stand seit April auf „In Progress", ohne dass festgehalten war, was noch fehlt — 12 Kriterien, keines abgehakt. Statt zu schätzen, wurde **gemessen**: alle öffentlichen und angemeldeten Seiten bei 375 px, in der **Produktion** (also gegen ausgelieferten Code).
+
+### Ergebnis je Kriterium
+
+| Kriterium | Stand |
+|---|---|
+| Keine waagerechte Bildlaufleiste bei 375 px | **erfüllt** — 20 von 20 geprüften Seiten sauber |
+| Navigation als Panel bzw. untere Leiste | **erfüllt** (PROJ-30) |
+| Touch-Ziele ≥ 44 px | **teilweise** — siehe unten |
+| Formulare mit passenden Eingabetypen | offen, nicht gemessen |
+| Tabellen als Karten gestapelt | **erfüllt**, stichprobenartig |
+| Dialoge als Vollbild/Bottom-Sheet | offen, nicht gemessen |
+| Galerien per Wischgeste | **erfüllt** (Lightbox mit Touch-Handlern) |
+| Fahrzeug-Dashboard übersichtlich | **erfüllt** |
+| Landing Page responsive | **erfüllt** (PROJ-17) |
+| Anmeldung/Registrierung mobil nutzbar | **erfüllt** |
+| Viewport-Meta-Tags | **erfüllt** |
+| Schriftgrößen lesbar | **teilweise** — kleinste gemessene Größe 10 px, betrifft Beschriftungen und Abzeichen, nicht den Fließtext |
+
+### Zwei Bedienelemente vergrößert
+
+Gemessen in der Produktion, auf **jeder** Fahrzeugseite:
+
+| Element | vorher | jetzt (< 768 px) | Desktop |
+|---|---|---|---|
+| Navigations-Schalter | 28 × 28 | **44 × 44** | 28 × 28 |
+| „Weitere Aktionen" | 32 × 32 | **44 × 44** | 32 × 32 |
+
+Der Navigations-Schalter wiegt am schwersten: Solange die Seitenleiste auf dem Smartphone als Panel überlagert, ist er der **einzige** Weg in die Fahrzeugnavigation. Das Symbol bleibt 16 × 16, nur die Trefferfläche wächst.
+
+### Ein Befund, der nicht zu PROJ-20 gehört
+
+Beim Messen fiel auf, dass `/scheckheft` bei 375 px waagerecht scrollt — die Seite war 412 px breit. **Das gilt nur lokal, nicht in der Produktion.** Ursache ist eine 142 px breite Schaltfläche aus der laufenden, noch nicht committeten PROJ-35-Arbeit in `service-log.tsx`. Gehört dorthin, nicht hierher.
+
+### Was bewusst offen bleibt
+
+- **Schriftgrößen:** Die 10-px-Stellen sind Abzeichen und Hilfstexte. Ob das Kriterium „min. 16 px" wörtlich für alle Texte gelten soll oder nur für Fließtext, ist eine Entscheidung — es wörtlich zu nehmen hieße, das gesamte Abzeichen- und Beschriftungssystem zu vergrößern
+- **Eingabetypen und Dialoge:** nicht gemessen; beides braucht einen Durchgang durch die Formulare statt einer automatischen Messung
+- **Weitere Elemente unter 44 px:** die Schaltflächen des Cookie-Hinweises (40 px hoch) sowie Filter- und Aktionsknöpfe mit 36 px Höhe. Grenzwertig, aber nicht der Einstieg in etwas

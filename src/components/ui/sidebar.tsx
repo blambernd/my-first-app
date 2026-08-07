@@ -284,7 +284,11 @@ const SidebarTrigger = React.forwardRef<
       data-sidebar="trigger"
       variant="ghost"
       size="icon"
-      className={cn("h-7 w-7", className)}
+      // 44 px auf dem Smartphone, ab Tablet wieder kompakt. Gemessen waren es
+      // 28 × 28 — und das ist ausgerechnet der einzige Weg in die
+      // Fahrzeugnavigation, solange die Seitenleiste als Panel überlagert.
+      // Das Symbol bleibt gleich groß, nur die Trefferfläche wächst.
+      className={cn("h-11 w-11 md:h-7 md:w-7", className)}
       onClick={(event) => {
         onClick?.(event)
         toggleSidebar()
