@@ -310,16 +310,18 @@ export function LandingPage() {
             <p className="text-muted-foreground text-base sm:text-lg max-w-xl mx-auto mb-4">
               {"Starten Sie kostenlos und upgraden Sie, wenn Sie mehr brauchen."}
             </p>
-            {/* Jeder neue Zugang beginnt mit 14 Tagen vollem Umfang — der
-                Auslöser in 20260408_subscriptions.sql setzt trial_end auf
-                NOW() + 14 Tage. Das nicht zu sagen verschenkt das stärkste
-                Argument für den Premium-Tarif: Wer mehrere Fahrzeuge hat,
-                merkt den Unterschied in diesen zwei Wochen. */}
+            {/* Hier stand bis zum 2026-08-07 „14 Tage kostenlos testen".
+                Der Testzeitraum ist entfallen (Entscheidung des Nutzers), und
+                ein Versprechen, das die Anwendung nicht hält, darf nicht auf
+                der Startseite stehen. Der kostenlose Tarif bleibt der
+                Einstieg — er ist dauerhaft und braucht keine Zahlungsdaten. */}
             <p className="text-base font-medium mb-8">
-              <span className="text-primary">
-                {"14 Tage kostenlos testen"}
-              </span>
-              {" — voller Umfang, unbegrenzt Fahrzeuge, keine Zahlungsdaten nötig."}
+              {/* Bewusst konkret statt „voller Funktionsumfang": Auswertung und
+                  Wertentwicklung sind im kostenlosen Tarif gerade nicht
+                  enthalten. Eine unscharfe Formulierung wäre dieselbe Art
+                  Überversprechen, wegen der die Seite überarbeitet wurde. */}
+              <span className="text-primary">{"Dauerhaft kostenlos starten"}</span>
+              {" — ein Fahrzeug, Scheckheft, Dokumente und Kostenerfassung. Keine Zahlungsdaten nötig."}
             </p>
 
             {/* Billing toggle */}

@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   // bevor die Seite es tut. Er nannte bis zum 2026-08-05 „Verkaufsinserate",
   // obwohl die Funktion abgeschaltet ist (siehe feature-flags.ts).
   description:
-    "Die digitale Plattform für Oldtimer-Besitzer. Dokumentiere Wartungen, Restaurierungen und Kosten — vom Tankbuch bis zur Wertentwicklung. 14 Tage kostenlos testen.",
+    "Die digitale Plattform für Oldtimer-Besitzer. Dokumentiere Wartungen, Restaurierungen und Kosten — vom Tankbuch bis zur Wertentwicklung. Kostenlos starten.",
   alternates: {
     canonical: "/",
   },

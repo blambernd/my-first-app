@@ -42,7 +42,7 @@ Die bestehende minimalistische Startseite (/) wird durch eine professionelle Lan
 - [ ] Die **Fahrzeuganzahl** steht in beiden Listen an erster Stelle — sie ist der Unterschied, auf den es ankommt
 - [ ] Die genannten Grenzen stimmen mit `PLANS` in `stripe.ts` überein
 - [ ] Konkreter Preis: 4,99 €/Monat oder 49,99 €/Jahr (2 Monate gratis)
-- [ ] "14 Tage kostenlos testen" Hinweis
+- [ ] **Kein Testzeitraum wird versprochen** — der kostenlose Tarif ist der Einstieg
 - [ ] CTA-Buttons: Free → /register, Premium → /register (solange PROJ-8 nicht live)
 - [ ] Visueller Highlight/Empfehlung auf dem Premium-Plan
 
@@ -321,3 +321,41 @@ Damit ist auch das behoben, was Suchmaschinen anzeigen. Der alte Text hatte für
 ### Was bewusst offen bleibt
 
 Die beiden **Kundenstimmen sind erfunden** und als Platzhalter gekennzeichnet, ebenso die Kennzahlen. Beide Blöcke hängen an `NEXT_PUBLIC_MVP_MODE` und sind in der Produktion ausgeblendet — in der Live-Prüfung bestätigt. **Vor dem Einschalten** brauchen sie echte Zahlen und echte, freigegebene Zitate.
+
+## Änderung (2026-08-07) — Testzeitraum entfällt
+
+Auf Entscheidung des Nutzers gibt es **keinen 14-tägigen Testzeitraum** mehr. Der kostenlose Tarif ist der Einstieg.
+
+### Warum das mehrere Stellen betrifft
+
+Der Testzeitraum war am 2026-08-05 als BUG-1 auf die Seite gekommen — er existierte in der Datenbank, wurde aber nicht beworben. Jetzt gilt das Umgekehrte: Er wird nicht mehr vergeben, also darf ihn die Seite nicht mehr versprechen.
+
+| Stelle | vorher | jetzt |
+|---|---|---|
+| Landing Page, über der Tarifübersicht | „14 Tage kostenlos testen — voller Umfang, unbegrenzt Fahrzeuge" | „Dauerhaft kostenlos starten — ein Fahrzeug, Scheckheft, Dokumente und Kostenerfassung" |
+| Meta-Description | „… 14 Tage kostenlos testen." | „… Kostenlos starten." |
+| Auslöser `create_default_subscription` | `plan='trial'`, `trial_end = NOW() + 14 Tage` | `plan='free'`, keine Frist |
+| Akzeptanzkriterium | „14 Tage kostenlos testen" Hinweis | **kein Testzeitraum wird versprochen** |
+| Test | „Der Testzeitraum wird genannt, weil es ihn gibt" | „Es wird kein Testzeitraum versprochen" |
+
+### Niemand verliert etwas
+
+Vor der Änderung geprüft: Von den vier vorhandenen Abo-Datensätzen stand **kein einziger** auf `trial`, und keiner hatte eine laufende Testfrist. Die Umstellung nimmt also niemandem einen laufenden Zugang.
+
+Die Tarifstufe `trial` bleibt in `PLANS` und im CHECK bestehen. Sie wird nicht mehr vergeben, aber `getEffectivePlan` muss weiterhin damit umgehen können, falls je ein alter Datensatz auftaucht. Etwas zu entfernen, das noch gelesen werden könnte, wäre die riskantere Änderung.
+
+### Eine eigene Unschärfe, gleich korrigiert
+
+Die erste Fassung lautete „ein Fahrzeug, **voller Funktionsumfang der Dokumentation**". Das ist zu weich: Kostenauswertung und Wertentwicklung sind im kostenlosen Tarif gerade nicht enthalten. Eine unscharfe Formulierung wäre dieselbe Art Überversprechen, wegen der die Seite überhaupt überarbeitet wurde. Jetzt werden die enthaltenen Bereiche benannt.
+
+### Prüfstand
+
+| Prüfung | Ergebnis |
+|---|---|
+| Neuer Nutzer bekommt `free` ohne Frist | in zurückgerollter Transaktion nachgewiesen |
+| „14 Tage" auf der Seite | **weg** |
+| „14 Tage" in der Meta-Description | **weg** |
+| `tests/PROJ-17-landing-page.spec.ts` | **28 / 28 grün** |
+| `chromium` / `Mobile Safari` | **182 / 182 grün** |
+| Unit-Tests | **686 grün** |
+| Lint / Typen / Build | 0 Fehler |

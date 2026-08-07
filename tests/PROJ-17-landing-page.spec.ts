@@ -283,14 +283,20 @@ test.describe("PROJ-17: Landing Page — Metadaten und Sicherheit", () => {
     }
   });
 
-  test("Der Testzeitraum wird genannt, weil es ihn gibt", async ({ page }) => {
-    // Jeder neue Nutzer bekommt 14 Tage vollen Zugang — der Auslöser in
-    // 20260408_subscriptions.sql setzt trial_end auf NOW() + 14 Tage, und
-    // getEffectivePlan gibt währenddessen „trial" mit unbegrenzten Fahrzeugen
-    // zurück. Das nicht zu erwähnen verschenkt das stärkste Argument für den
-    // Premium-Tarif.
+  test("Es wird kein Testzeitraum versprochen", async ({ page }) => {
+    // Umgekehrt zur früheren Fassung: Bis zum 2026-08-07 bekam jeder neue
+    // Nutzer 14 Tage vollen Zugang, und die Seite sollte das nennen. Der
+    // Testzeitraum ist entfallen — der Auslöser legt jetzt unmittelbar den
+    // kostenlosen Tarif an. Die Seite darf ihn deshalb nicht mehr erwähnen.
     await page.goto("/");
-    await expect(page.getByText(/14 Tage/)).toBeVisible();
+    const text = await page.locator("body").innerText();
+    expect(text).not.toMatch(/14 Tage/);
+    expect(text).not.toMatch(/kostenlos testen/);
+
+    const beschreibung = await page
+      .locator('meta[name="description"]')
+      .getAttribute("content");
+    expect(beschreibung).not.toMatch(/14 Tage/);
   });
 
   test("SICHERHEIT: Der registered-Parameter wird nicht als HTML ausgeführt", async ({
