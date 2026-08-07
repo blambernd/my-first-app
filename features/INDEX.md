@@ -50,7 +50,8 @@
 | PROJ-33 | Verkaufspreis-Erhebung beim Transfer | Deployed | [PROJ-33-verkaufspreis-erhebung.md](PROJ-33-verkaufspreis-erhebung.md) | 2026-08-04 |
 | PROJ-34 | Preisübersicht aus echten Verkäufen | Architected | [PROJ-34-preisuebersicht.md](PROJ-34-preisuebersicht.md) | 2026-08-04 |
 | PROJ-35 | Scheckheft-Import aus Dokumenten | In Progress | [PROJ-35-scheckheft-import.md](PROJ-35-scheckheft-import.md) | 2026-08-05 |
+| PROJ-36 | Währung pro Fahrzeug | Planned | [PROJ-36-waehrung-pro-fahrzeug.md](PROJ-36-waehrung-pro-fahrzeug.md) | 2026-08-07 |
 
 <!-- Add features above this line -->
 
-## Next Available ID: PROJ-36
+## Next Available ID: PROJ-37
