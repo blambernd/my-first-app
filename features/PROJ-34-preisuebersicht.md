@@ -1,6 +1,6 @@
 # PROJ-34: Preisübersicht aus echten Verkäufen
 
-## Status: Planned
+## Status: Architected
 **Created:** 2026-08-04
 **Last Updated:** 2026-08-04
 
@@ -104,7 +104,136 @@ PROJ-33 sammelt bei jedem Transfer einen anonymen Datenpunkt: was tatsächlich g
 <!-- Sections below are added by subsequent skills -->
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture_
+
+**Erstellt:** 2026-08-07
+
+### Entscheidungen des Nutzers (2026-08-07)
+
+| Frage | Entscheidung |
+|---|---|
+| Wo erscheint die Übersicht | **In der Wertentwicklung** |
+| Verhältnis zum eigenen Marktwert | **Ergänzen, nebeneinander** |
+| Zu dünne Datenlage je Baujahr | **Benachbarte Baujahre schrittweise und kenntlich zusammenfassen** |
+
+### ⚠ Eine Folge, die vorab geklärt gehört
+
+Die Wertentwicklung ist **Premium** (PROJ-31/PROJ-33). Mit der Entscheidung, die Übersicht dort anzusiedeln, wird sie damit ebenfalls kostenpflichtig — das **widerspricht dem Akzeptanzkriterium** „Die Übersicht ist für alle angemeldeten Nutzer erreichbar".
+
+Unangenehmer ist die zweite Seite davon: **Beigetragen wird von allen, gesehen nur von Zahlenden.** Ein Nutzer ohne Premium gibt beim Fahrzeug-Transfer seinen Kaufpreis frei (PROJ-33) und bekommt die Auswertung, zu der er beigetragen hat, nicht zu sehen. Das ist vertretbar, aber es sollte eine bewusste Entscheidung sein und keine Nebenwirkung der Platzierung.
+
+**Zwei saubere Auflösungen** — beide ohne großen Aufwand:
+
+1. Das Kriterium ändern: Die Übersicht ist Teil von Premium. Dann sollte die Einwilligung in PROJ-33 das erwähnen
+2. Den Abschnitt innerhalb der Wertentwicklung frei zugänglich machen, den Rest der Seite weiter hinter der Schranke
+
+**Empfehlung: Variante 2.** Sie hält beide Entscheidungen ein und macht die Übersicht zugleich zum stärksten Werbeträger für Premium — wer die Vergleichszahl sieht, sieht daneben, was ihm sonst noch fehlt.
+
+*Bis zur Klärung geht dieser Entwurf von Variante 2 aus.*
+
+### A) Aufbau der Oberfläche
+
+```
+Wertentwicklung  (/vehicles/[id]/kosten/wertentwicklung)
+│
+├── Anschaffung                          bestehend, Premium
+├── Eigener Marktwert                    bestehend, Premium
+│
+├── [NEU] Vergleichspreise               frei zugänglich
+│   ├── Median vergleichbarer Verkäufe
+│   ├── Gestutzte Spanne (ohne die Ränder)
+│   ├── Grundlage: „N Verkäufe · Baujahr 1969–1971 · 50.000–75.000 km · Note 2–3"
+│   ├── Belastbarkeitshinweis, wenn wenige oder alte Verkäufe
+│   └── Leerer Zustand mit Begründung
+│
+└── Wertentwicklung (Verlauf)            bestehend, Premium
+```
+
+**Der eigene Marktwert bleibt maßgeblich.** Die Vergleichsspanne steht daneben als Einordnung — der Nutzer sieht, ob seine Einschätzung im Rahmen liegt, und behält die Hoheit über seine Zahl. Die Wertentwicklung rechnet unverändert mit dem selbst eingetragenen Wert.
+
+### B) Welche Angaben gebraucht werden
+
+**Keine neue Tabelle.** Gelesen wird ausschließlich `vehicle_sales` aus PROJ-33, und zwar **nur zusammengefasst**.
+
+```
+Gebraucht werden die Merkmale des eigenen Fahrzeugs:
+- Marke und Modell
+- Baujahr
+- Kilometerstand → Klasse
+- Zustandsnote
+
+Zurück kommt:
+- Median und gestutzte Spanne
+- Anzahl der Verkäufe, auf denen das beruht
+- Der tatsächlich verglichene Baujahr-Bereich
+- Zeitraum der berücksichtigten Verkäufe
+```
+
+Einzelne Verkäufe verlassen die Datenbank **nie**.
+
+### C) Technische Entscheidungen
+
+**C1 — Es gibt keine Suche, sondern nur den Vergleich zum eigenen Fahrzeug.**
+
+Das ist die wichtigste Entscheidung des Entwurfs, und sie löst einen der schwierigsten Randfälle: Wer die Merkmale frei wählen könnte, würde eine Spanne so lange einengen, bis ein einzelner Preis erkennbar wird. Genau davor warnt die Spec.
+
+Deshalb bekommt die Auswertung **keine frei wählbaren Parameter**. Sie liefert die Vergleichszahl für ein Fahrzeug, das dem Anfragenden gehört. Wer die Merkmale verschieben will, muss sein Fahrzeug ändern — das ist langsam, sichtbar und für das Ausspähen eines einzelnen Preises untauglich.
+
+**C2 — Die Zusammenfassung entsteht in der Datenbank, nicht in der Anwendung.**
+
+`vehicle_sales` ist für normale Nutzer vollständig gesperrt (PROJ-33 C4) — kein Lesen, auf Tabellenebene entzogen. Die Auswertung läuft deshalb in einer Funktion mit erhöhten Rechten, die **nur aggregierte Werte** zurückgibt und die Mindestzahl selbst durchsetzt.
+
+Das ist keine Formsache: Läge die Prüfung in der Anwendung, wäre sie umgehbar. In der Funktion ist sie es nicht.
+
+**C3 — Median statt Mittelwert, Spanne gestutzt.**
+
+Die Strukturregeln aus PROJ-33 gegen das Fluten verteuern einen Angriff erheblich, aber **keine Strukturregel ist dicht**. Die Statistik ist die zweite, unabhängige Schranke: Ein einzelner gesetzter Ausreißer bewegt einen Median kaum, einen Mittelwert erheblich. Gestutzte Ränder fangen zusätzlich Vertipper ab, die die Plausibilitätsprüfung passiert haben.
+
+Nebenbei wird die Auswertung dadurch schlicht besser — bei Oldtimerpreisen ist der Median ohnehin die ehrlichere Kennzahl.
+
+**C4 — Baujahre werden schrittweise erweitert, und das steht dran.**
+
+Reicht das exakte Baujahr nicht für die Mindestzahl, wird auf ±1 erweitert, dann ±2. Ohne das bliebe die Übersicht bei seltenen Modellen dauerhaft leer, weil PROJ-33 das Baujahr jahresgenau speichert.
+
+**Die verwendete Spanne wird immer angezeigt.** „Median aus 6 Verkäufen, Baujahr 1969–1971" ist eine andere Aussage als „aus 6 Verkäufen von 1970" — sie zu verschweigen wäre eine stille Ungenauigkeit.
+
+Die Erweiterung endet bei ±2. Darüber hinaus vergleicht man Fahrzeuge, die technisch nicht mehr dasselbe sind.
+
+**C5 — Die Mindestzahl gilt ausnahmslos.**
+
+Auch für den, der selbst beigetragen hat, und auch nach der Erweiterung der Baujahre. Wird sie nicht erreicht, erscheint kein Wert — und **auch nicht die Anzahl**: Bei einem seltenen Modell verrät schon „2 Verkäufe" zu viel.
+
+**C6 — Marke und Modell sind Freitext (offener Punkt aus PROJ-33 F4).**
+
+„Mercedes-Benz", „Mercedes" und „MB" wären drei Gruppen. Für die Erhebung war das noch kein Problem, für den Vergleich ist es eines: Getrennte Gruppen erreichen die Mindestzahl nie.
+
+Der Vergleich muss deshalb mindestens Groß-/Kleinschreibung und Leerzeichen ignorieren. Eine echte Vereinheitlichung von Schreibweisen ist mehr Arbeit und beim Bauen zu entscheiden.
+
+**C7 — Alte Verkäufe werden nicht umgerechnet.**
+
+Eine Anpassung an heutige Preise bräuchte einen Index für Oldtimerpreise, den es hier nicht gibt. Sie zu schätzen hieße, eine Zahl zu erfinden. Stattdessen wird der **Zeitraum genannt**, und wenn die Verkäufe überwiegend alt sind, steht das als Hinweis dabei.
+
+### D) Abhängigkeiten
+
+**Keine neuen Pakete.** Die Auswertung ist eine Datenbankabfrage, die Anzeige nutzt vorhandene Bausteine.
+
+### E) Was dieses Feature bewusst NICHT tut
+
+- **Keine freie Suche** über den Bestand — siehe C1
+- **Keine Preishistorie** eines Modells über die Zeit: Bei der zu erwartenden Datenmenge wäre das eine Linie durch drei Punkte
+- **Kein Eingriff in die Wertentwicklung.** Sie rechnet weiter mit dem selbst eingetragenen Wert
+- **Keine Anzeige, solange die Mindestzahl nicht erreicht ist** — auch nicht abgeschwächt
+
+### F) Offene Punkte für die Umsetzung
+
+**F1 — Die Mindestzahl.** Vorschlag: **5**. Beim Bauen zu bestätigen, sobald absehbar ist, wie viele Datenpunkte tatsächlich entstehen.
+
+**F2 — Wie stark die Spanne gestutzt wird.** Bei fünf Verkäufen ist „ohne die Ränder" schon fast der Median selbst. Möglicherweise erst ab einer größeren Zahl stutzen.
+
+**F3 — Ob die Zustandsnote exakt passen muss oder ±1 zulässig ist.** Exakt ist sauberer, halbiert aber die Treffer.
+
+**F4 — Wann „überwiegend alt" gilt.** Ein Schwellenwert, der beim Bauen festzulegen ist.
+
+**F5 — Das Feature sollte erst gebaut werden, wenn Datenpunkte vorliegen.** Heute sind es null. Eine Auswertung, die niemand mit echten Zahlen sehen kann, lässt sich weder beurteilen noch sinnvoll prüfen.
 
 ## QA Test Results
 _To be added by /qa_

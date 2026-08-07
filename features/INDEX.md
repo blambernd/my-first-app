@@ -48,8 +48,9 @@
 | PROJ-31 | Kosten-Überblicksseite | Deployed | [PROJ-31-kosten-ueberblick.md](PROJ-31-kosten-ueberblick.md) | 2026-08-01 |
 | PROJ-32 | Kostendaten beim Fahrzeug-Transfer | Deployed | [PROJ-32-kostendaten-beim-transfer.md](PROJ-32-kostendaten-beim-transfer.md) | 2026-08-01 |
 | PROJ-33 | Verkaufspreis-Erhebung beim Transfer | Deployed | [PROJ-33-verkaufspreis-erhebung.md](PROJ-33-verkaufspreis-erhebung.md) | 2026-08-04 |
-| PROJ-34 | Preisübersicht aus echten Verkäufen | Planned | [PROJ-34-preisuebersicht.md](PROJ-34-preisuebersicht.md) | 2026-08-04 |
+| PROJ-34 | Preisübersicht aus echten Verkäufen | Architected | [PROJ-34-preisuebersicht.md](PROJ-34-preisuebersicht.md) | 2026-08-04 |
+| PROJ-35 | Scheckheft-Import aus Dokumenten | In Progress | [PROJ-35-scheckheft-import.md](PROJ-35-scheckheft-import.md) | 2026-08-05 |
 
 <!-- Add features above this line -->
 
-## Next Available ID: PROJ-35
+## Next Available ID: PROJ-36
