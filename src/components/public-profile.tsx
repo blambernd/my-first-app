@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { BrandLogo } from "@/components/brand-logo";
+import { formatMoney, toCurrency, type Currency } from "@/lib/currency";
 
 interface PublicProfileProps {
   token: string;
@@ -30,6 +31,13 @@ interface ProfileData {
     year: number;
     year_estimated: boolean;
     factory_code: string | null;
+    /**
+     * Währung des Fahrzeugs (PROJ-36).
+     *
+     * Optional, weil ein Kurzprofil aus einem zwischengespeicherten älteren
+     * Antwortstand ohne sie kommen kann — dann gilt Euro, wie vorher.
+     */
+    currency?: string | null;
   };
   stammdaten?: {
     color: string | null;
@@ -96,11 +104,18 @@ function formatDate(dateStr: string): string {
   });
 }
 
-function formatCents(cents: number): string {
-  return new Intl.NumberFormat("de-DE", {
-    style: "currency",
-    currency: "EUR",
-  }).format(cents / 100);
+/**
+ * Das Kurzprofil ist öffentlich und teilbar — hier reicht eine falsche
+ * Währungsangabe am weitesten (PROJ-36). Bis zum 2026-08-08 stand hier ein
+ * festes „EUR", die Scheckheft-Kosten eines Franken-Fahrzeugs waren damit für
+ * jeden Betrachter falsch beschriftet.
+ *
+ * Der Bereitsteller aus dem Fahrzeug-Grundgerüst greift hier nicht: Diese
+ * Seite liegt außerhalb, sie kennt kein angemeldetes Konto und kein Fahrzeug,
+ * nur einen Freigabe-Token.
+ */
+function formatCents(cents: number, currency: Currency): string {
+  return formatMoney(cents, currency);
 }
 
 export function PublicProfile({ token }: PublicProfileProps) {
@@ -205,6 +220,7 @@ export function PublicProfile({ token }: PublicProfileProps) {
   }
 
   const { vehicle } = data;
+  const waehrung = toCurrency(vehicle.currency);
   const primaryImage = data.fotos?.find((f) => f.is_primary) || data.fotos?.[0];
 
   return (
@@ -380,7 +396,7 @@ export function PublicProfile({ token }: PublicProfileProps) {
                         </span>
                       )}
                       {entry.cost_cents && (
-                        <span>{formatCents(entry.cost_cents)}</span>
+                        <span>{formatCents(entry.cost_cents, waehrung)}</span>
                       )}
                     </div>
                     <Separator className="mt-3" />

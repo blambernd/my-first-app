@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import type { ProfileConfig } from "@/lib/validations/vehicle-profile";
+import { toCurrency } from "@/lib/currency";
 
 function createServiceClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -50,7 +51,7 @@ export async function GET(
   // Fetch vehicle data
   const { data: vehicle } = await supabase
     .from("vehicles")
-    .select("make, model, year, year_estimated, factory_code, color, engine_type, displacement_ccm, horsepower, mileage_km, body_type")
+    .select("make, model, year, year_estimated, factory_code, color, engine_type, displacement_ccm, horsepower, mileage_km, body_type, currency")
     .eq("id", vehicleId)
     .single();
 
@@ -69,6 +70,11 @@ export async function GET(
       year: vehicle.year,
       year_estimated: vehicle.year_estimated,
       factory_code: vehicle.factory_code,
+      // PROJ-36: Das Kurzprofil zeigt Scheckheft-Kosten (`cost_cents` unten).
+      // Ohne diese Angabe stünde dort ein festes Euro-Zeichen — auf einer
+      // **öffentlichen**, teilbaren Seite und damit an der Stelle, an der eine
+      // falsche Währungsangabe am weitesten reicht.
+      currency: toCurrency(vehicle.currency as string | null),
     },
   };
 

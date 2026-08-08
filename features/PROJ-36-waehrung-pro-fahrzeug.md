@@ -410,3 +410,81 @@ Git kann nur ganze Dateien einchecken. Sie mitzunehmen hieße, fremde, unfertige
 Sie bleiben deshalb **ungestaged**, zusammen mit den zwei Testanpassungen, die von ihnen abhängen (`PROJ-26`, `PROJ-27`, Beschriftung `Kosten (€)`). Der Commit ist dadurch in sich stimmig: Ohne diese sechs Dateien steht `formatCentsToEur` weiterhin in `service-entry.ts`, `service-log.tsx` liest von dort, und die beiden Tests suchen weiter `Kosten (EUR)` — genau wie bisher.
 
 **Was dadurch offen bleibt:** Das Kostenfeld im Scheckheft trägt bis dahin weiter „(EUR)" statt des Fahrzeug-Symbols. Alle anderen sechs Erfassungsmasken sind vollständig umgestellt. Im Arbeitsverzeichnis ist auch das Scheckheft-Feld bereits richtig — es fehlt nur im Commit.
+
+---
+
+## Backend (2026-08-08)
+
+Die Datenbankarbeit war beim Frontend schon mitgelaufen — sie zu trennen wäre gefährlicher gewesen als sie mitzunehmen (siehe oben). Dieser Durchgang hat deshalb drei Aufgaben: die zwei offenen Prüfpunkte aus dem Entwurf beantworten, die Datenbankfunktion nachweislich prüfen, und die Nahtstelle absichern.
+
+### Prüfpunkt H2: Das öffentliche Kurzprofil zeigt sehr wohl Beträge
+
+Der Entwurf vermutete, das Kurzprofil (PROJ-10) käme ohne Geldangaben aus, und schrieb ausdrücklich: *„das ist zu prüfen, nicht anzunehmen."* Die Prüfung hat die Vermutung widerlegt.
+
+`public-profile.tsx` zeigt die **Kosten der Scheckheft-Einträge**, formatiert mit einem fest verdrahteten `currency: "EUR"`. Bei einem Franken-Fahrzeug war damit jeder dieser Beträge falsch beschriftet — **auf einer öffentlichen, teilbaren Seite**, die man typischerweise einem Kaufinteressenten vorlegt. Das ist die Stelle, an der eine falsche Währungsangabe am weitesten reicht.
+
+Behoben: Die Route liefert die Währung mit, die Seite verwendet sie. Der Bereitsteller greift hier nicht — diese Seite liegt außerhalb des Fahrzeug-Grundgerüsts, sie kennt kein angemeldetes Konto und kein Fahrzeug, nur einen Freigabe-Token.
+
+### Prüfpunkt H1: Es gibt keine fahrzeugübergreifenden Geldsummen
+
+Durchsucht: Dashboard, Tarifübersicht, Einstellungen und alle API-Routen, die Geldspalten lesen. **Keine einzige Summe über mehrere Fahrzeuge.** Das Kriterium „nie über Währungen hinweg summieren" ist damit erfüllt, ohne dass etwas zu ändern war — es bleibt als Kriterium bestehen, damit eine künftige Gesamtsumme nicht unbemerkt gemischt wird.
+
+Zwei Randfälle mit geprüftem Ergebnis:
+
+- `api/cron/check-alerts` rechnet mit Ersatzteilpreisen aus dem deutschen Markt — bleibt Euro, richtig so
+- `api/vehicles/[id]/listing/*` gehört zum Verkaufsassistenten (`VERKAUFSASSISTENT_AKTIV = false`) und ist nicht erreichbar. Wird er je eingeschaltet, muss er die Fahrzeugwährung übernehmen — festgehalten, nicht auf Verdacht geändert.
+
+### Die Datenbankfunktion, nachweislich
+
+Die Währungslogik der Übergabefunktion wurde gegen alle interessanten Eingaben geprüft (zurückgerollt, gegen ein CHF-Fahrzeug):
+
+| Eingabe | Ergebnis | |
+|---|---|---|
+| `EUR`, `CHF`, `GBP`, `USD`, `SEK`, `DKK`, `NOK`, `PLN`, `CZK` | jeweils übernommen | ✓ |
+| `NULL`, `''`, `XYZ` | bleibt **CHF** — die bisherige Währung | ✓ |
+| `eur` (klein) | bleibt **CHF** | ✓ Groß-/Kleinschreibung zählt |
+
+Und die Datenbank als letzte Instanz:
+
+| Prüfung | Ergebnis |
+|---|---|
+| `vehicle_sales` ohne Währungsangabe | wird **EUR** |
+| `vehicle_sales` mit `CHF` | wird **CHF**, Betrag unverändert |
+| `vehicle_sales` mit `XYZ` | **abgewiesen** (`vehicle_sales_currency_check`) |
+
+### Sicherheitslage unverändert
+
+| | vorher | nachher |
+|---|---|---|
+| Policies auf `vehicle_sales` | 0 | **0** |
+| RLS an / erzwungen | ja / ja | **ja / ja** |
+| Rechte für `anon` und `authenticated` | 0 | **0** |
+| Fassungen von `accept_vehicle_transfer` | 1 | **1** |
+| Policies auf `vehicles` | 4 | 4 |
+
+Der Supabase-Sicherheitsprüfer meldet nach der Änderung **keinen neuen Befund**. Die vorhandenen Warnungen (`search_path`, ausführbare `SECURITY DEFINER`-Funktionen) sind älter und betreffen 15 Funktionen quer durch das Projekt — sie gehören nicht zu PROJ-36, sind aber für `/qa` vermerkt.
+
+Der Hinweis „RLS aktiviert, keine Policy" auf `vehicle_sales` ist **beabsichtigt** und in der Migration begründet: Es soll niemand lesen können, auch nicht der, dessen Verkauf dort steht.
+
+### Neue Tests
+
+- `api/transfers/[token]/accept/accept.test.ts` (8) — die Nahtstelle: Was der Browser schickt, muss vollständig an die Datenbankfunktion gehen. Genau hier wäre der stille Verlust entstanden. Geprüft: Weitergabe der Währung, **keine Umrechnung** (42.000 CHF → 4.200.000 Rappen), `null` ohne Angabe, Abweisung eines unbekannten Codes mit 400, alle neun Währungen, unveränderte PROJ-33-Angaben, 401 ohne Anmeldung, Annahme ohne lesbaren Rumpf
+- `api/profil/[token]/profil.test.ts` (4) — die Währungsumwandlung des öffentlichen Kurzprofils, inklusive Rückfall auf Euro bei fehlender oder unbekannter Angabe
+
+### Was nicht geprüft werden konnte
+
+**Ein echter Transfer zwischen zwei Konten mit Währungswechsel.** Die E2E-Suite legt eine Übergabe an und bricht sie wieder ab — sie nimmt sie nie an, weil dafür ein zweites Konto mit passender E-Mail-Adresse nötig wäre. Die Übergabefunktion ist damit in ihren Einzelteilen geprüft (Währungslogik per SQL, Parameterweitergabe per Test, Datenbankgrenzen per CHECK), aber **nicht im Durchlauf**. Das bleibt die letzte offene Verbindung — schon aus PROJ-32 und PROJ-33.
+
+Ebenfalls ohne Testabdeckung: die E2E-Tests des Kurzprofils (PROJ-10) werden alle **übersprungen**, weil kein veröffentlichtes Profil vorliegt. Die Änderung dort ist durch Einheitentests und Typprüfung gedeckt, nicht durch einen Seitenaufruf.
+
+### Prüfstand
+
+| Prüfung | Ergebnis |
+|---|---|
+| Unit-Tests | **728 grün** (38 Dateien), 12 davon neu in diesem Durchgang |
+| E2E `chromium` | **182 / 182 grün** |
+| E2E Transfer (`PROJ-32` + `PROJ-33`) | **21 / 21 grün** |
+| Typen | 0 Fehler |
+| Lint | 0 Fehler, 30 Warnungen (alle vorbestehend) |
+| Build | erfolgreich |
+| Supabase-Sicherheitsprüfer | keine neuen Befunde |
