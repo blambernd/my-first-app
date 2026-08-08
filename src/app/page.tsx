@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase-server";
 import { LandingPage } from "@/components/landing-page";
+import { getAllPosts } from "@/lib/blog";
 
 export const metadata: Metadata = {
   title: "Oldtimer Docs — Digitale Fahrzeugakte für Klassiker",
@@ -26,9 +27,12 @@ export default async function Home() {
     redirect("/dashboard");
   }
 
+  // getAllPosts sortiert absteigend nach Datum — [0] ist der neueste Beitrag.
+  const [latestPost] = getAllPosts();
+
   return (
     <Suspense>
-      <LandingPage />
+      <LandingPage latestPost={latestPost ?? null} />
     </Suspense>
   );
 }

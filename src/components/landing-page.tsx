@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/accordion";
 import { BrandLogoWithText } from "@/components/brand-logo";
 import { faqs } from "@/lib/faq-data";
+import type { BlogPostMeta } from "@/lib/blog";
 
 const features = [
   {
@@ -172,7 +173,12 @@ function getRegisteredServerSnapshot(): boolean {
   return false;
 }
 
-export function LandingPage() {
+interface LandingPageProps {
+  /** Neuester Blogbeitrag für den Teaser. Null, wenn es keine Beiträge gibt. */
+  latestPost: BlogPostMeta | null;
+}
+
+export function LandingPage({ latestPost }: LandingPageProps) {
   const searchParams = useSearchParams();
   const registeredParam = searchParams.get("registered") === "true";
   // Bewusst NICHT im useState-Initialisierer aus sessionStorage gelesen:
@@ -489,33 +495,42 @@ export function LandingPage() {
               Tipps und Ratgeber rund um Oldtimer, Dokumentation und Werterhaltung.
             </p>
           </div>
-          <Card className="hover:bg-muted/50 transition-colors">
-            <Link href="/blog/oldtimer-richtig-dokumentieren">
-              <CardContent className="p-6 sm:p-8">
-                <div className="flex items-start gap-4">
-                  <div className="hidden sm:flex h-12 w-12 rounded-lg bg-primary/10 items-center justify-center flex-shrink-0 mt-1">
-                    <Newspaper className="h-6 w-6 text-primary" />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="text-lg font-semibold mb-2">
-                      Oldtimer richtig dokumentieren — warum sich eine lückenlose Fahrzeughistorie lohnt
-                    </h3>
-                    <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
-                      Eine vollständige Dokumentation steigert den Wert Ihres Oldtimers, vereinfacht den Verkauf und schützt vor bösen Überraschungen. Erfahren Sie, was in eine gute Fahrzeugakte gehört.
-                    </p>
-                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        8 Min. Lesezeit
-                      </span>
-                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Dokumentation</Badge>
-                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Ratgeber</Badge>
+          {latestPost && (
+            <Card className="hover:bg-muted/50 transition-colors">
+              <Link href={`/blog/${latestPost.slug}`}>
+                <CardContent className="p-6 sm:p-8">
+                  <div className="flex items-start gap-4">
+                    <div className="hidden sm:flex h-12 w-12 rounded-lg bg-primary/10 items-center justify-center flex-shrink-0 mt-1">
+                      <Newspaper className="h-6 w-6 text-primary" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-lg font-semibold mb-2">
+                        {latestPost.title}
+                      </h3>
+                      <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
+                        {latestPost.description}
+                      </p>
+                      <div className="flex items-center flex-wrap gap-3 text-xs text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          {latestPost.readingTime} Lesezeit
+                        </span>
+                        {latestPost.tags.slice(0, 2).map((tag) => (
+                          <Badge
+                            key={tag}
+                            variant="secondary"
+                            className="text-[10px] px-1.5 py-0"
+                          >
+                            {tag}
+                          </Badge>
+                        ))}
+                      </div>
                     </div>
                   </div>
-                </div>
-              </CardContent>
-            </Link>
-          </Card>
+                </CardContent>
+              </Link>
+            </Card>
+          )}
           <div className="text-center mt-8">
             <Button variant="outline" asChild>
               <Link href="/blog">Alle Beiträge ansehen</Link>
