@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { createClient } from "@/lib/supabase";
 import { VehiclePurchaseForm } from "@/components/vehicle-purchase-form";
-import { formatCentsToEur } from "@/lib/validations/service-entry";
+import { useCurrency } from "@/components/currency-provider";
 import {
   totalAcquisitionCents,
   type VehiclePurchaseWithCosts,
@@ -44,6 +44,7 @@ export function VehiclePurchaseSection({
   purchase,
   milestoneDate,
 }: VehiclePurchaseSectionProps) {
+  const { formatMoney } = useCurrency();
   const router = useRouter();
   const [formOpen, setFormOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -115,7 +116,7 @@ export function VehiclePurchaseSection({
           <div className="flex items-baseline justify-between gap-2">
             <span className="text-sm text-muted-foreground">Kaufpreis</span>
             <span className="text-lg font-semibold tabular-nums">
-              {formatCentsToEur(purchase.price_cents)}
+              {formatMoney(purchase.price_cents)}
             </span>
           </div>
           <div className="flex items-baseline justify-between gap-2">
@@ -142,7 +143,7 @@ export function VehiclePurchaseSection({
                       {cost.label}
                     </span>
                     <span className="shrink-0 tabular-nums">
-                      {formatCentsToEur(cost.amount_cents)}
+                      {formatMoney(cost.amount_cents)}
                     </span>
                   </li>
                 ))}
@@ -150,7 +151,7 @@ export function VehiclePurchaseSection({
               <div className="mt-2 flex justify-between gap-2 border-t pt-2 text-sm font-medium">
                 <span>Anschaffung gesamt</span>
                 <span className="tabular-nums">
-                  {formatCentsToEur(purchase.price_cents + extraCents)}
+                  {formatMoney(purchase.price_cents + extraCents)}
                 </span>
               </div>
             </div>

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { CURRENCIES, DEFAULT_CURRENCY, type Currency } from "@/lib/currency";
 
 const currentYear = new Date().getFullYear();
 
@@ -220,6 +221,24 @@ export const vehicleSchema = z.object({
     .max(50, "Versicherungsnummer darf maximal 50 Zeichen lang sein")
     .optional()
     .or(z.literal("")),
+  /**
+   * Währung des Fahrzeugs (PROJ-36).
+   *
+   * Mit Vorgabe statt Pflichtangabe — und das ist dieselbe Entscheidung wie in
+   * der Datenbank: Alle vor dem 2026-08-07 angelegten Fahrzeuge gelten als
+   * Euro-Fahrzeuge, weil sie es faktisch immer waren. Niemand muss etwas
+   * bestätigen oder nachtragen.
+   *
+   * Anders als beim Anzeige-Formatierer in lib/currency.ts, wo die Währung
+   * bewusst KEINEN Vorgabewert hat: Dort hieße ein Vorgabewert, dass ein
+   * Franken-Betrag schweigend mit Euro-Zeichen erscheint. Hier heißt er nur,
+   * dass ein Fahrzeug ohne Angabe Euro führt — was zutrifft.
+   */
+  currency: z
+    .enum(CURRENCIES.map((c) => c.code) as [Currency, ...Currency[]], {
+      error: "Bitte wähle eine Währung",
+    })
+    .default(DEFAULT_CURRENCY),
 });
 
 export interface VehicleFormData {
@@ -240,6 +259,7 @@ export interface VehicleFormData {
   condition_grade?: number;
   insurance_company?: string;
   insurance_policy_number?: string;
+  currency: Currency;
 }
 
 export interface Vehicle {
@@ -263,6 +283,13 @@ export interface Vehicle {
   condition_grade: number | null;
   insurance_company: string | null;
   insurance_policy_number: string | null;
+  /**
+   * Währung aller selbst erfassten Beträge dieses Fahrzeugs (PROJ-36).
+   * Nicht optional: Die Datenbank hat 'EUR' als Vorgabe, jede Zeile hat also
+   * einen Wert. Externe Preise (Ersatzteile, Marktpreis) bleiben davon
+   * unberührt und sind weiterhin Euro.
+   */
+  currency: Currency;
   is_locked: boolean;
   created_at: string;
   updated_at: string;

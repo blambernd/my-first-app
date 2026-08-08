@@ -9,14 +9,14 @@ export const purchaseCostSchema = z.object({
   amount_eur: z.coerce
     .number()
     .min(0, "Betrag kann nicht negativ sein")
-    .max(999999, "Betrag darf maximal 999.999 € betragen"),
+    .max(999999, "Betrag darf maximal 999.999 betragen"),
 });
 
 export const vehiclePurchaseSchema = z.object({
   price_eur: z.coerce
     .number()
     .min(0, "Kaufpreis kann nicht negativ sein")
-    .max(9999999, "Kaufpreis darf maximal 9.999.999 € betragen"),
+    .max(9999999, "Kaufpreis darf maximal 9.999.999 betragen"),
   purchased_on: z.string().min(1, "Kaufdatum ist erforderlich"),
   notes: z
     .string()

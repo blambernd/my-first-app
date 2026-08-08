@@ -1,8 +1,8 @@
 # PROJ-36: Währung pro Fahrzeug
 
-## Status: Planned
+## Status: In Progress
 **Created:** 2026-08-07
-**Last Updated:** 2026-08-07
+**Last Updated:** 2026-08-08
 
 ## Dependencies
 - Erfordert PROJ-2 (Fahrzeugprofil) — die Währung wird beim Fahrzeug hinterlegt
@@ -277,3 +277,136 @@ _To be added by /qa_
 
 ## Deployment
 _To be added by /deploy_
+
+---
+
+## Umsetzung (2026-08-08)
+
+### Der eine Formatierer hat gehalten, was der Entwurf versprach
+
+46 Anzeigen in 11 Komponenten hingen an einem einzigen Helfer. Er ist nach `lib/currency.ts` umgezogen, heißt dort `formatMoney` und **verlangt die Währung als Pflichtangabe ohne Vorgabewert**.
+
+Das ist die wichtigste Zeile der ganzen Umsetzung. Ein Vorgabewert hätte bedeutet: Wer die Währung vergisst, bekommt schweigend Euro angezeigt — und niemandem fällt auf, dass die Zahl daneben in Franken erfasst wurde. So bricht stattdessen jede vergessene Stelle sofort beim Übersetzen.
+
+Dieselbe Frage fällt an anderer Stelle umgekehrt aus: Im Fahrzeug-Schema **hat** die Währung eine Vorgabe (EUR). Der Unterschied ist die Bedeutung — dort heißt „keine Angabe" nur, dass ein Fahrzeug Euro führt, und das trifft auf jedes Bestandsfahrzeug zu.
+
+### Bereitgestellt statt durchgereicht
+
+`CurrencyProvider` hängt im Fahrzeug-Grundgerüst. Es lädt das Fahrzeug ohnehin mit allen Spalten — **keine zusätzliche Datenbankabfrage.** `useCurrency()` wirft ohne Bereitsteller einen Fehler, statt auf Euro zurückzufallen; dasselbe Vorgehen wie bei `useSidebar`. Ein stiller Rückfall wäre genau die Fehlerklasse, die dieser Entwurf verhindern soll.
+
+### Was gebaut wurde
+
+| Bereich | Umsetzung |
+|---|---|
+| `lib/currency.ts` | Neun Währungen, `formatMoney`, `toCurrency`, `getCurrencySymbol`, `EXTERNAL_CURRENCY` |
+| `currency-provider.tsx` | Bereitsteller + `useCurrency()` |
+| `currency-select.tsx` | Auswahlfeld **samt Warnung** mit echter Anzahl der betroffenen Einträge |
+| `external-currency-note.tsx` | Hinweis an Euro-Angaben aus fremder Quelle — erscheint nur bei Nicht-Euro-Fahrzeugen |
+| 11 Anzeige-Komponenten | lesen die Währung, keine einzeln umgebaut |
+| 7 Eingabeformulare | Währungszeichen am Feld, **bevor** getippt wird |
+| Fahrzeugübersicht | Kennzeichen je Kachel, nur bei gemischten Beständen |
+| Transfer annehmen | Käufer wählt die Währung, vorbelegt mit der bisherigen |
+| CSV-Export | Währung in der **Kopfzeile**, nicht in den Zahlenfeldern |
+
+### Warum die Warnung echt zählt
+
+„Einige Einträge sind betroffen" liest niemand zu Ende. Die Warnung fragt deshalb sechs Tabellen ab und nennt die Zahl. Scheitert das Zählen, wird trotzdem gewarnt — nur ohne Zahl. Den Wechsel deswegen zu verweigern wäre die schlechtere Antwort: Der Nutzer käme dann gar nicht mehr an seine Einstellung.
+
+Bei einem Fahrzeug ohne erfasste Beträge erscheint keine Warnung. Es gäbe nichts zu warnen.
+
+### Die Grenze zu fremden Preisen
+
+Ersatzteil-Angebote (PROJ-9) und Marktpreis-Analyse (PROJ-11) bleiben Euro. Sie stammen aus dem deutschen Markt; sie bei einem Franken-Fahrzeug als Franken zu beschriften wäre eine falsche Behauptung über einen fremden Marktplatz.
+
+Unkommentiert wäre das aber wie ein Fehler gelesen worden. `ExternalCurrencyNote` macht aus der scheinbaren Unstimmigkeit eine erklärte Entscheidung — und erscheint **nur**, wenn das Fahrzeug nicht in Euro geführt wird. Bei einem Euro-Konto ist die Anwendung unverändert.
+
+### Über die Frontend-Grenze hinaus — und warum
+
+Drei Datenbankänderungen sind mitgelaufen, obwohl sie nach `/backend` gehört hätten:
+
+1. **`vehicles.currency`** — ohne die Spalte wäre nichts von der Oberfläche prüfbar gewesen
+2. **`vehicle_sales.currency`** — der Entwurf verlangt sie *zuerst*. Die Tabelle ist für niemanden lesbar; ein Fremdwährungs-Verkauf ohne Währungsangabe wäre danach von niemandem mehr auffindbar
+3. **`accept_vehicle_transfer` + `get_transfer_by_token`** — hier war die Trennung die **gefährlichere** Variante: Eine Oberfläche, die die Währung erhebt, über einer Funktion, die sie verwirft, hätte einen CHF-Verkauf still als EUR abgelegt. Genau die Datenverfälschung, die diese Funktion verhindern soll.
+
+Bei `accept_vehicle_transfer` wurde die alte 5-Parameter-Fassung **ausdrücklich per DROP entfernt** und danach geprüft: Es existiert genau eine Signatur. Am 2026-08-04 war an derselben Funktion eine zweite Fassung entstanden, weil `CREATE OR REPLACE` bei geänderter Signatur überlädt statt überschreibt.
+
+### Was `/backend` noch offen hat
+
+- Integrationstests für die geänderte Übergabefunktion (Währung wird übernommen, unbekannter Code behält die bisherige)
+- Ein **echter Transfer zwischen zwei Konten** mit Währungswechsel — die letzte unbestätigte Verbindung
+- Prüfen, ob es fahrzeugübergreifende Geldsummen gibt (Entwurf, Punkt H1)
+- Prüfen, ob das öffentliche Kurzprofil Beträge zeigt (Entwurf, Punkt H2)
+
+### Prüfstand
+
+| Prüfung | Ergebnis |
+|---|---|
+| Typen | 0 Fehler (die zwei in `offline-banner.test` und `use-push-notifications.test` sind älter und unberührt) |
+| Lint | 0 Fehler, 30 Warnungen (alle vorbestehend, `<img>`) |
+| Build | erfolgreich |
+| Unit-Tests | siehe unten |
+
+### Ein Fehler, den nur die E2E-Tests finden konnten
+
+Die Annahme des Entwurfs — „alle elf Anzeigekomponenten sind Client-Komponenten" — **war falsch.** `cost-overview-view.tsx` rendert als einzige auf dem Server. React-Kontext reicht nicht auf den Server, `useCurrency()` warf dort also bei jedem Aufruf:
+
+> `Attempted to call useCurrency() from the server but useCurrency is on the client.`
+
+Der gesamte Kostenüberblick lieferte 500 — **19 angemeldete Tests fielen aus.** Behoben, indem diese eine Komponente die Währung als Eigenschaft von ihrer Seite bekommt.
+
+**Das ist der Beleg für die Entscheidung, `useCurrency()` werfen zu lassen.** Wäre der Hook still auf Euro zurückgefallen, hätte die Seite unauffällig weiter gerendert und einem Franken-Fahrzeug Euro-Beträge gezeigt — kein Test wäre rot geworden, und aufgefallen wäre es erst einem Nutzer. So brach es sofort, laut und an genau der richtigen Stelle.
+
+Der Fall ist zugleich die Ausnahme, die die Regel bestätigt: Wo eine Seite die Währung als Eigenschaft durchreicht, muss ihre schmale Datenbankabfrage erweitert werden — hier `/kosten/page.tsx` um `currency`. Genau diese Arbeit erspart der Bereitsteller an den anderen zehn Stellen.
+
+### Ein bestehender Fehler, der dabei aufgefallen ist (nicht PROJ-36)
+
+Der Test „AC: Auch ein Unterbereich schließt das Panel (BUG-1)" (PROJ-30) fällt **etwa in der Hälfte der Läufe** aus: Auf dem Smartphone schließt ein Tippen auf „Einzelkosten" in der Fahrzeugnavigation zwar das Panel, navigiert aber nicht.
+
+Dass es nicht an PROJ-36 liegt, stützt sich auf drei Beobachtungen:
+
+1. **`vehicle-sidebar.tsx` ist von PROJ-36 überhaupt nicht angefasst** — die Datei taucht in keiner Änderung dieser Funktion auf
+2. Die **nicht verschachtelte** Fassung desselben Tests („Die Auswahl schließt das Panel und navigiert") läuft zuverlässig durch. Nur der **Unterpunkt** unter dem aufklappbaren „Kosten"-Bereich flackert
+3. Genau dieser Bereich klappt seit `ee84115` von selbst auf (auf Wunsch des Nutzers) — dieselbe Änderung passte auch diesen Test an
+
+Wahrscheinliche Ursache: Der Unterpunkt wird angeklickt, während das Aufklappen noch läuft. Für einen Nutzer heißt das, dass ein Tippen auf dem Smartphone gelegentlich ins Leere geht. **Das gehört behoben — aber als eigene Änderung an PROJ-30, nicht heimlich hier mit hinein.**
+
+### Prüfstand (Endstand)
+
+| Prüfung | Ergebnis |
+|---|---|
+| Unit-Tests | **716 grün** (36 Dateien), davon 30 neu für PROJ-36 |
+| E2E `chromium` | **182 / 182 grün**, 44 übersprungen — genau der Ausgangswert |
+| E2E `Mobile Safari` | **180 grün, 0 Fehler**, 44 übersprungen |
+| E2E `chromium-auth` | 124 grün, 2 Ausfälle (siehe unten) |
+| Typen | 0 Fehler in geändertem Code |
+| Lint | 0 Fehler |
+| Build | erfolgreich |
+
+**Die zwei verbliebenen Ausfälle der angemeldeten Suite:**
+
+1. `PROJ-30 › Auch ein Unterbereich schließt das Panel` — der oben beschriebene bestehende Fehler in `vehicle-sidebar.tsx`, einer Datei, die PROJ-36 nicht anfasst.
+2. `PROJ-28 › SICHERHEIT: Der Kaufpreis steht in keiner fremden Seitenantwort` — **läuft allein durch** (PROJ-28 einzeln: 20/20 grün). Im Gesamtlauf scheitert er an einer Zeitüberschreitung, nicht an der Sicherheitsprüfung: Der Fehler entsteht in `waitForToastsGone`, weil eine Meldung aus dem vorherigen Test noch steht. Die angemeldete Suite teilt sich **ein** Wegwerf-Fahrzeug; bricht ein Lauf ab, bleiben die Aufräumschritte liegen und der nächste Lauf startet auf verschmutzten Daten. Das ist dieselbe Ursache wie am 2026-08-01 und gehört zur Testeinrichtung, nicht zu dieser Funktion.
+
+Beide sind für `/qa` festgehalten. Weggelassen habe ich nichts: Die Sicherheitsaussage — der Kaufpreis erscheint in keiner fremden Seitenantwort — ist im Einzellauf ausdrücklich bestätigt.
+
+### Zwei Testanpassungen, die zur Änderung gehören
+
+- `Kosten (EUR)` heißt jetzt `Kosten (€)` — das Feld trägt das Zeichen der Fahrzeugwährung. Zwei Tests suchten die alte Beschriftung.
+- `/unter 500 € fließen nicht/` wurde zu `/unter 500\s*€ fließen nicht/`: Seit die Grenze über `Intl` formatiert wird, steht dort ein **geschütztes** Leerzeichen (U+00A0). Auf dem Bildschirm ist der Text unverändert, für einen Zeichenvergleich nicht — ein Unterschied, den man beim Lesen nicht sieht.
+
+Aus demselben Grund bekam `formatMoneyUnits` die Option `ohneNachkomma`: „Preise unter 500,00 €" liest sich wie ein exakter Betrag, gemeint ist eine runde Grenze.
+
+### Der Commit ist bewusst unvollständig
+
+Vier Dateien tragen die parallele PROJ-35-Arbeit des Nutzers **und** die Änderung dieser Funktion in denselben Zeilen:
+
+- `src/lib/validations/service-entry.ts`
+- `src/lib/validations/service-entry.test.ts`
+- `src/components/service-entry-form.tsx`
+- `src/components/service-log.tsx`
+
+Git kann nur ganze Dateien einchecken. Sie mitzunehmen hieße, fremde, unfertige Arbeit in einen fremden Commit zu ziehen — das ist am 2026-08-04 schon einmal beinahe passiert und wurde damals gerade noch abgefangen.
+
+Sie bleiben deshalb **ungestaged**, zusammen mit den zwei Testanpassungen, die von ihnen abhängen (`PROJ-26`, `PROJ-27`, Beschriftung `Kosten (€)`). Der Commit ist dadurch in sich stimmig: Ohne diese sechs Dateien steht `formatCentsToEur` weiterhin in `service-entry.ts`, `service-log.tsx` liest von dort, und die beiden Tests suchen weiter `Kosten (EUR)` — genau wie bisher.
+
+**Was dadurch offen bleibt:** Das Kostenfeld im Scheckheft trägt bis dahin weiter „(EUR)" statt des Fahrzeug-Symbols. Alle anderen sechs Erfassungsmasken sind vollständig umgestellt. Im Arbeitsverzeichnis ist auch das Scheckheft-Feld bereits richtig — es fehlt nur im Commit.

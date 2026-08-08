@@ -119,7 +119,11 @@ test.describe("PROJ-33: Verkaufspreis-Erhebung", () => {
     await page.locator("#weitergabe").click();
     await page.locator("#kaufpreis").fill("1");
 
-    await expect(page.getByText(/unter 500 € fließen nicht/)).toBeVisible();
+    // \s statt eines festen Leerzeichens: Seit PROJ-36 wird die Grenze über
+    // Intl formatiert, und das setzt zwischen Zahl und Währungszeichen ein
+    // geschütztes Leerzeichen (U+00A0). Auf dem Bildschirm ist der Text
+    // derselbe, für einen Vergleich auf Zeichenebene nicht.
+    await expect(page.getByText(/unter 500\s*€ fließen nicht/)).toBeVisible();
     // Ohne diesen Zusatz befürchtet der Nutzer, seine Eingabe sei verworfen
     await expect(page.getByText(/trotzdem gespeichert/)).toBeVisible();
   });

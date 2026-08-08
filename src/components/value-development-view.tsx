@@ -8,7 +8,7 @@ import { Info, TrendingUp, ArrowRight, Clock } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { formatCentsToEur } from "@/lib/validations/service-entry";
+import { useCurrency } from "@/components/currency-provider";
 import {
   STALE_ANALYSIS_DAYS,
   type ValueDevelopment,
@@ -22,9 +22,18 @@ interface ValueDevelopmentViewProps {
   costsBefore: { affected: boolean; earliestMonth: string | null };
 }
 
-/** Vorzeichenbehaftete Darstellung; bewusst ohne Warnfarbe bei Verlust */
-function formatSigned(cents: number): string {
-  const formatted = formatCentsToEur(Math.abs(cents));
+/**
+ * Vorzeichenbehaftete Darstellung; bewusst ohne Warnfarbe bei Verlust.
+ *
+ * Bekommt den Formatierer übergeben, weil diese Funktion außerhalb einer
+ * Komponente steht und die Fahrzeugwährung deshalb nicht selbst abfragen
+ * kann (PROJ-36).
+ */
+function formatSigned(
+  cents: number,
+  formatMoney: (cents: number) => string
+): string {
+  const formatted = formatMoney(Math.abs(cents));
   if (cents > 0) return `+ ${formatted}`;
   if (cents < 0) return `− ${formatted}`;
   return formatted;
@@ -42,6 +51,7 @@ export function ValueDevelopmentView({
   costsBefore,
 }: ValueDevelopmentViewProps) {
   // Vor dem frühen Rückgabepfad, damit die Hook-Reihenfolge stabil bleibt.
+  const { formatMoney } = useCurrency();
   const [formOpen, setFormOpen] = useState(false);
 
   if (!result) {
@@ -82,13 +92,13 @@ export function ValueDevelopmentView({
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">
-              {formatCentsToEur(result.acquisitionCents)}
+              {formatMoney(result.acquisitionCents)}
             </p>
             <p className="text-sm text-muted-foreground">
               {result.extraCents > 0
-                ? `Kaufpreis ${formatCentsToEur(
+                ? `Kaufpreis ${formatMoney(
                     result.purchaseCents
-                  )} + Nebenkosten ${formatCentsToEur(result.extraCents)}`
+                  )} + Nebenkosten ${formatMoney(result.extraCents)}`
                 : "Kaufpreis ohne Nebenkosten"}
             </p>
           </CardContent>
@@ -105,7 +115,7 @@ export function ValueDevelopmentView({
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">
-              {formatCentsToEur(result.investmentCents)}
+              {formatMoney(result.investmentCents)}
             </p>
             <p className="text-sm text-muted-foreground">
               Ersatzteile, Reparaturen, Restaurierung
@@ -121,7 +131,7 @@ export function ValueDevelopmentView({
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">
-              {formatCentsToEur(result.runningCents)}
+              {formatMoney(result.runningCents)}
             </p>
             <p className="text-sm text-muted-foreground">
               Kraftstoff, Wartung, Versicherung, Steuer, Garage
@@ -137,7 +147,7 @@ export function ValueDevelopmentView({
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">
-              {formatCentsToEur(result.totalSpentCents)}
+              {formatMoney(result.totalSpentCents)}
             </p>
             <p className="text-sm text-muted-foreground">
               Anschaffung, Investition und laufende Kosten zusammen
@@ -169,7 +179,7 @@ export function ValueDevelopmentView({
               </CardHeader>
               <CardContent>
                 <p className="text-2xl font-bold">
-                  {formatCentsToEur(market.cents)}
+                  {formatMoney(market.cents)}
                 </p>
                 <p className="text-sm text-muted-foreground">
                   {/* "manuell" kam mit der Selbsteingabe hinzu; ohne diesen
@@ -192,11 +202,11 @@ export function ValueDevelopmentView({
                 {/* Bewusst ohne Warnfarbe: Ein Marktwert unter dem Kaufpreis
                     ist gerade in den ersten Jahren der Normalfall */}
                 <p className="text-2xl font-bold">
-                  {formatSigned(result.valueChangeCents ?? 0)}
+                  {formatSigned(result.valueChangeCents ?? 0, formatMoney)}
                 </p>
                 <p className="text-sm text-muted-foreground">
                   gegenüber dem Kaufpreis von{" "}
-                  {formatCentsToEur(result.purchaseCents)}
+                  {formatMoney(result.purchaseCents)}
                 </p>
               </CardContent>
             </Card>
@@ -209,7 +219,7 @@ export function ValueDevelopmentView({
               </CardHeader>
               <CardContent>
                 <p className="text-2xl font-bold">
-                  {formatSigned(result.balanceCents ?? 0)}
+                  {formatSigned(result.balanceCents ?? 0, formatMoney)}
                 </p>
                 <p className="text-sm text-muted-foreground">
                   Marktwert abzüglich allem, was bisher aufgewendet wurde

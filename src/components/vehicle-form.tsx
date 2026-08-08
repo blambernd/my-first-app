@@ -33,6 +33,8 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { ImageUpload, type ImageFile } from "@/components/image-upload";
+import { CurrencySelect } from "@/components/currency-select";
+import { DEFAULT_CURRENCY, toCurrency } from "@/lib/currency";
 import { createClient } from "@/lib/supabase";
 import {
   Select,
@@ -146,6 +148,8 @@ export function VehicleForm({ vehicle, vehicleImages = [], existingDatekarte = n
       condition_grade: vehicle?.condition_grade ?? undefined,
       insurance_company: vehicle?.insurance_company ?? "",
       insurance_policy_number: vehicle?.insurance_policy_number ?? "",
+      // Vorgabe EUR (PROJ-36): der häufigste Fall bleibt ein Klick weniger.
+      currency: vehicle ? toCurrency(vehicle.currency) : DEFAULT_CURRENCY,
     },
   });
 
@@ -199,6 +203,7 @@ export function VehicleForm({ vehicle, vehicleImages = [], existingDatekarte = n
         condition_grade: data.condition_grade || null,
         insurance_company: data.insurance_company || null,
         insurance_policy_number: data.insurance_policy_number || null,
+        currency: data.currency,
       };
 
       let vehicleId: string;
@@ -586,6 +591,32 @@ export function VehicleForm({ vehicle, vehicleImages = [], existingDatekarte = n
                       {...field}
                     />
                   </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* PROJ-36: Steht bei den Stammdaten und nicht unter „Weitere
+                Details", weil es keine optionale Angabe ist — jedes Fahrzeug
+                hat eine Währung, und ohne sie wäre jeder erfasste Betrag
+                unbeschriftet. */}
+            <FormField
+              control={form.control}
+              name="currency"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Währung *</FormLabel>
+                  <FormControl>
+                    <CurrencySelect
+                      value={field.value}
+                      onChange={field.onChange}
+                      vehicleId={mode === "edit" ? vehicle?.id : undefined}
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    Gilt für alle Kosten, den Kaufpreis und die Marktwerte
+                    dieses Fahrzeugs. Beträge werden nie umgerechnet.
+                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}

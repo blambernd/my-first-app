@@ -32,6 +32,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useCurrency } from "@/components/currency-provider";
 import { createClient } from "@/lib/supabase";
 import { eurToCents } from "@/lib/validations/service-entry";
 import {
@@ -56,6 +57,7 @@ export function VehiclePurchaseForm({
   purchase,
   milestoneDate,
 }: VehiclePurchaseFormProps) {
+  const { symbol } = useCurrency();
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const supabase = createClient();
@@ -194,7 +196,7 @@ export function VehiclePurchaseForm({
                 name="price_eur"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Kaufpreis (€)</FormLabel>
+                    <FormLabel>Kaufpreis ({symbol})</FormLabel>
                     <FormControl>
                       <Input
                         type="number"
@@ -317,7 +319,7 @@ export function VehiclePurchaseForm({
                                 inputMode="decimal"
                                 step="0.01"
                                 min="0"
-                                placeholder="€"
+                                placeholder={symbol}
                                 {...field}
                                 value={field.value ?? ""}
                               />

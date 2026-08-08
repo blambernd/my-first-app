@@ -49,7 +49,7 @@ export const recurringCostSchema = z
     amount_eur: z.coerce
       .number()
       .min(0, "Betrag kann nicht negativ sein")
-      .max(99999, "Betrag darf maximal 99.999 € betragen"),
+      .max(99999, "Betrag darf maximal 99.999 betragen"),
     payment_interval: z.enum([
       "yearly",
       "half_yearly",

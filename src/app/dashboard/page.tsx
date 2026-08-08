@@ -13,6 +13,7 @@ import { PushOptInBanner } from "@/components/push-opt-in-banner";
 import { Car } from "lucide-react";
 import type { VehicleWithImages } from "@/lib/validations/vehicle";
 import { ROLE_LABELS, type MemberRole } from "@/lib/validations/member";
+import { toCurrency } from "@/lib/currency";
 import {
   getEffectivePlan,
   canAddVehicle,
@@ -63,6 +64,17 @@ export default async function DashboardPage() {
 
   const effectivePlan = subscription ? getEffectivePlan(subscription) : isBetaMode ? "premium" : "free";
   const canAdd = canAddVehicle(effectivePlan, typedVehicles.length);
+
+  // PROJ-36: Die Währung steht nur an den Kacheln, wenn sie tatsächlich etwas
+  // unterscheidet. Wer alles in Euro führt — der Normalfall — soll neben jedem
+  // Fahrzeug kein „EUR" lesen müssen, das nichts aussagt. Geteilte Fahrzeuge
+  // zählen mit: Auch sie können in einer anderen Währung geführt sein.
+  const waehrungen = new Set(
+    [...typedVehicles, ...sharedVehicles.map((s) => s.vehicle)].map((v) =>
+      toCurrency(v.currency)
+    )
+  );
+  const waehrungenGemischt = waehrungen.size > 1;
   const premiumActive = hasPremiumAccess(effectivePlan);
 
   return (
@@ -94,6 +106,7 @@ export default async function DashboardPage() {
                 key={vehicle.id}
                 vehicle={vehicle}
                 hasPremium={premiumActive}
+                showCurrency={waehrungenGemischt}
               />
             ))}
             {canAdd && <AddVehicleCard />}
@@ -114,7 +127,7 @@ export default async function DashboardPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {sharedVehicles.map(({ vehicle, role }) => (
                 <div key={vehicle.id} className="relative">
-                  <VehicleCard vehicle={vehicle} />
+                  <VehicleCard vehicle={vehicle} showCurrency={waehrungenGemischt} />
                   <Badge
                     variant="secondary"
                     className="absolute top-2 left-2 text-xs"

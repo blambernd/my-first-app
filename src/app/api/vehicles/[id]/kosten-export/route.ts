@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase-server";
+import { toCurrency } from "@/lib/currency";
 import {
   buildCostCsv,
   exportFilename,
@@ -47,7 +48,7 @@ export async function GET(
 
   const { data: vehicle } = await supabase
     .from("vehicles")
-    .select("id, make, model, year")
+    .select("id, make, model, year, currency")
     .eq("id", id)
     .eq("user_id", user.id)
     .maybeSingle();
@@ -215,7 +216,9 @@ export async function GET(
   }
 
   const vehicleName = `${vehicle.make} ${vehicle.model} ${vehicle.year}`;
-  const csv = buildCostCsv(rows);
+  // PROJ-36: Die Währung gehört in die Kopfzeile, sonst ist die Datei ohne
+  // die Anwendung nicht mehr eindeutig lesbar.
+  const csv = buildCostCsv(rows, toCurrency(vehicle.currency));
 
   return new NextResponse(csv, {
     headers: {

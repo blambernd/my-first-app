@@ -3,7 +3,7 @@ import { Info, ArrowRight, Fuel, Wrench, Repeat, Receipt } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { formatCentsToEur } from "@/lib/validations/service-entry";
+import { formatMoney as formatMoneyMit, type Currency } from "@/lib/currency";
 import type { CostOverview } from "@/lib/cost-overview";
 
 interface CostOverviewViewProps {
@@ -29,6 +29,15 @@ interface CostOverviewViewProps {
    * Aufforderung, endlich anzufangen, ginge an der Lage vorbei.
    */
   costsClearedAt: string | null;
+  /**
+   * Währung des Fahrzeugs (PROJ-36).
+   *
+   * Kommt als Eigenschaft und nicht aus dem Bereitsteller, weil diese
+   * Komponente auf dem Server rendert — sie ist die einzige der elf
+   * Anzeigekomponenten ohne `"use client"`, und React-Kontext reicht nicht auf
+   * den Server.
+   */
+  currency: Currency;
 }
 
 const GRUPPEN_SYMBOLE: Record<string, typeof Fuel> = {
@@ -56,7 +65,13 @@ export function CostOverviewView({
   shortened,
   lastEntryLabel,
   costsClearedAt,
+  currency,
 }: CostOverviewViewProps) {
+  // Diese Komponente rendert auf dem Server — anders als die zehn anderen
+  // Anzeigekomponenten, die alle `"use client"` tragen. React-Kontext reicht
+  // nicht auf den Server, `useCurrency()` ist hier also nicht möglich. Die
+  // Währung kommt deshalb als Eigenschaft von der Seite (PROJ-36).
+  const formatMoney = (cents: number) => formatMoneyMit(cents, currency);
   const basis = `/vehicles/${vehicleId}`;
   const uebernommenAm = costsClearedAt
     ? new Date(costsClearedAt).toLocaleDateString("de-DE")
@@ -167,12 +182,12 @@ export function CostOverviewView({
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Kennzahl
           titel="Gesamtkosten"
-          wert={formatCentsToEur(overview.totalCents)}
+          wert={formatMoney(overview.totalCents)}
           zusatz="im gewählten Zeitraum"
         />
         <Kennzahl
           titel="Je Monat"
-          wert={formatCentsToEur(overview.perMonthCents)}
+          wert={formatMoney(overview.perMonthCents)}
           zusatz="Durchschnitt"
         />
         {/* Ohne verwertbare Fahrleistung entfällt die Kennzahl mit Begründung —
@@ -182,7 +197,7 @@ export function CostOverviewView({
           titel="Je Kilometer"
           wert={
             overview.perKmCents !== null
-              ? formatCentsToEur(overview.perKmCents)
+              ? formatMoney(overview.perKmCents)
               : "—"
           }
           zusatz={
@@ -285,7 +300,7 @@ export function CostOverviewView({
                   </span>
                 )}
                 <span className="w-28 shrink-0 text-right text-sm font-medium tabular-nums">
-                  {formatCentsToEur(g.totalCents)}
+                  {formatMoney(g.totalCents)}
                 </span>
                 <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
               </Link>

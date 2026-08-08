@@ -40,7 +40,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { createClient } from "@/lib/supabase";
-import { eurToCents, formatCentsToEur } from "@/lib/validations/service-entry";
+import { eurToCents } from "@/lib/validations/service-entry";
+import { useCurrency } from "@/components/currency-provider";
 import { periodsOverlap } from "@/lib/recurring-costs";
 import {
   recurringCostSchema,
@@ -97,6 +98,7 @@ export function RecurringCostForm({
   existingCosts,
   insuranceCompany,
 }: RecurringCostFormProps) {
+  const { formatMoney, symbol } = useCurrency();
   const isEditing = Boolean(cost);
   const [saving, setSaving] = useState(false);
   const supabase = createClient();
@@ -322,7 +324,7 @@ export function RecurringCostForm({
                 name="amount_eur"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Betrag (€)</FormLabel>
+                    <FormLabel>Betrag ({symbol})</FormLabel>
                     <FormControl>
                       <Input
                         type="number"
@@ -374,14 +376,14 @@ export function RecurringCostForm({
             {preview && (
               <div className="rounded-lg border bg-muted/40 p-3 text-sm">
                 <p className="font-medium">
-                  entspricht {formatCentsToEur(preview.monthlyCents)} pro Monat
+                  entspricht {formatMoney(preview.monthlyCents)} pro Monat
                 </p>
                 <p className="text-muted-foreground">
                   {preview.months}{" "}
                   {preview.months === 1 ? "Monat" : "Monate"} ·{" "}
                   {preview.payments}{" "}
                   {preview.payments === 1 ? "Zahlung" : "Zahlungen"} ·{" "}
-                  {formatCentsToEur(preview.totalCents)} gesamt
+                  {formatMoney(preview.totalCents)} gesamt
                 </p>
               </div>
             )}

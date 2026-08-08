@@ -38,6 +38,12 @@ interface TransferInfo {
   conditionGrade: number | null;
   /** Letzter bekannter Kilometerstand zum Vorbelegen (PROJ-33) */
   lastMileageKm: number | null;
+  /**
+   * Bisherige Währung des Fahrzeugs (PROJ-36) — die Vorbelegung der Auswahl.
+   * Der Käufer darf sie ändern; die Kostendaten des Verkäufers sind beim
+   * Übertrag ohnehin gelöscht.
+   */
+  currency: string | null;
 }
 
 type TransferState =
@@ -100,6 +106,7 @@ export default function TransferAcceptPage() {
         // richtig, nur unbequemer.
         conditionGrade: data.conditionGrade ?? null,
         lastMileageKm: data.lastMileageKm ?? null,
+        currency: data.currency ?? null,
       };
 
       const supabase = createClient();
@@ -243,6 +250,7 @@ export default function TransferAcceptPage() {
                     onChange={setKaufangaben}
                     vorhandeneZustandsnote={state.info.conditionGrade}
                     letzterKmStand={state.info.lastMileageKm}
+                    fahrzeugWaehrung={state.info.currency}
                     disabled={processing}
                   />
 

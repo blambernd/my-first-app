@@ -211,3 +211,40 @@ describe("describeStock — Marktpreis-Analysen (QA BUG-1)", () => {
     expect(describeStock(bestand({ marketAnalyses: 2 }))[0].onlyAmount).toBe(false);
   });
 });
+
+describe("buildCostCsv — Währung (PROJ-36)", () => {
+  const zeile = {
+    bereich: "Einzelkosten",
+    datum: "2024-03-07",
+    bezeichnung: "Vergaser",
+    amountCents: 124000,
+  };
+
+  it("nennt die Währung in der Kopfzeile", () => {
+    // Ohne diese Angabe ist die Datei Jahre später ohne die Anwendung nicht
+    // mehr eindeutig lesbar.
+    expect(buildCostCsv([zeile], "CHF")).toContain("Betrag (CHF)");
+    expect(buildCostCsv([zeile], "GBP")).toContain("Betrag (GBP)");
+  });
+
+  it("bleibt ohne Angabe bei EUR", () => {
+    // Bestandsfahrzeuge waren faktisch immer Euro.
+    expect(buildCostCsv([zeile])).toContain("Betrag (EUR)");
+  });
+
+  it("schreibt trotzdem KEIN Währungszeichen in die Zahlenfelder", () => {
+    // Sonst liest Excel Text statt Zahl und kann nicht mehr summieren — genau
+    // das, wofür der Export da ist.
+    const csv = buildCostCsv([zeile], "CHF");
+    expect(csv).toContain(";1240,00;");
+    expect(csv).not.toMatch(/;1240,00 ?(CHF|Fr\.|€);/);
+  });
+
+  it("ändert die Beträge nicht — es wird nichts umgerechnet", () => {
+    const eur = buildCostCsv([zeile], "EUR");
+    const chf = buildCostCsv([zeile], "CHF");
+    expect(eur.replace("Betrag (EUR)", "X")).toBe(
+      chf.replace("Betrag (CHF)", "X")
+    );
+  });
+});

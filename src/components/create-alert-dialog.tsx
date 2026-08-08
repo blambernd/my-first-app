@@ -30,6 +30,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { ExternalCurrencyNote } from "@/components/external-currency-note";
 import {
   createAlertSchema,
   PART_CONDITIONS,
@@ -175,6 +176,7 @@ export function CreateAlertDialog({
                       {...field}
                     />
                   </FormControl>
+                  <ExternalCurrencyNote was="Ersatzteil-Angebote" />
                   <FormMessage />
                 </FormItem>
               )}

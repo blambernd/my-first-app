@@ -42,7 +42,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { createClient } from "@/lib/supabase";
-import { eurToCents, formatCentsToEur } from "@/lib/validations/service-entry";
+import { eurToCents } from "@/lib/validations/service-entry";
+import { useCurrency } from "@/components/currency-provider";
 import {
   fuelEntrySchema,
   FUEL_TYPES,
@@ -78,6 +79,7 @@ export function FuelEntryForm({
   previousMileageKm,
   vehicleMileageKm,
 }: FuelEntryFormProps) {
+  const { formatMoney, symbol } = useCurrency();
   const isEditing = Boolean(entry);
   const [saving, setSaving] = useState(false);
   const [updateVehicleMileage, setUpdateVehicleMileage] = useState(true);
@@ -303,7 +305,7 @@ export function FuelEntryForm({
                 name="cost_eur"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Gesamtpreis (€)</FormLabel>
+                    <FormLabel>Gesamtpreis ({symbol})</FormLabel>
                     <FormControl>
                       <Input
                         type="number"
@@ -323,7 +325,7 @@ export function FuelEntryForm({
 
             {perLiter !== null && (
               <p className="text-sm text-muted-foreground">
-                Preis pro Liter: {formatCentsToEur(perLiter)}
+                Preis pro Liter: {formatMoney(perLiter)}
               </p>
             )}
 

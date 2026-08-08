@@ -41,7 +41,7 @@ export const oneOffCostSchema = z.object({
   amount_eur: z.coerce
     .number()
     .min(0, "Betrag kann nicht negativ sein")
-    .max(99999, "Betrag darf maximal 99.999 € betragen"),
+    .max(99999, "Betrag darf maximal 99.999 betragen"),
   purchased_at: z.string().min(1, "Datum ist erforderlich"),
   quantity: z.coerce
     .number()

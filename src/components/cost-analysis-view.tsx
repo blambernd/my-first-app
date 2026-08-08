@@ -26,7 +26,7 @@ import {
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { type ChartConfig } from "@/components/ui/chart";
-import { formatCentsToEur } from "@/lib/validations/service-entry";
+import { useCurrency } from "@/components/currency-provider";
 import {
   SOURCE_META,
   type CostAnalysis,
@@ -69,6 +69,7 @@ export function CostAnalysisView({
   results,
   truncated,
 }: CostAnalysisViewProps) {
+  const { formatMoney } = useCurrency();
   const [periodIndex, setPeriodIndex] = useState(0);
   const [filter, setFilter] = useState<ClassificationFilter>("all");
 
@@ -175,7 +176,7 @@ export function CostAnalysisView({
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">
-              {formatCentsToEur(analysis.totalCents)}
+              {formatMoney(analysis.totalCents)}
             </p>
             <p className="text-sm text-muted-foreground">
               {analysis.period.label}
@@ -195,7 +196,7 @@ export function CostAnalysisView({
                 einen Bruchteil des tatsächlichen Werts (QA BUG-1). */}
             <p className="text-2xl font-bold">
               {analysis.standingMonthlyNowCents !== null
-                ? `${formatCentsToEur(analysis.standingMonthlyNowCents)} / Monat`
+                ? `${formatMoney(analysis.standingMonthlyNowCents)} / Monat`
                 : "—"}
             </p>
             {analysis.standingYearlyNowCents > 0 ||
@@ -206,7 +207,7 @@ export function CostAnalysisView({
                     Jahresrate. Ein Winterlager über sechs Monate kostet 600 €
                     im Jahr, nicht 1.200 € (QA BUG-3). */}
                 <p className="text-sm text-muted-foreground">
-                  {formatCentsToEur(analysis.standingYearlyNowCents)} in{" "}
+                  {formatMoney(analysis.standingYearlyNowCents)} in{" "}
                   {analysis.currentYear}
                 </p>
                 {/* Diese Karte beantwortet eine Frage über den heutigen Tag und
@@ -234,7 +235,7 @@ export function CostAnalysisView({
           <CardContent>
             <p className="text-2xl font-bold">
               {analysis.centsPerKm !== null
-                ? `${formatCentsToEur(Math.round(analysis.centsPerKm))} / km`
+                ? `${formatMoney(Math.round(analysis.centsPerKm))} / km`
                 : "nicht berechenbar"}
             </p>
             <p className="text-sm text-muted-foreground">
@@ -366,7 +367,7 @@ export function CostAnalysisView({
                         </span>
                       </TableCell>
                       <TableCell className="text-right tabular-nums">
-                        {formatCentsToEur(category.totalCents)}
+                        {formatMoney(category.totalCents)}
                       </TableCell>
                       <TableCell className="text-right tabular-nums text-muted-foreground">
                         {visibleTotal > 0
@@ -398,7 +399,7 @@ export function CostAnalysisView({
 
               {filter === "all" && analysis.unclassifiedCents > 0 && (
                 <p className="mt-4 text-sm text-muted-foreground">
-                  {formatCentsToEur(analysis.unclassifiedCents)} entfallen auf
+                  {formatMoney(analysis.unclassifiedCents)} entfallen auf
                   Kostenarten ohne Einordnung als Stand- oder Fahrtkosten. Sie
                   zählen zur Gesamtsumme, tauchen aber in keiner der beiden
                   Aufteilungen auf.
@@ -419,6 +420,7 @@ function DataQualityNotes({
   analysis: CostAnalysis;
   truncated: boolean;
 }) {
+  const { formatMoney } = useCurrency();
   const { quality } = analysis;
   const notes: string[] = [];
 
@@ -428,7 +430,7 @@ function DataQualityNotes({
         quality.excludedCount === 1 ? "Betrag ist" : "Beträge sind"
       } als im Scheckheft enthalten markiert und ${
         quality.excludedCount === 1 ? "wurde" : "wurden"
-      } nicht zusätzlich gezählt (${formatCentsToEur(quality.excludedCents)}).`
+      } nicht zusätzlich gezählt (${formatMoney(quality.excludedCents)}).`
     );
   }
   if (quality.serviceEntriesWithoutCost > 0) {

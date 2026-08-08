@@ -33,7 +33,7 @@ import {
   OneOffCostForm,
   type ServiceEntryOption,
 } from "@/components/one-off-cost-form";
-import { formatCentsToEur } from "@/lib/validations/service-entry";
+import { useCurrency } from "@/components/currency-provider";
 import {
   summarize,
   filterCosts,
@@ -68,6 +68,7 @@ export function OneOffCostList({
   canEdit,
   canDelete,
 }: OneOffCostListProps) {
+  const { formatMoney } = useCurrency();
   const router = useRouter();
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<OneOffCost | undefined>();
@@ -176,7 +177,7 @@ export function OneOffCostList({
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">
-              {formatCentsToEur(summary.totalCents)}
+              {formatMoney(summary.totalCents)}
             </p>
             <p className="text-sm text-muted-foreground">
               {summary.entryCount}{" "}
@@ -197,7 +198,7 @@ export function OneOffCostList({
                 <div key={t.value} className="flex justify-between text-sm">
                   <span className="text-muted-foreground">{t.label}</span>
                   <span className="font-medium">
-                    {formatCentsToEur(summary.byType.get(t.value) ?? 0)}
+                    {formatMoney(summary.byType.get(t.value) ?? 0)}
                   </span>
                 </div>
               )
@@ -214,7 +215,7 @@ export function OneOffCostList({
               ? "Ein Eintrag ist als im Scheckheft enthalten markiert"
               : `${summary.excludedCount} Einträge sind als im Scheckheft enthalten markiert`}{" "}
             und zählt{summary.excludedCount === 1 ? "" : "en"} deshalb nicht zur
-            Summe ({formatCentsToEur(summary.excludedCents)}). So wird derselbe
+            Summe ({formatMoney(summary.excludedCents)}). So wird derselbe
             Betrag nicht zweimal gezählt.
           </AlertDescription>
         </Alert>
@@ -330,7 +331,7 @@ export function OneOffCostList({
                           counted ? "" : "text-muted-foreground line-through"
                         }`}
                       >
-                        {formatCentsToEur(cost.amount_cents)}
+                        {formatMoney(cost.amount_cents)}
                       </p>
 
                       {(canEdit || canDelete) && (

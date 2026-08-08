@@ -20,6 +20,12 @@ import {
 } from "@/components/ui/collapsible";
 import { CONDITION_GRADES } from "@/lib/validations/vehicle";
 import {
+  CURRENCIES,
+  getCurrencySymbol,
+  toCurrency,
+  type Currency,
+} from "@/lib/currency";
+import {
   ablehnungsText,
   pruefeFuerAuswertung,
   type SaleReportInput,
@@ -37,6 +43,15 @@ export interface TransferPurchaseFormProps {
   vorhandeneZustandsnote?: number | null;
   /** Letzter bekannter Kilometerstand zum Vorbelegen */
   letzterKmStand?: number | null;
+  /**
+   * Bisherige Währung des Fahrzeugs — die Vorbelegung der Auswahl (PROJ-36).
+   *
+   * Der Käufer darf sie ändern: Ohne diese Wahl säße ein Schweizer Käufer
+   * eines deutschen Wagens fest und müsste Franken-Beträge in ein Euro-Feld
+   * tippen. Die Kostendaten des Verkäufers sind beim Übertrag ohnehin
+   * gelöscht (PROJ-32), es bleibt also nichts falsch beschriftet zurück.
+   */
+  fahrzeugWaehrung?: string | null;
   disabled?: boolean;
 }
 
@@ -55,6 +70,7 @@ export function TransferPurchaseForm({
   onChange,
   vorhandeneZustandsnote,
   letzterKmStand,
+  fahrzeugWaehrung,
   disabled,
 }: TransferPurchaseFormProps) {
   const [detailsOffen, setDetailsOffen] = useState(false);
@@ -62,12 +78,18 @@ export function TransferPurchaseForm({
   const setze = (teil: Partial<SaleReportInput>) =>
     onChange({ ...wert, ...teil });
 
+  const waehrung: Currency = wert.currency ?? toCurrency(fahrzeugWaehrung);
+
   const frageZustandsnote =
     vorhandeneZustandsnote === null || vorhandeneZustandsnote === undefined;
 
   // Nur prüfen, wenn der Nutzer die Weitergabe überhaupt will — sonst wäre der
   // Hinweis eine Belehrung über etwas, das er nicht vorhat.
   const grund = wert.share_anonymously ? pruefeFuerAuswertung(wert) : null;
+
+  // Beim ersten Rendern steht in `wert.currency` noch nichts. Die Auswahl
+  // zeigt trotzdem die Fahrzeugwährung, damit der Käufer sieht, worin er
+  // gerade eintippt — auch wenn er das Feld nie anfasst.
 
   return (
     <div className="space-y-4 rounded-lg border bg-muted/30 p-4">
@@ -81,7 +103,9 @@ export function TransferPurchaseForm({
 
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">
-          <Label htmlFor="kaufpreis">Kaufpreis (€)</Label>
+          <Label htmlFor="kaufpreis">
+            Kaufpreis ({getCurrencySymbol(waehrung)})
+          </Label>
           <Input
             id="kaufpreis"
             type="number"
@@ -98,6 +122,32 @@ export function TransferPurchaseForm({
               })
             }
           />
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="waehrung">Währung</Label>
+          <Select
+            disabled={disabled}
+            value={waehrung}
+            onValueChange={(v) => setze({ currency: v as Currency })}
+          >
+            <SelectTrigger id="waehrung">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {CURRENCIES.map(({ code, name }) => (
+                <SelectItem key={code} value={code}>
+                  <span className="flex items-baseline gap-2">
+                    <span className="font-medium">{code}</span>
+                    <span className="text-muted-foreground">{name}</span>
+                  </span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">
+            Gilt ab jetzt für das ganze Fahrzeug. Es wird nichts umgerechnet.
+          </p>
         </div>
 
         <div className="space-y-1.5">
@@ -211,7 +261,7 @@ export function TransferPurchaseForm({
           <Alert>
             <Info className="h-4 w-4" />
             <AlertDescription className="text-xs">
-              {ablehnungsText(grund)}
+              {ablehnungsText(grund, waehrung)}
             </AlertDescription>
           </Alert>
         )}

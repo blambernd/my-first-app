@@ -12,6 +12,8 @@
  * Das Entfernen selbst geschieht beim Annehmen in der Datenbank.
  */
 
+import type { Currency } from "@/lib/currency";
+
 /** Trennzeichen und Kodierung so, dass deutsches Excel die Datei direkt öffnet */
 const TRENNZEICHEN = ";";
 
@@ -159,7 +161,18 @@ export interface CsvRow {
   anmerkung?: string;
 }
 
-const KOPFZEILE = ["Bereich", "Datum", "Bezeichnung", "Betrag (EUR)", "Anmerkung"];
+/**
+ * Die Währung steht in der Kopfzeile, nicht in den Zahlenfeldern (PROJ-36).
+ *
+ * In jede Zeile ein Währungszeichen zu schreiben würde die Beträge zu Text
+ * machen, und dann kann Excel nicht mehr summieren — genau das, wofür der
+ * Export da ist. In der Spaltenüberschrift steht sie einmal und ist trotzdem
+ * eindeutig, auch für jemanden, der die Datei Jahre später ohne die
+ * Anwendung öffnet.
+ */
+function kopfzeile(currency: Currency): string[] {
+  return ["Bereich", "Datum", "Bezeichnung", `Betrag (${currency})`, "Anmerkung"];
+}
 
 /**
  * Baut die CSV-Tabelle.
@@ -174,9 +187,12 @@ const KOPFZEILE = ["Bereich", "Datum", "Bezeichnung", "Betrag (EUR)", "Anmerkung
  *   nicht summieren, was den Zweck des Exports verfehlt
  * - **BOM** am Anfang, sonst zerfallen die Umlaute
  */
-export function buildCostCsv(rows: CsvRow[]): string {
+export function buildCostCsv(
+  rows: CsvRow[],
+  currency: Currency = "EUR"
+): string {
   const zeilen = [
-    KOPFZEILE.join(TRENNZEICHEN),
+    kopfzeile(currency).join(TRENNZEICHEN),
     ...rows.map((r) =>
       [
         r.bereich,

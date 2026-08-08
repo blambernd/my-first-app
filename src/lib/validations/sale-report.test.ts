@@ -7,6 +7,7 @@ import {
   kmKlasse,
   kmKlasseLabel,
   pruefeFuerAuswertung,
+  saleReportSchema,
   verkaufsmonat,
   type SaleReportInput,
 } from "./sale-report";
@@ -152,5 +153,55 @@ describe("ablehnungsText", () => {
     expect(ablehnungsText("preis-zu-niedrig")).toMatch(
       /trotzdem gespeichert/
     );
+  });
+});
+
+describe("ablehnungsText — Währung (PROJ-36)", () => {
+  it("nennt die Grenze in der Währung des Fahrzeugs", () => {
+    // Ein festes „€" wäre bei einem Franken-Fahrzeug schlicht falsch.
+    const chf = ablehnungsText("preis-zu-niedrig", "CHF");
+    expect(chf).toContain("CHF");
+    expect(chf).not.toContain("€");
+  });
+
+  it("bleibt ohne Angabe bei Euro", () => {
+    expect(ablehnungsText("preis-zu-hoch")).toContain("€");
+  });
+
+  it("rechnet die Grenze NICHT um", () => {
+    // Die Grenzen fangen Zehnerpotenz-Vertipper, sie bilden keine Kaufkraft
+    // ab. 500 bleibt 500, egal in welcher Währung.
+    for (const w of ["EUR", "CHF", "GBP"] as const) {
+      expect(ablehnungsText("preis-zu-niedrig", w)).toContain("500");
+    }
+  });
+
+  it("lässt Gründe ohne Betrag unverändert", () => {
+    const a = ablehnungsText("keine-zustandsnote", "EUR");
+    const b = ablehnungsText("keine-zustandsnote", "CHF");
+    expect(a).toBe(b);
+  });
+});
+
+describe("saleReportSchema — Währung (PROJ-36)", () => {
+  it("nimmt eine bekannte Währung an", () => {
+    const r = saleReportSchema.safeParse({
+      share_anonymously: false,
+      currency: "CHF",
+    });
+    expect(r.success).toBe(true);
+  });
+
+  it("weist einen unbekannten Code ab", () => {
+    const r = saleReportSchema.safeParse({
+      share_anonymously: false,
+      currency: "XYZ",
+    });
+    expect(r.success).toBe(false);
+  });
+
+  it("ist optional — die Übergabe darf an einer Nebenangabe nicht scheitern", () => {
+    const r = saleReportSchema.safeParse({ share_anonymously: false });
+    expect(r.success).toBe(true);
   });
 });

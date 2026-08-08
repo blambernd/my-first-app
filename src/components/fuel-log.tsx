@@ -29,7 +29,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { createClient } from "@/lib/supabase";
 import { FuelEntryForm } from "@/components/fuel-entry-form";
-import { formatCentsToEur } from "@/lib/validations/service-entry";
+import { useCurrency } from "@/components/currency-provider";
 import {
   calculateConsumption,
   calculateStats,
@@ -67,6 +67,7 @@ export function FuelLog({
   canEdit,
   canDelete,
 }: FuelLogProps) {
+  const { formatMoney } = useCurrency();
   const router = useRouter();
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<FuelEntry | undefined>();
@@ -194,7 +195,7 @@ export function FuelLog({
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">
-              {formatCentsToEur(stats.totalCostCents)}
+              {formatMoney(stats.totalCostCents)}
             </p>
             <p className="text-sm text-muted-foreground">
               {formatLiters(stats.totalLiters)} L in {stats.entryCount}{" "}
@@ -212,7 +213,7 @@ export function FuelLog({
           <CardContent>
             {stats.averagePricePerLiterCents !== null ? (
               <p className="text-2xl font-bold">
-                {formatCentsToEur(stats.averagePricePerLiterCents)}
+                {formatMoney(stats.averagePricePerLiterCents)}
               </p>
             ) : (
               <p className="text-sm text-muted-foreground">Keine Angabe</p>
@@ -340,9 +341,9 @@ export function FuelLog({
                           „0,00 €" hieße, der Tankvorgang sei gratis gewesen. */}
                       {entry.cost_cents === null
                         ? "—"
-                        : formatCentsToEur(entry.cost_cents)}
+                        : formatMoney(entry.cost_cents)}
                       {row.pricePerLiterCents !== null && (
-                        <> · {formatCentsToEur(row.pricePerLiterCents)}/L</>
+                        <> · {formatMoney(row.pricePerLiterCents)}/L</>
                       )}{" "}
                       · {formatKm(entry.mileage_km)} km
                     </p>

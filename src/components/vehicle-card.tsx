@@ -8,6 +8,7 @@ import {
   getConditionGradeShort,
   type VehicleWithImages,
 } from "@/lib/validations/vehicle";
+import { toCurrency } from "@/lib/currency";
 import { createClient } from "@/lib/supabase";
 
 interface VehicleCardProps {
@@ -18,6 +19,14 @@ interface VehicleCardProps {
    * einem späteren Upgrade (oder im Beta-Modus) veraltet stehen.
    */
   hasPremium?: boolean;
+  /**
+   * Zeigt die Währung an der Kachel (PROJ-36).
+   *
+   * Nur wahr, wenn der Nutzer überhaupt gemischt führt. Wer alles in Euro
+   * hat — der Normalfall — soll neben jedem Fahrzeug kein „EUR" lesen
+   * müssen, das nichts unterscheidet.
+   */
+  showCurrency?: boolean;
 }
 
 function getImageUrl(storagePath: string): string {
@@ -28,7 +37,11 @@ function getImageUrl(storagePath: string): string {
   return data.publicUrl;
 }
 
-export function VehicleCard({ vehicle, hasPremium = false }: VehicleCardProps) {
+export function VehicleCard({
+  vehicle,
+  hasPremium = false,
+  showCurrency = false,
+}: VehicleCardProps) {
   const primaryImage = vehicle.vehicle_images?.find((img) => img.is_primary);
   const firstImage = primaryImage ?? vehicle.vehicle_images?.[0];
   const imageUrl = firstImage ? getImageUrl(firstImage.storage_path) : null;
@@ -78,13 +91,20 @@ export function VehicleCard({ vehicle, hasPremium = false }: VehicleCardProps) {
             ) : (
               <span />
             )}
-            {/* Kurzform, weil in der Kachel wenig Platz ist; die volle
-                Bezeichnung steht im Fahrzeugprofil */}
-            {getConditionGradeShort(vehicle.condition_grade ?? null) && (
-              <Badge variant="outline" className="shrink-0 text-xs">
-                {getConditionGradeShort(vehicle.condition_grade ?? null)}
-              </Badge>
-            )}
+            <div className="flex shrink-0 items-center gap-1.5">
+              {showCurrency && (
+                <Badge variant="outline" className="text-xs">
+                  {toCurrency(vehicle.currency)}
+                </Badge>
+              )}
+              {/* Kurzform, weil in der Kachel wenig Platz ist; die volle
+                  Bezeichnung steht im Fahrzeugprofil */}
+              {getConditionGradeShort(vehicle.condition_grade ?? null) && (
+                <Badge variant="outline" className="text-xs">
+                  {getConditionGradeShort(vehicle.condition_grade ?? null)}
+                </Badge>
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>

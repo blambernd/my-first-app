@@ -16,7 +16,7 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart";
-import { formatCentsToEur } from "@/lib/validations/service-entry";
+import { useCurrency } from "@/components/currency-provider";
 
 /**
  * Die beiden Diagramme der Kostenanalyse, bewusst in einer eigenen Datei.
@@ -50,6 +50,8 @@ interface DistributionProps {
 }
 
 export function CostDistributionChart({ data, config }: DistributionProps) {
+  const { formatMoney } = useCurrency();
+
   return (
     <ChartContainer config={config} className="mx-auto h-[240px] w-full">
       <PieChart>
@@ -60,7 +62,7 @@ export function CostDistributionChart({ data, config }: DistributionProps) {
               formatter={(value, name) => (
                 <span>
                   {(config[name as string]?.label as string) ?? name}:{" "}
-                  {formatCentsToEur(Number(value))}
+                  {formatMoney(Number(value))}
                 </span>
               )}
             />
@@ -91,6 +93,8 @@ interface TimelineProps {
 }
 
 export function CostTimelineChart({ data, series, config }: TimelineProps) {
+  const { formatMoney } = useCurrency();
+
   return (
     <ChartContainer config={config} className="h-[240px] w-full">
       <BarChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
@@ -114,7 +118,7 @@ export function CostTimelineChart({ data, series, config }: TimelineProps) {
               formatter={(value, name) => (
                 <span>
                   {(config[name as string]?.label as string) ?? name}:{" "}
-                  {formatCentsToEur(Math.round(Number(value) * 100))}
+                  {formatMoney(Math.round(Number(value) * 100))}
                 </span>
               )}
             />

@@ -37,6 +37,7 @@ function makeVehicle(overrides: Partial<VehicleWithImages> = {}): VehicleWithIma
     condition_grade: null,
     insurance_company: null,
     insurance_policy_number: null,
+    currency: "EUR",
     is_locked: false,
     created_at: "2026-01-01T00:00:00Z",
     updated_at: "2026-01-01T00:00:00Z",

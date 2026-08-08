@@ -58,6 +58,10 @@ export async function POST(
     p_condition_grade: angaben.condition_grade ?? null,
     p_mileage_km: angaben.mileage_km ?? null,
     p_share: angaben.share_anonymously === true,
+    // PROJ-36: Ohne Angabe behält die Datenbankfunktion die bisherige Währung
+    // des Fahrzeugs bei. Die Übergabe darf an einer Nebenangabe nicht
+    // scheitern.
+    p_currency: angaben.currency ?? null,
   });
 
   if (error) {

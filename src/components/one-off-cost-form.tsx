@@ -40,6 +40,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useCurrency } from "@/components/currency-provider";
 import { createClient } from "@/lib/supabase";
 import { eurToCents } from "@/lib/validations/service-entry";
 import {
@@ -76,6 +77,7 @@ export function OneOffCostForm({
   cost,
   serviceEntries,
 }: OneOffCostFormProps) {
+  const { symbol } = useCurrency();
   const isEditing = Boolean(cost);
   const [saving, setSaving] = useState(false);
   const supabase = createClient();
@@ -296,7 +298,7 @@ export function OneOffCostForm({
                 name="amount_eur"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Betrag (€)</FormLabel>
+                    <FormLabel>Betrag ({symbol})</FormLabel>
                     <FormControl>
                       <Input
                         type="number"

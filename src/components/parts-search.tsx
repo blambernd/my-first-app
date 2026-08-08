@@ -36,6 +36,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { ExternalCurrencyNote } from "@/components/external-currency-note";
 import {
   Collapsible,
   CollapsibleContent,
@@ -463,6 +464,9 @@ export function PartsSearch({
                       </FormItem>
                     )}
                   />
+                  <div className="sm:col-span-3">
+                    <ExternalCurrencyNote was="Angebote und Preisfilter" />
+                  </div>
                   <div className="sm:col-span-3">
                     <FormField
                       control={form.control}

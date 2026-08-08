@@ -14,6 +14,8 @@ import {
 } from "@/components/ui/sidebar";
 import { Toaster } from "@/components/ui/sonner";
 import { SiteFooter } from "@/components/site-footer";
+import { CurrencyProvider } from "@/components/currency-provider";
+import { toCurrency } from "@/lib/currency";
 import type { VehicleWithImages } from "@/lib/validations/vehicle";
 import type { MemberRole } from "@/lib/validations/member";
 
@@ -106,6 +108,13 @@ export default async function VehicleLayout({
 
   const vehicleName = `${typedVehicle.make} ${typedVehicle.model}`;
 
+  // PROJ-36: Hier ist die Währung gratis zu haben — das Fahrzeug wird oben
+  // ohnehin mit allen Spalten geladen. Die Unterseiten holen es dagegen mit
+  // schmalen Abfragen (das Tankbuch nur Kennung und Kilometerstand); würde
+  // die Währung durchgereicht, müsste jede einzelne davon erweitert werden,
+  // und jede vergessene wäre ein Fahrzeug, das wieder Euro anzeigt.
+  const currency = toCurrency(typedVehicle.currency);
+
   return (
     // `data-app-shell` markiert eine Seite mit Seitenleiste. Der Footer aus
     // dem Wurzel-Layout hängt am `body` und damit außerhalb dieses Providers —
@@ -114,6 +123,7 @@ export default async function VehicleLayout({
     // solchen Seiten ausgeblendet (globals.css) und hier im Inhaltsfluss
     // ausgegeben, wo er sich von selbst richtig einordnet — auch beim
     // Einklappen und auf dem Smartphone.
+    <CurrencyProvider currency={currency}>
     <SidebarProvider defaultOpen={sidebarOffen} data-app-shell>
       <VehicleSidebar
         vehicleId={id}
@@ -183,5 +193,6 @@ export default async function VehicleLayout({
         <Toaster />
       </SidebarInset>
     </SidebarProvider>
+    </CurrencyProvider>
   );
 }

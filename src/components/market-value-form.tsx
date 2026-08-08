@@ -32,6 +32,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useCurrency } from "@/components/currency-provider";
 import { createClient } from "@/lib/supabase";
 import {
   marketValueSchema,
@@ -53,6 +54,7 @@ export function MarketValueForm({
   onOpenChange,
   currentValueCents,
 }: MarketValueFormProps) {
+  const { symbol } = useCurrency();
   const router = useRouter();
   const [isSaving, setIsSaving] = useState(false);
 
@@ -120,7 +122,7 @@ export function MarketValueForm({
               name="value_eur"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Geschätzter Marktwert (€)</FormLabel>
+                  <FormLabel>Geschätzter Marktwert ({symbol})</FormLabel>
                   <FormControl>
                     <Input
                       inputMode="decimal"

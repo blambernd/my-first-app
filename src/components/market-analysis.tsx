@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ExternalCurrencyNote } from "@/components/external-currency-note";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -161,6 +162,7 @@ function PriceSummaryCard({ analysis }: { analysis: MarketAnalysis }) {
           Berechnet aus {analysis.listing_count} Inserat{analysis.listing_count !== 1 ? "en" : ""} mit
           Preisangabe
         </p>
+        <ExternalCurrencyNote was="Die Vergleichsangebote" />
       </CardContent>
     </Card>
   );

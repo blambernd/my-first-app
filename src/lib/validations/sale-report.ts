@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { CURRENCIES, formatMoneyUnits, type Currency } from "@/lib/currency";
 
 /**
  * Die Angaben, die der Käufer beim Annehmen einer Übergabe machen kann
@@ -79,6 +80,21 @@ export const saleReportSchema = z.object({
     .optional(),
   /** Muss aktiv gesetzt werden — nie vorbelegt */
   share_anonymously: z.boolean(),
+  /**
+   * Währung, in der der Käufer seinen Kaufpreis einträgt (PROJ-36).
+   *
+   * Vorbelegt mit der bisherigen Währung des Fahrzeugs, aber änderbar: Ohne
+   * diese Wahl säße ein Schweizer Käufer eines deutschen Wagens fest und
+   * müsste Franken-Beträge in ein Euro-Feld tippen. Die Kostendaten des
+   * Verkäufers sind beim Übertrag ohnehin gelöscht (PROJ-32), es bleibt also
+   * nichts falsch beschriftet zurück.
+   *
+   * Optional, weil die Übergabe an keiner Nebenangabe scheitern darf. Fehlt
+   * sie, behält die Datenbankfunktion die bisherige Währung bei.
+   */
+  currency: z
+    .enum(CURRENCIES.map((c) => c.code) as [Currency, ...Currency[]])
+    .optional(),
 });
 
 export type SaleReportInput = z.infer<typeof saleReportSchema>;
@@ -111,15 +127,25 @@ export function pruefeFuerAuswertung(
   return null;
 }
 
-/** Verständliche Begründung statt stiller Ablehnung */
-export function ablehnungsText(grund: AblehnungsGrund): string {
+/**
+ * Verständliche Begründung statt stiller Ablehnung.
+ *
+ * Die Währung wird übergeben (PROJ-36): Die Grenzen gelten je Währung
+ * unverändert und ohne Umrechnung — sie fangen Zehnerpotenz-Vertipper, sie
+ * bilden keine Kaufkraft ab. Ein festes „€" im Text wäre bei einem
+ * Franken-Fahrzeug schlicht falsch.
+ */
+export function ablehnungsText(
+  grund: AblehnungsGrund,
+  currency: Currency = "EUR"
+): string {
   switch (grund) {
     case "kein-preis":
       return "Ohne Kaufpreis kann nichts in die Preisübersicht einfließen.";
     case "preis-zu-niedrig":
-      return `Preise unter ${MIN_PREIS_EUR.toLocaleString("de-DE")} € fließen nicht in die Preisübersicht ein — sie sind meist Schenkungen oder Vertipper. Dein Kaufpreis wird trotzdem gespeichert.`;
+      return `Preise unter ${formatMoneyUnits(MIN_PREIS_EUR, currency, { ohneNachkomma: true })} fließen nicht in die Preisübersicht ein — sie sind meist Schenkungen oder Vertipper. Dein Kaufpreis wird trotzdem gespeichert.`;
     case "preis-zu-hoch":
-      return `Preise über ${MAX_PREIS_EUR.toLocaleString("de-DE")} € fließen nicht in die Preisübersicht ein. Bitte prüfe die Angabe.`;
+      return `Preise über ${formatMoneyUnits(MAX_PREIS_EUR, currency, { ohneNachkomma: true })} fließen nicht in die Preisübersicht ein. Bitte prüfe die Angabe.`;
     case "keine-zustandsnote":
       return "Ohne Zustandsnote lässt sich der Verkauf nicht vergleichen — ein Concours-Fahrzeug und ein Restaurierungsobjekt sind nicht dasselbe.";
     case "kein-kilometerstand":

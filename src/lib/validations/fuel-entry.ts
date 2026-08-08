@@ -17,11 +17,14 @@ export const fuelEntrySchema = z.object({
     .number()
     .positive("Literangabe muss größer als 0 sein")
     .max(999, "Literangabe darf maximal 999 sein"),
-  // Eingabe erfolgt in Euro, gespeichert wird in Cent (siehe eurToCents)
+  // Eingabe in ganzen Einheiten, gespeichert in Kleinsteinheiten (eurToCents).
+  // Die Meldung nennt seit PROJ-36 keine Währung mehr: Die Prüfregel kennt die
+  // Währung des Fahrzeugs nicht, und ein festes „€" wäre bei einem Franken-
+  // Fahrzeug schlicht falsch. Die Grenze gilt je Währung unverändert.
   cost_eur: z.coerce
     .number()
     .min(0, "Kosten können nicht negativ sein")
-    .max(99999, "Kosten dürfen maximal 99.999 € betragen"),
+    .max(99999, "Kosten dürfen maximal 99.999 betragen"),
   mileage_km: z.coerce
     .number()
     .int("Kilometerstand muss eine ganze Zahl sein")

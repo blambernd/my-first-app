@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { createClient } from "@/lib/supabase";
 import { RecurringCostForm } from "@/components/recurring-cost-form";
-import { formatCentsToEur } from "@/lib/validations/service-entry";
+import { useCurrency } from "@/components/currency-provider";
 import {
   withProration,
   groupByType,
@@ -56,6 +56,7 @@ export function RecurringCostList({
   canEdit,
   canDelete,
 }: RecurringCostListProps) {
+  const { formatMoney } = useCurrency();
   const router = useRouter();
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<RecurringCost | undefined>();
@@ -164,7 +165,7 @@ export function RecurringCostList({
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">
-              {formatCentsToEur(monthlyNow)}
+              {formatMoney(monthlyNow)}
             </p>
             <p className="text-sm text-muted-foreground">
               Summe der heute laufenden Einträge
@@ -179,7 +180,7 @@ export function RecurringCostList({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{formatCentsToEur(yearlyNow)}</p>
+            <p className="text-2xl font-bold">{formatMoney(yearlyNow)}</p>
             <p className="text-sm text-muted-foreground">
               nur die Monate, die tatsächlich in {currentYear} fallen
             </p>
@@ -239,10 +240,10 @@ export function RecurringCostList({
                         </div>
 
                         <p className="text-sm text-muted-foreground">
-                          {formatCentsToEur(cost.amount_cents)} je Zahlung ·{" "}
+                          {formatMoney(cost.amount_cents)} je Zahlung ·{" "}
                           {row.payments}{" "}
                           {row.payments === 1 ? "Zahlung" : "Zahlungen"} ·{" "}
-                          {formatCentsToEur(row.totalCents)} gesamt
+                          {formatMoney(row.totalCents)} gesamt
                         </p>
 
                         {cost.provider && (
@@ -260,7 +261,7 @@ export function RecurringCostList({
                       <div className="flex items-center gap-3">
                         <div className="text-right">
                           <p className="text-lg font-semibold">
-                            {formatCentsToEur(row.monthlyCents)}
+                            {formatMoney(row.monthlyCents)}
                             <span className="ml-1 text-xs font-normal text-muted-foreground">
                               /Monat
                             </span>
