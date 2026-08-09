@@ -1,6 +1,6 @@
 # PROJ-36: Währung pro Fahrzeug
 
-## Status: Approved
+## Status: Deployed
 **Created:** 2026-08-07
 **Last Updated:** 2026-08-09
 
@@ -679,3 +679,74 @@ Im selben Zug festgehalten, was **nicht** mitzählt: `market_analyses`. Diese Pr
 Ein `npm run build` bei laufendem Playwright-Dev-Server schreibt `.next` neu und zerlegt den laufenden Server: Die ausgelieferte Seite fordert Programmteile an, die es nicht mehr gibt (`ChunkLoadError`), und jeder Seitenaufruf läuft in eine Zeitüberschreitung. Ein Testlauf brauchte dadurch **zwei Stunden** und meldete einen Fehler, den es nicht gab. Dasselbe war schon am 2026-08-08 passiert.
 
 **Regel daraus:** Vor einem `npm run build` den Dev-Server beenden und `.next` löschen — oder den Build erst nach den E2E-Läufen ausführen.
+
+---
+
+## Deployment (2026-08-09)
+
+**Produktion:** https://www.oldtimer-docs.com
+**Version:** `v1.35.0-PROJ-36`
+**Commits:** `826fb9a` (Frontend), `021670d` (Backend), `7e9a582` (QA), `c01739d` (Fehlerbehebung)
+
+### Die Datenbank war vor dem Deploy dran — und das musste geprüft werden
+
+Die Migrationen liefen schon während der Entwicklung gegen die **Produktionsdatenbank**. Zwischen Datenbankänderung und Deploy lag also ein Zeitraum, in dem die ausgelieferte Anwendung die geänderte Datenbank benutzte.
+
+Das ist kein Detail: `accept_vehicle_transfer` hat seither **sechs** Parameter, der ausgelieferte Aufruf schickte aber nur fünf. Statt das für unproblematisch zu halten, wurde es nachgestellt:
+
+```
+accept_vehicle_transfer(p_token := …, p_price_cents := NULL,
+                        p_condition_grade := NULL, p_mileage_km := NULL,
+                        p_share := false)
+→ {"error": "Nicht angemeldet"}
+```
+
+Die Funktion löst auf und antwortet fachlich — der fehlende Parameter greift auf seine Vorgabe zurück. Ein Fahrzeugübergang wäre in dieser Lücke also normal durchgelaufen. Hätte die Auflösung gefehlt, wäre die Antwort „function not found" gewesen.
+
+### Vorprüfungen
+
+| Prüfung | Ergebnis |
+|---|---|
+| `npm run build` | erfolgreich (42 s) |
+| `npm run lint` | 0 Fehler |
+| QA-Freigabe | **Approved**, keine kritischen oder hohen Fehler |
+| Neue Umgebungsvariablen | **keine** |
+| Geheimnisse in den Commits | **keine** (0 Treffer für Dienstschlüssel, SerpAPI, Zahlungsschlüssel) |
+| Migrationen in der Produktion | `vehicles.currency` ✓, `vehicle_sales.currency` ✓, beide Funktionen ✓, **genau eine** Fassung der Übergabefunktion |
+
+### Nachweis, dass der neue Stand wirklich live ist
+
+Der Kostenbereich liegt hinter der Anmeldung — ein öffentlicher Seitenaufruf beweist also nichts. Als Merkmal diente die **Währungsliste im ausgelieferten Programmteil**: `public-profile.tsx` bindet `lib/currency.ts` erst seit dem Backend-Commit ein, und `/profil/<token>` ist öffentlich.
+
+```
+GEFUNDEN "Schweizer Franken" in /_next/static/chunks/acfbce506664eb37.js
+```
+
+Das ist ein Merkmal des **neuen** Zustands. Auf „die Seite antwortet" zu prüfen hätte auch der alte Stand erfüllt — genau dieser Fehler war in dieser Woche schon zweimal passiert.
+
+### Rauchtest in der Produktion
+
+| Seite | Ergebnis |
+|---|---|
+| `/`, `/login`, `/register`, `/faq`, `/kontakt` | 200, **keine Konsolenfehler** |
+| `/profil/gibtesnicht` | 200 — die erwartete 404-Antwort der Schnittstelle, die Seite zeigt „Profil nicht gefunden" |
+| Anmeldung | ok |
+| `/vehicles/<id>/edit`, `/kosten`, `/tankbuch` | 200, **keine Konsolenfehler** |
+| Währungsfeld über `getByLabel("Währung *")` | **gefunden** — QA BUG-1 ist auch in der Produktion behoben |
+| Angezeigter Wert | „EUR Euro" |
+
+### Der Zustand, in dem die Produktion jetzt ist
+
+**Alle sieben Fahrzeuge in der Produktion stehen auf EUR.** Für jedes einzelne ist die Anzeige heute richtig — auch das Kostenfeld im Scheckheft, das noch fest „(EUR)" trägt.
+
+Das bleibt so, **bis jemand zum ersten Mal eine andere Währung wählt.** Ab diesem Moment zeigt genau dieses eine Feld die falsche Währung an, während alle anderen sechs Erfassungsmasken richtig sind.
+
+**Ursache:** Vier Dateien tragen die parallele PROJ-35-Arbeit des Nutzers in denselben Zeilen wie die Währungsänderung. Git kann nur ganze Dateien einchecken; sie mitzunehmen hieße, fremde unfertige Arbeit auszuliefern. Sie liegen im Arbeitsverzeichnis vollständig richtig vor — nur eben nicht im Repository.
+
+**Auflösung:** Sobald PROJ-35 committet wird, geht die Beschriftung von selbst mit. Kein zusätzlicher Aufwand, nur eine Reihenfolge.
+
+### Zurückrollen
+
+Vercel-Übersicht → Deployments → beim vorherigen Eintrag „Promote to Production".
+
+**Die Datenbankänderungen brauchen dabei nichts.** Beide Spalten sind additiv mit Vorgabe EUR, und die alte Fassung des Aufrufs löst weiterhin auf — nachgewiesen oben. Ein Rückfall auf den vorherigen Stand ist damit gefahrlos, ohne die Datenbank anzufassen.
