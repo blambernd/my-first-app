@@ -39,10 +39,11 @@ async function waitForToastsGone(page: Page) {
 /**
  * Das Währungsfeld im Fahrzeugformular.
  *
- * Bewusst über den sichtbaren Wert gesucht und nicht über die Beschriftung:
- * Das Feld ist mit seinem Label **nicht** verknüpft (siehe QA BUG-1), ein
- * `getByLabel("Währung")` findet es also nicht. Sobald der Fehler behoben ist,
- * kann dieser Helfer vereinfacht werden.
+ * Bewusst über den sichtbaren Wert gesucht und **nicht** über die Beschriftung
+ * — obwohl das seit der Behebung von QA BUG-1 ginge: Solange der Warnhinweis
+ * offen ist, liegt das Feld hinter einem Modal, und jeder ARIA-gestützte
+ * Zugriff (`getByLabel`, `getByRole`) findet es dann nicht mehr. Dass die
+ * Beschriftung korrekt verbunden ist, prüft ein eigener Test.
  */
 function waehrungsAuswahl(page: Page) {
   // Bewusst `locator` statt `getByRole`: Solange der Warnhinweis offen ist,
@@ -195,6 +196,27 @@ test.describe("PROJ-36: Währung pro Fahrzeug", () => {
     await page.goto("/vehicles/new");
     await expect(waehrungsAuswahl(page)).toBeVisible({ timeout: 30000 });
     await expect(waehrungsAuswahl(page)).toContainText("EUR");
+  });
+
+  test("AC: Das Feld ist mit seiner Beschriftung verbunden (QA BUG-1)", async ({
+    page,
+  }) => {
+    // Bis zum 2026-08-09 fand `getByLabel` das Feld nicht: `FormControl` reicht
+    // `id` und `aria-describedby` per Radix-Slot an sein Kind weiter, und
+    // `CurrencySelect` nahm sie nicht entgegen. Sichtbar stand „Währung *"
+    // daneben — ein Screenreader meldete ein unbeschriftetes Auswahlfeld bei
+    // einer Pflichtangabe.
+    await page.goto("/vehicles/new");
+    const feld = page.getByLabel("Währung *");
+    await expect(feld).toBeVisible({ timeout: 30000 });
+    await expect(feld).toContainText("EUR");
+
+    // Und die Erläuterung darunter gehört ebenfalls zum Feld.
+    const beschreibung = await feld.getAttribute("aria-describedby");
+    expect(beschreibung, "aria-describedby fehlt").toBeTruthy();
+    await expect(page.locator(`#${beschreibung!.split(" ")[0]}`)).toContainText(
+      "nie umgerechnet"
+    );
   });
 
   test("AC: Neun Währungen, jede mit Code und Klartext", async ({ page }) => {

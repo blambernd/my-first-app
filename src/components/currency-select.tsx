@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { forwardRef, useState } from "react";
 import {
   Select,
   SelectContent,
@@ -32,17 +32,27 @@ import { CURRENCIES, formatMoney, type Currency } from "@/lib/currency";
  */
 
 /**
- * Die sechs Stellen, an denen ein Fahrzeug Geldbeträge sammelt.
+ * Die Stellen, an denen ein Fahrzeug Geldbeträge sammelt.
  *
  * Die Zahl aus diesen Tabellen macht die Warnung überhaupt überzeugend:
  * „Einige Einträge sind betroffen" liest niemand zu Ende, „47 Einträge sind
- * betroffen" schon.
+ * betroffen" schon. Eine **zu niedrige** Zahl schwächt deshalb genau das,
+ * wofür die Warnung da ist — sie muss vollständig sein.
+ *
+ * `vehicle_purchase_costs` (die Nebenkosten zum Kaufpreis) fehlte bis zum
+ * 2026-08-09 (QA BUG-4): Wer Kaufpreis und drei Nebenkosten erfasst hatte,
+ * las „1 erfasster Betrag", während vier neu beschriftet wurden.
+ *
+ * `market_analyses` steht bewusst **nicht** hier: Diese Preise stammen aus dem
+ * deutschen Markt und bleiben Euro (siehe EXTERNAL_CURRENCY), ein
+ * Währungswechsel am Fahrzeug berührt sie nicht.
  */
 const GELD_TABELLEN = [
   { tabelle: "fuel_entries", spalte: "vehicle_id" },
   { tabelle: "recurring_costs", spalte: "vehicle_id" },
   { tabelle: "one_off_costs", spalte: "vehicle_id" },
   { tabelle: "vehicle_purchases", spalte: "vehicle_id" },
+  { tabelle: "vehicle_purchase_costs", spalte: "vehicle_id" },
   { tabelle: "vehicle_market_values", spalte: "vehicle_id" },
 ] as const;
 
@@ -55,19 +65,50 @@ interface CurrencySelectProps {
    */
   vehicleId?: string;
   disabled?: boolean;
+  /**
+   * Die Eigenschaften, die `FormControl` beisteuert (QA BUG-1).
+   *
+   * `FormControl` ist ein Radix-`Slot`: Es setzt `id`, `aria-describedby` und
+   * `aria-invalid` auf sein Kind und verbindet damit Beschriftung, Erläuterung
+   * und Fehlermeldung mit dem Feld. Bei allen anderen Feldern des Formulars
+   * ist dieses Kind der `SelectTrigger` selbst. Hier liegt diese Komponente
+   * dazwischen — nimmt sie die Eigenschaften nicht entgegen, **fallen sie
+   * still zu Boden**, und ein Screenreader meldet ein unbeschriftetes
+   * Auswahlfeld bei einer Pflichtangabe.
+   *
+   * Deshalb werden sie ausdrücklich angenommen und an den Auslöser
+   * weitergereicht. Aus demselben Grund `forwardRef`: Der `Slot` gibt eine
+   * Referenz mit, und eine Funktionskomponente ohne `forwardRef` verwirft sie.
+   */
+  id?: string;
+  "aria-describedby"?: string;
+  "aria-invalid"?: boolean;
 }
 
-export function CurrencySelect({
-  value,
-  onChange,
-  vehicleId,
-  disabled,
-}: CurrencySelectProps) {
+export const CurrencySelect = forwardRef<
+  HTMLButtonElement,
+  CurrencySelectProps
+>(function CurrencySelect(
+  {
+    value,
+    onChange,
+    vehicleId,
+    disabled,
+    id,
+    "aria-describedby": ariaDescribedBy,
+    "aria-invalid": ariaInvalid,
+  },
+  ref
+) {
   const [pending, setPending] = useState<Currency | null>(null);
   const [betroffen, setBetroffen] = useState<number>(0);
   const [pruefe, setPruefe] = useState(false);
 
-  async function zaehleBetraege(id: string): Promise<number> {
+  // Der Name lautet bewusst nicht `id`: Diese Komponente hat seit QA BUG-1
+  // eine Eigenschaft `id` (die des Formularfelds). Ein gleichnamiger Parameter
+  // verdeckte sie hier — beides sind Kennungen, und eine Verwechslung wäre
+  // beim Lesen nicht zu sehen.
+  async function zaehleBetraege(fahrzeugId: string): Promise<number> {
     const supabase = createClient();
 
     // Scheckheft-Einträge zählen nur mit Kostenangabe — ein Eintrag ohne
@@ -77,12 +118,12 @@ export function CurrencySelect({
         supabase
           .from(tabelle)
           .select("id", { count: "exact", head: true })
-          .eq(spalte, id)
+          .eq(spalte, fahrzeugId)
       ),
       supabase
         .from("service_entries")
         .select("id", { count: "exact", head: true })
-        .eq("vehicle_id", id)
+        .eq("vehicle_id", fahrzeugId)
         .not("cost_cents", "is", null),
     ];
 
@@ -131,7 +172,12 @@ export function CurrencySelect({
         onValueChange={(v) => handleSelect(v as Currency)}
         disabled={disabled || pruefe}
       >
-        <SelectTrigger>
+        <SelectTrigger
+          ref={ref}
+          id={id}
+          aria-describedby={ariaDescribedBy}
+          aria-invalid={ariaInvalid}
+        >
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -178,7 +224,8 @@ export function CurrencySelect({
                             "de-DE"
                           )} erfasste Beträge`}
                       : Tankbuch, laufende Kosten, Einzelkosten,
-                      Scheckheft-Kosten, Kaufpreis und Marktwerte.
+                      Scheckheft-Kosten, Kaufpreis samt Nebenkosten und
+                      Marktwerte.
                     </>
                   ) : (
                     // Zählen fehlgeschlagen — dann lieber ohne Zahl warnen als
@@ -213,4 +260,4 @@ export function CurrencySelect({
       </AlertDialog>
     </>
   );
-}
+});

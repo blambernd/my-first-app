@@ -1,6 +1,6 @@
 # PROJ-36: Währung pro Fahrzeug
 
-## Status: In Review
+## Status: Approved
 **Created:** 2026-08-07
 **Last Updated:** 2026-08-09
 
@@ -629,3 +629,53 @@ Keine kritischen, keine hohen Fehler. Die vier Befunde sind Nachbesserungen, kei
 | E2E `PROJ-36` (neu) | **13 grün**, 1 als bekannter Fehler markiert (BUG-2) |
 | E2E `chromium` (Regression) | **182 / 182 grün** |
 | Sicherheitsprüfung | ohne Befund |
+
+---
+
+## Behebung von BUG-1 und BUG-4 (2026-08-09)
+
+Auf Entscheidung des Nutzers vor dem Deploy behoben. BUG-2 und BUG-3 bleiben offen — BUG-3 gehört ohnehin zu PROJ-2.
+
+### BUG-1 — Die Kette vom Label zum Feld ist geschlossen
+
+`CurrencySelect` nimmt jetzt `id`, `aria-describedby` und `aria-invalid` entgegen und reicht sie an den `SelectTrigger` weiter. Zusätzlich `forwardRef`: `FormControl` gibt über den Radix-`Slot` eine Referenz mit, und eine gewöhnliche Funktionskomponente verwirft sie stillschweigend.
+
+**Der Nachweis steckt im Test, nicht in der Beschreibung.** Ein eigener E2E-Test findet das Feld jetzt über `getByLabel("Währung *")` — genau der Zugriff, der vorher ins Leere lief — und prüft zusätzlich, dass `aria-describedby` auf die Erläuterung zeigt:
+
+```
+AC: Das Feld ist mit seiner Beschriftung verbunden (QA BUG-1) ✓
+```
+
+Nebenbei aufgeräumt: Der Parameter von `zaehleBetraege` hieß `id` und verdeckte damit die neue Eigenschaft gleichen Namens. Beides sind Kennungen, und eine Verwechslung wäre beim Lesen nicht zu sehen gewesen — er heißt jetzt `fahrzeugId`.
+
+### BUG-4 — Die Warnung zählt jetzt vollständig
+
+`vehicle_purchase_costs` ist in der Liste der Geldtabellen ergänzt, und der Hinweistext nennt „Kaufpreis **samt Nebenkosten**".
+
+Warum das mehr ist als eine Zahl: Die Warnung hat genau eine Aufgabe — den Nutzer davon abzuhalten, einen Wechsel für eine Umrechnung zu halten. Ihre Überzeugungskraft steckt in der konkreten Zahl. Eine zu niedrige Zahl schwächt sie an der einzigen Stelle, an der sie wirkt.
+
+Im selben Zug festgehalten, was **nicht** mitzählt: `market_analyses`. Diese Preise stammen aus dem deutschen Markt und bleiben Euro; ein Währungswechsel am Fahrzeug berührt sie nicht. Das stand vorher nirgends und hätte beim nächsten Lesen wie eine zweite Lücke ausgesehen.
+
+### Verbleibende Fehler
+
+| | Stand |
+|---|---|
+| BUG-1 (Mittel) | **behoben**, mit Test |
+| BUG-2 (Niedrig) | offen — Hinweis im zugeklappten Filterbereich, als `test.fixme()` festgehalten |
+| BUG-3 (Mittel) | offen — gehört zu PROJ-2, nicht zu dieser Funktion |
+| BUG-4 (Niedrig) | **behoben** |
+
+### Prüfstand nach der Behebung
+
+| Prüfung | Ergebnis |
+|---|---|
+| E2E `PROJ-36` | **14 grün** (vorher 13), 1 bekannter Fehler markiert |
+| Unit-Tests | **728 grün** |
+| E2E `chromium` | **182 / 182 grün** |
+| Typen / Lint / Build | 0 Fehler |
+
+### Eine Betriebsnotiz, die Zeit gekostet hat
+
+Ein `npm run build` bei laufendem Playwright-Dev-Server schreibt `.next` neu und zerlegt den laufenden Server: Die ausgelieferte Seite fordert Programmteile an, die es nicht mehr gibt (`ChunkLoadError`), und jeder Seitenaufruf läuft in eine Zeitüberschreitung. Ein Testlauf brauchte dadurch **zwei Stunden** und meldete einen Fehler, den es nicht gab. Dasselbe war schon am 2026-08-08 passiert.
+
+**Regel daraus:** Vor einem `npm run build` den Dev-Server beenden und `.next` löschen — oder den Build erst nach den E2E-Läufen ausführen.
