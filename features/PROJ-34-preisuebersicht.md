@@ -2,13 +2,14 @@
 
 ## Status: Architected
 **Created:** 2026-08-04
-**Last Updated:** 2026-08-04
+**Last Updated:** 2026-08-09
 
 ## Dependencies
 - Requires: PROJ-33 (Verkaufspreis-Erhebung) — liefert die Datenpunkte; ohne sie zeigt diese Seite nichts
 - Requires: PROJ-2 (Fahrzeugprofil) — Marke, Modell, Baujahr, Zustandsnote des eigenen Fahrzeugs
 - Betrifft: PROJ-28 (Wertentwicklung) — hier trägt der Nutzer bisher seinen Marktwert von Hand ein
 - Betrifft: PROJ-29 (Belastbarer Marktüberblick) — zurückgestellt; dieses Feature verfolgt dasselbe Ziel mit einer eigenen Datenquelle statt gescrapter Inserate
+- **Requires: PROJ-36 (Währung pro Fahrzeug)** — ausgeliefert am 2026-08-09. `vehicle_sales` trägt seither eine Währung, und die Auswertung **muss** je Währung getrennt rechnen. Ohne diese Trennung würde die Übersicht Franken- und Euro-Preise still zu einem Median verrechnen — unbemerkbar, weil die Tabelle für niemanden lesbar ist. Siehe C8.
 
 ## Zusammenfassung
 
@@ -42,7 +43,15 @@ PROJ-33 sammelt bei jedem Transfer einen anonymen Datenpunkt: was tatsächlich g
 - [ ] Angegeben wird, aus welchem Zeitraum die Verkäufe stammen
 - [ ] Angegeben wird, welche Merkmale als „vergleichbar" galten
 - [ ] Ein **einzelner** Verkaufspreis wird nie angezeigt, unter keinen Umständen
-- [ ] Beträge erscheinen in deutscher Formatierung mit Euro-Angabe
+- [ ] Beträge erscheinen in deutscher Formatierung **in der Währung des eigenen Fahrzeugs** (PROJ-36)
+
+### Währung (PROJ-36)
+
+- [ ] Verglichen wird **ausschließlich innerhalb derselben Währung** — ein Verkauf in Franken taucht nie in der Übersicht eines Euro-Fahrzeugs auf, und umgekehrt
+- [ ] **Die Mindestzahl gilt je Währung**, nicht über alle Währungen zusammen
+- [ ] Es wird **an keiner Stelle umgerechnet** — auch nicht, um eine Vergleichsgruppe zu füllen
+- [ ] Die angezeigte Währung ist die des eigenen Fahrzeugs; sie steht an der Kennzahl
+- [ ] Reicht die Datenlage in der eigenen Währung nicht, erscheint der **normale leere Zustand** — nicht der Hinweis, dass es in einer anderen Währung Daten gäbe. Diese Zahl zu nennen wäre eine Aussage über einen Bestand, den der Nutzer nicht sehen darf
 
 ### Mindestbesetzung
 - [ ] Unterhalb einer festgelegten Mindestzahl von Verkäufen wird **kein Wert** angezeigt
@@ -83,6 +92,9 @@ PROJ-33 sammelt bei jedem Transfer einen anonymen Datenpunkt: was tatsächlich g
 - **Nutzer versucht, durch Variation der Merkmale einen Einzelwert einzugrenzen:** Wiederholte Abfragen mit leicht verschobenen Angaben könnten eine Spanne so weit einengen, dass ein einzelner Preis erkennbar wird
 - **Fahrzeug ohne Zustandsnote:** Womit soll dann verglichen werden?
 - **Sehr gängiges Modell:** Bei einem VW Käfer können viele Verkäufe zusammenkommen, die inhaltlich wenig gemein haben
+- **Fahrzeug in Franken, Verkäufe nur in Euro:** Der häufigste Fall außerhalb des Euroraums — und er bleibt es voraussichtlich lange. Es darf **nichts** erscheinen, auch kein Hinweis auf die vorhandenen Euro-Verkäufe
+- **Ein Modell, das in mehreren Währungen gehandelt wird:** Acht Euro- und zwei Franken-Verkäufe ergeben eine sichtbare Euro-Übersicht und **keine** Franken-Übersicht. Es wird nicht zusammengezählt, um die Mindestzahl zu erreichen
+- **Der Nutzer stellt sein Fahrzeug auf eine andere Währung um:** Die Übersicht wechselt damit die Vergleichsgruppe und wird wahrscheinlich leer. Das ist richtig — falsch wäre, ihm die alte Gruppe unter neuer Beschriftung zu zeigen
 
 ## Technische Anforderungen
 
@@ -160,12 +172,14 @@ Gebraucht werden die Merkmale des eigenen Fahrzeugs:
 - Baujahr
 - Kilometerstand → Klasse
 - Zustandsnote
+- Währung                              ← seit PROJ-36
 
 Zurück kommt:
 - Median und gestutzte Spanne
 - Anzahl der Verkäufe, auf denen das beruht
 - Der tatsächlich verglichene Baujahr-Bereich
 - Zeitraum der berücksichtigten Verkäufe
+- Die Währung, in der das gilt         ← seit PROJ-36
 ```
 
 Einzelne Verkäufe verlassen die Datenbank **nie**.
@@ -212,6 +226,40 @@ Der Vergleich muss deshalb mindestens Groß-/Kleinschreibung und Leerzeichen ign
 
 Eine Anpassung an heutige Preise bräuchte einen Index für Oldtimerpreise, den es hier nicht gibt. Sie zu schätzen hieße, eine Zahl zu erfinden. Stattdessen wird der **Zeitraum genannt**, und wenn die Verkäufe überwiegend alt sind, steht das als Hinweis dabei.
 
+**C8 — Die Währung ist eine harte Trennlinie, kein Lockerungsparameter (PROJ-36).**
+
+*Ergänzt am 2026-08-09, nachdem PROJ-36 ausgeliefert wurde.*
+
+`vehicle_sales` trägt seit PROJ-36 eine Spalte `currency`. Die Auswertung filtert **zwingend** darauf, und die Mindestzahl wird **innerhalb** dieser Gruppe gezählt.
+
+Der Unterschied zu C4 ist der Kern dieser Entscheidung, und er ist leicht zu verwechseln:
+
+| | Baujahr (C4) | Währung (C8) |
+|---|---|---|
+| Bei zu dünner Lage | wird schrittweise erweitert | **wird nie erweitert** |
+| Warum | Ein 1969er und ein 1971er sind vergleichbare Fahrzeuge. Die Erweiterung macht die Aussage gröber, aber nicht falsch | Ein Franken- und ein Euro-Preis sind **verschiedene Größen**. Sie zusammenzuwerfen macht die Aussage nicht gröber, sondern **unsinnig** |
+| Kenntlich gemacht | ja, die Spanne steht dran | entfällt — es passiert nicht |
+
+Die Versuchung ist real: Bei dünner Datenlage wäre es naheliegend, „einfach alle Verkäufe des Modells" zu nehmen, um überhaupt etwas zeigen zu können. Das Ergebnis wäre ein Median aus 45.000 (Euro) und 42.000 (Franken), der weder das eine noch das andere ist — und **niemand könnte es bemerken**, weil die Tabelle für keinen Nutzer lesbar ist und die Anzeige nur eine Zahl zeigt.
+
+**Es wird auch nicht umgerechnet**, um die Gruppen zu füllen. Das ist dieselbe Entscheidung wie in PROJ-36: Ein umgerechneter Verkaufspreis wäre eine Schätzung neben belegten Zahlen, ohne dass man den beiden ansieht, welche welche ist. Bei einer Kennzahl, die als Verhandlungsgrundlage dient, wiegt das schwerer als anderswo.
+
+**Die Datenbank ist darauf schon vorbereitet.** Der Suchindex enthält seit PROJ-36 die Währung:
+
+```
+idx_vehicle_sales_lookup (lower(make), lower(model), build_year, currency)
+```
+
+Ohne sie müsste die Auswertung erst alle Währungen laden und danach verwerfen.
+
+**C9 — Die Folge ehrlich benennen: außerhalb des Euroraums bleibt die Übersicht lange leer.**
+
+Heute stehen **alle** Fahrzeuge in der Produktion auf Euro (Stand 2026-08-09, sieben Stück). Nicht-Euro-Verkäufe wird es zunächst einzeln geben, und die Mindestzahl je Währung erreichen sie erst nach vielen Übertragungen.
+
+Für einen Schweizer Nutzer heißt das: **Er trägt bei und sieht auf absehbare Zeit nichts.** Das ist die richtige Entscheidung — die Alternative wäre eine Zahl, die etwas anderes bedeutet als sie behauptet — aber sie sollte nicht als Panne erscheinen.
+
+Der leere Zustand muss deshalb **erklären statt sich zu entschuldigen**: dass verglichen wird, was in derselben Währung gehandelt wurde, und dass die Übersicht erscheint, sobald genug solcher Verkäufe vorliegen. Er darf dabei **nicht** verraten, wie viele es in anderen Währungen gibt — das wäre eine Aussage über einen Bestand, den niemand einsehen darf, und bei einem seltenen Modell verrät sie zu viel (siehe C5).
+
 ### D) Abhängigkeiten
 
 **Keine neuen Pakete.** Die Auswertung ist eine Datenbankabfrage, die Anzeige nutzt vorhandene Bausteine.
@@ -222,6 +270,8 @@ Eine Anpassung an heutige Preise bräuchte einen Index für Oldtimerpreise, den 
 - **Keine Preishistorie** eines Modells über die Zeit: Bei der zu erwartenden Datenmenge wäre das eine Linie durch drei Punkte
 - **Kein Eingriff in die Wertentwicklung.** Sie rechnet weiter mit dem selbst eingetragenen Wert
 - **Keine Anzeige, solange die Mindestzahl nicht erreicht ist** — auch nicht abgeschwächt
+- **Keine Umrechnung zwischen Währungen** — weder für die Anzeige noch, um eine Vergleichsgruppe zu füllen (C8)
+- **Kein Hinweis auf Verkäufe in anderen Währungen** — auch nicht als „in Euro liegen Daten vor". Das wäre eine Aussage über einen Bestand, den niemand einsehen darf
 
 ### F) Offene Punkte für die Umsetzung
 
@@ -234,6 +284,10 @@ Eine Anpassung an heutige Preise bräuchte einen Index für Oldtimerpreise, den 
 **F4 — Wann „überwiegend alt" gilt.** Ein Schwellenwert, der beim Bauen festzulegen ist.
 
 **F5 — Das Feature sollte erst gebaut werden, wenn Datenpunkte vorliegen.** Heute sind es null. Eine Auswertung, die niemand mit echten Zahlen sehen kann, lässt sich weder beurteilen noch sinnvoll prüfen.
+
+**F6 — Wie der leere Zustand bei Fremdwährung formuliert wird (PROJ-36).** Er muss zwei Dinge leisten, die leicht auseinanderfallen: erklären, **warum** nichts da ist (verglichen wird nur innerhalb derselben Währung), ohne dabei zu verraten, **wie viel** in anderen Währungen vorliegt. Beim Bauen zu formulieren, nicht beim Prüfen.
+
+**F7 — Ob die Mindestzahl je Währung dieselbe ist.** Vorschlag: ja, unverändert 5 (F1). Eine niedrigere Schranke für seltene Währungen wäre genau verkehrt herum — dort ist die Gruppe kleiner und ein einzelner Verkauf **leichter** zuzuordnen, nicht schwerer.
 
 ## QA Test Results
 _To be added by /qa_

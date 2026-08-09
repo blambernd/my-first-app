@@ -495,3 +495,5 @@ Danach: kein offener Transfer, keine Datenpunkte, Besitzer unverändert.
 **BUG-2** (gering): teils englische Vorgabetexte der Eingabeprüfung. **BUG-3** (gering): ein leerer Rumpf `{}` lässt die Übergabe scheitern. Über die Oberfläche ist keiner von beiden erreichbar.
 
 **Für PROJ-34 vorgemerkt:** Median statt Mittelwert und gestutzte Spannen. Die Strukturregeln gegen das Fluten verteuern den Angriff erheblich, aber keine Strukturregel ist dicht.
+
+> **Ergänzt am 2026-08-09 (PROJ-36).** Die Aufzählung „Gespeichert wird" im Einwilligungstext nannte die Währung nicht, obwohl sie seit PROJ-36 mitgespeichert wird. Bei einer Einwilligungserklärung ist Vollständigkeit keine Formsache: Der Nutzer stimmt genau dem zu, was dort steht. Ergänzt zu „der Kaufpreis **samt Währung**".

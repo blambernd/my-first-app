@@ -232,9 +232,13 @@ export function TransferPurchaseForm({
               </CollapsibleTrigger>
               <CollapsibleContent className="space-y-2 pt-2 text-xs text-muted-foreground">
                 <p>
+                  {/* Seit PROJ-36 wird auch die Währung gespeichert. Diese
+                      Aufzählung ist eine Einwilligungserklärung — sie muss
+                      vollständig sein, sonst stimmt sie nicht mehr mit dem
+                      überein, wozu der Nutzer gerade zustimmt. */}
                   <strong>Gespeichert wird:</strong> Marke, Modell, Baujahr,
-                  eine Kilometer-Spanne, die Zustandsnote, der Kaufpreis und
-                  der Verkaufsmonat.
+                  eine Kilometer-Spanne, die Zustandsnote, der Kaufpreis samt
+                  Währung und der Verkaufsmonat.
                 </p>
                 <p>
                   <strong>Nicht gespeichert wird:</strong> dein Name, dein
