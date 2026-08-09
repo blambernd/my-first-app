@@ -1,8 +1,8 @@
 # PROJ-36: Währung pro Fahrzeug
 
-## Status: In Progress
+## Status: In Review
 **Created:** 2026-08-07
-**Last Updated:** 2026-08-08
+**Last Updated:** 2026-08-09
 
 ## Dependencies
 - Erfordert PROJ-2 (Fahrzeugprofil) — die Währung wird beim Fahrzeug hinterlegt
@@ -488,3 +488,144 @@ Ebenfalls ohne Testabdeckung: die E2E-Tests des Kurzprofils (PROJ-10) werden all
 | Lint | 0 Fehler, 30 Warnungen (alle vorbestehend) |
 | Build | erfolgreich |
 | Supabase-Sicherheitsprüfer | keine neuen Befunde |
+
+---
+
+## QA Test Results (2026-08-09)
+
+### Zusammenfassung
+
+| | |
+|---|---|
+| Akzeptanzkriterien geprüft | **34 von 34** |
+| davon bestanden | **32** |
+| davon mit Einschränkung | **2** |
+| Fehler gefunden | **4** (0 kritisch, 0 hoch, 2 mittel, 2 niedrig) |
+| Sicherheitsprüfung | **ohne Befund** |
+| Empfehlung | **Produktionsreif** — keine kritischen oder hohen Fehler |
+
+### Was die Tests gefunden haben, das vorher niemand gesehen hatte
+
+Der Wert dieses Durchgangs steckt nicht in den 32 bestandenen Kriterien, sondern in vier Befunden — und drei davon hat erst das Schreiben der Tests zutage gefördert, nicht das Lesen des Codes.
+
+---
+
+### BUG-1 (Mittel) — Das Währungsfeld hat keine Verbindung zu seinem Label
+
+**Was:** Im Fahrzeugformular steht sichtbar „Währung *", aber das Auswahlfeld ist damit **programmatisch nicht verknüpft**. Ein Screenreader meldet ein unbeschriftetes Auswahlfeld bei einer Pflichtangabe. Auch die Erläuterung darunter und eine mögliche Fehlermeldung werden nicht vorgelesen.
+
+**Warum es entsteht:** Bei allen anderen Feldern des Formulars umschließt `FormControl` den `SelectTrigger` unmittelbar. `FormControl` ist ein Radix-`Slot` und reicht `id` und `aria-describedby` an sein Kind weiter — das Feld ist damit verbunden. Bei der Währung liegt dazwischen die eigene Komponente `CurrencySelect`, und die **nimmt diese Eigenschaften nicht entgegen**. Sie fallen still zu Boden.
+
+**Nachweis:** `page.getByLabel("Währung")` findet das Feld nicht. Der E2E-Test muss es deshalb über seinen sichtbaren Wert suchen — der Umweg steht als Kommentar im Test.
+
+**Gegenprobe:** Im Transfer-Formular ist dasselbe Auswahlfeld korrekt verdrahtet (`<Label htmlFor="waehrung">` + `<SelectTrigger id="waehrung">`). Es geht also, es fehlt nur an einer Stelle.
+
+**Einordnung:** Regression durch PROJ-36. Die Frontend-Regeln des Projekts nennen WCAG 2.1 AA als Ziel; ein Pflichtfeld mit sichtbarer, aber nicht verbundener Beschriftung verfehlt das.
+
+**Schritte:** `/vehicles/<id>/edit` öffnen → Screenreader oder `getByLabel("Währung")`.
+
+---
+
+### BUG-2 (Niedrig) — Der Euro-Hinweis auf der Ersatzteil-Seite ist zugeklappt
+
+**Was:** `ExternalCurrencyNote` erklärt, dass Ersatzteil-Angebote in Euro stehen und nicht in der Fahrzeugwährung. Auf `/ersatzteile` sitzt der Hinweis im **Filterbereich**, und der ist standardmäßig **zugeklappt** (`filtersOpen = false`). Der Nutzer eines Franken-Fahrzeugs sieht die Angebotspreise also ohne jede Einordnung, solange er die Filter nicht öffnet.
+
+**Einordnung niedrig, nicht mittel:** Die Preise tragen weiterhin ein „€" und sind damit als Euro erkennbar — das Kriterium ist streng genommen erfüllt. Der Hinweis ist die Erklärung dazu, und die kommt an der falschen Stelle.
+
+**Im Suchdialog für Preis-Alerts sitzt er richtig** (direkt unter dem Preisfeld), ebenso in der Marktpreis-Analyse.
+
+**Festgehalten als:** `test.fixme()` im E2E-Test — der Test bleibt stehen und benennt den Fehler, statt zu verschwinden.
+
+---
+
+### BUG-3 (Mittel) — Ein Fahrzeug ohne Erstzulassung lässt sich nicht mehr bearbeiten
+
+**Was:** Das Fahrzeugformular verlangt die Erstzulassung (`min(1, "Datum der Erstzulassung ist erforderlich")`). Fahrzeuge, bei denen sie fehlt, lassen sich deshalb **überhaupt nicht speichern** — auch dann nicht, wenn man nur ein anderes Feld ändern will.
+
+**Warum es hier auffällt:** Der einzige Weg, die Währung eines Fahrzeugs zu ändern, führt über dieses Formular. Ein Fahrzeug ohne Erstzulassung ist damit **dauerhaft auf Euro festgelegt**. Genau darüber ist der E2E-Test gestolpert: Das Wegwerf-Fahrzeug hat keine Erstzulassung, und das Speichern schlug ohne erkennbaren Bezug zur Währung fehl.
+
+**Einordnung:** Die Ursache ist **älter als PROJ-36** (das Pflichtfeld stammt aus PROJ-2). Neu ist die Folge — vorher konnte man solche Fahrzeuge einfach nicht bearbeiten, jetzt hängt eine Funktion daran. Gehört als eigene Änderung an PROJ-2 behoben, nicht hier.
+
+**Schritte:** Ein Fahrzeug ohne `first_registration_date` → `/vehicles/<id>/edit` → irgendetwas ändern → „Änderungen speichern" → Fehlermeldung an einem Feld, das man gar nicht angefasst hat.
+
+---
+
+### BUG-4 (Niedrig) — Die Warnung zählt die Kauf-Nebenkosten nicht mit
+
+**Was:** Die Warnung beim Währungswechsel zählt sechs Tabellen: Tankbuch, laufende Kosten, Einzelkosten, Kaufpreis, Marktwerte und Scheckheft-Einträge mit Betrag. **`vehicle_purchase_costs` (die Nebenkosten zum Kaufpreis) fehlt.**
+
+**Folge:** Wer Kaufpreis plus drei Nebenkosten erfasst hat, liest „Betroffen ist 1 erfasster Betrag" — tatsächlich werden vier Beträge neu beschriftet. Die Zahl ist das Einzige, was diese Warnung überzeugend macht; eine zu niedrige Zahl schwächt genau das.
+
+**Kein Datenverlust** — die Warnung erscheint, sie untertreibt nur.
+
+---
+
+### Sicherheitsprüfung — ohne Befund
+
+| Angriffsgedanke | Ergebnis |
+|---|---|
+| Kann ein **Mitglied** die Währung eines fremden Fahrzeugs ändern? | **Nein.** `vehicles` UPDATE ist `auth.uid() = user_id`. Zusätzlich liefert `/vehicles/<id>/edit` für Mitglieder 404. |
+| Kann über die Zählabfrage der Warnung auf fremde Kostendaten geschlossen werden? | **Nein.** Sie läuft mit den Rechten des Aufrufers; für Nicht-Besitzer ergibt sie 0. Und da nur Besitzer das Formular erreichen, entsteht die Frage praktisch nicht. |
+| Lässt sich ein unbekannter Währungscode einschleusen? | **Nein.** Drei Schichten: Auswahlliste, Zod-Prüfung (400), CHECK in der Datenbank (nachgewiesen abgewiesen). |
+| Wird die anonyme Verkaufssammlung lesbar? | **Nein.** 0 Policies, RLS an und erzwungen, 0 Rechte für `anon`/`authenticated`. |
+| Ist eine zweite Fassung der Übergabefunktion entstanden? | **Nein.** Genau eine Signatur. |
+| Neue Befunde im Supabase-Sicherheitsprüfer? | **Keine.** |
+| Einschleusung über die Währung (XSS)? | **Nicht möglich.** Der Wert stammt aus einer festen Liste von neun Codes und wird nie als Markup ausgegeben. |
+
+**Ein Randbefund ohne Bezug zu PROJ-36**, weil er beim Prüfen auffiel: 15 Datenbankfunktionen quer durchs Projekt haben einen veränderlichen `search_path`, und mehrere `SECURITY DEFINER`-Funktionen sind für `anon` ausführbar. Das ist älter und betrifft PROJ-6, PROJ-7 und PROJ-8. Sollte eigenständig geprüft werden.
+
+---
+
+### Akzeptanzkriterien
+
+| Bereich | Ergebnis |
+|---|---|
+| Währung wählen (6 Kriterien) | **6 bestanden** — EUR vorausgewählt, neun Währungen mit Code **und** Klartext, im Anlegen wie im Bearbeiten, nie leer |
+| Anzeige (6) | **6 bestanden** — Überblick, Auswertung, Wertentwicklung, laufende Kosten, Einzelkosten, Tankbuch; Symbol am Feld **vor** der Eingabe; deutsche Zahlenformatierung bleibt |
+| Keine Umrechnung (3) | **3 bestanden** — 1.234,00 bleibt 1.234,00, nur „€" wird „CHF". Keine fahrzeugübergreifende Summe existiert überhaupt |
+| Nachträglich ändern (5) | **5 bestanden** — Warnung mit Zahl (siehe BUG-4 zur Genauigkeit), kein Hinweis bei leerem Fahrzeug, Abbrechen folgenlos |
+| Externe Preise (4) | **3 bestanden, 1 eingeschränkt** (BUG-2) |
+| Transfer (4) | **4 bestanden** — Währungsauswahl vorbelegt, CSV nennt sie in der Kopfzeile ohne Zeichen in den Zahlen |
+| Anonyme Erfassung (5) | **5 bestanden** — Währung wird mitgespeichert, Grenzen gelten je Währung ohne Umrechnung |
+| Bestandsdaten (3) | **3 bestanden** — alle vorhandenen Fahrzeuge sind EUR, kein Migrationsschritt, für ein reines Euro-Konto ändert sich nichts |
+
+### Randfälle
+
+| Fall | Ergebnis |
+|---|---|
+| Wechsel mit 47 erfassten Beträgen | Warnung nennt die Zahl ✓ (BUG-4: Nebenkosten fehlen) |
+| Hin und wieder zurück | Zahlen unverändert ✓ — der Vorteil des Nicht-Umrechnens |
+| Ein einziges Fahrzeug im Konto | **Kein** Währungskennzeichen ✓ — es unterschiede nichts |
+| Unbekannter Code aus der Datenbank | Fällt auf Euro zurück, Seite lädt ✓ |
+| Öffentliches Kurzprofil eines CHF-Fahrzeugs | Zeigt CHF ✓ (im Backend-Durchgang behoben) |
+| Ersatzteil-Alert auf CHF-Fahrzeug | Grenze in Euro, so beschriftet ✓ |
+
+### Was nicht geprüft werden konnte
+
+- **Ein echter Transfer zwischen zwei Konten** mit Währungswechsel — braucht ein zweites Konto mit passender E-Mail. Unverändert offen seit PROJ-32.
+- **Das öffentliche Kurzprofil im Browser** — die PROJ-10-E2E-Tests werden alle übersprungen, weil kein veröffentlichtes Profil vorliegt. Ausgerechnet die Seite, an der der Backend-Durchgang den Fehler gefunden hat.
+- **Firefox und Safari als Desktop-Browser** — die Suite fährt `chromium` und `Mobile Safari` (WebKit). Die Änderung ist reines `Intl` und Radix; ein browserspezifisches Risiko ist nicht erkennbar, aber auch nicht gemessen.
+
+### Vier Testfehler, die selbst etwas gezeigt haben
+
+Der Weg zu diesen 13 grünen Tests führte über vier eigene Irrtümer. Sie stehen hier, weil jeder von ihnen eine Art Test beschreibt, die stillschweigend falsch grün wird:
+
+1. **Prüfung auf Abwesenheit ohne Vorbedingung.** „Kein Hinweis erscheint" war grün, solange der Hinweis nur langsam genug kam — und die Vorbedingung „Fahrzeug ohne Beträge" war nie hergestellt. Jetzt wird zuerst das **positive** Signal geprüft (der Wert hat gewechselt), und der Fall läuft auf dem Anlegen-Formular, wo er zwingend zutrifft.
+2. **Erfundene Beschriftungen.** „Bezeichnung *" gibt es nicht, das Feld heißt „Bezeichnung". Die Beschriftungen stammen jetzt aus dem PROJ-26-Spec statt aus dem Gedächtnis.
+3. **Feste Wartezeit statt Bedingung.** Fünf Sekunden auf den Hinweis zu warten war ein Ratespiel gegen eine Abfrage über sieben Tabellen. Jetzt wird auf „Hinweis **oder** neuer Wert" gewartet.
+4. **`getByRole` gegen einen offenen Dialog.** Radix markiert die Seite hinter einem Modal als `aria-hidden`; `getByRole` sieht das Feld dann **gar nicht mehr**. Eine Prüfung, die scheinbar auf einen Wert wartet, wartete in Wahrheit auf ein Element, das es aus ihrer Sicht nicht gab.
+
+### Produktionsreife: JA
+
+Keine kritischen, keine hohen Fehler. Die vier Befunde sind Nachbesserungen, keine Blockaden — und zwei davon (BUG-3 sowie der Randbefund zu `search_path`) gehören ohnehin nicht zu dieser Funktion.
+
+**Vor dem Deploy zu klären:** Die sechs Dateien mit der parallelen PROJ-35-Arbeit sind weiterhin nicht committet. Im Repository trägt das Kostenfeld im Scheckheft deshalb noch „(EUR)" statt des Fahrzeug-Symbols — für ein Nicht-Euro-Fahrzeug wäre das genau die falsche Beschriftung, die diese Funktion beseitigen soll.
+
+### Prüfstand (QA)
+
+| Prüfung | Ergebnis |
+|---|---|
+| Unit-Tests | **728 grün** (38 Dateien) |
+| E2E `PROJ-36` (neu) | **13 grün**, 1 als bekannter Fehler markiert (BUG-2) |
+| E2E `chromium` (Regression) | **182 / 182 grün** |
+| Sicherheitsprüfung | ohne Befund |
