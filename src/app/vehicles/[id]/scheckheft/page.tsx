@@ -6,10 +6,19 @@ import type { VehicleDocument } from "@/lib/validations/vehicle-document";
 
 interface ScheckheftPageProps {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ neu?: string; from?: string }>;
 }
 
-export default async function ScheckheftPage({ params }: ScheckheftPageProps) {
+export default async function ScheckheftPage({ params, searchParams }: ScheckheftPageProps) {
   const { id } = await params;
+  const { neu, from } = await searchParams;
+
+  // Schnellaktion aus dem Werkstatt-Dashboard (PROJ-37): Formular direkt
+  // öffnen und nach Speichern oder Abbrechen dorthin zurückkehren. Das Ziel
+  // wird nicht aus der Adresse übernommen, sondern gegen eine feste Liste
+  // geprüft — sonst wäre der Parameter eine offene Weiterleitung.
+  const returnTo = from === "werkstatt" ? "/werkstatt" : null;
+  const autoNew = neu === "1";
   const supabase = await createClient();
   const {
     data: { user },
@@ -78,6 +87,8 @@ export default async function ScheckheftPage({ params }: ScheckheftPageProps) {
       canEdit={canEdit}
       canEditAll={canEditAll}
       userId={user.id}
+      autoNew={autoNew}
+      returnTo={returnTo}
     />
   );
 }

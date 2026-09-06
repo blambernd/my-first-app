@@ -1,6 +1,7 @@
 import { redirect, notFound } from "next/navigation";
 import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase-server";
+import { getWorkshopVehicleCount } from "@/lib/workshop-access";
 import { AccountHeader } from "@/components/account-header";
 import { MobileBottomNav } from "@/components/mobile-bottom-nav";
 import { LeaveVehicleButton } from "@/components/leave-vehicle-button";
@@ -115,6 +116,9 @@ export default async function VehicleLayout({
   // und jede vergessene wäre ein Fahrzeug, das wieder Euro anzeigt.
   const currency = toCurrency(typedVehicle.currency);
 
+  // PROJ-37: Navigationspunkt „Werkstatt" — serverseitig ermittelt (QA BUG-7)
+  const hasWorkshopAccess = (await getWorkshopVehicleCount(supabase, user.id)) > 0;
+
   return (
     // `data-app-shell` markiert eine Seite mit Seitenleiste. Der Footer aus
     // dem Wurzel-Layout hängt am `body` und damit außerhalb dieses Providers —
@@ -132,7 +136,10 @@ export default async function VehicleLayout({
       />
 
       <SidebarInset className="bg-background min-w-0">
-        <AccountHeader email={user.email || ""} />
+        <AccountHeader
+          email={user.email || ""}
+          hasWorkshopAccess={hasWorkshopAccess}
+        />
 
         <div className="border-b border-border/30">
           <div className="px-4 sm:px-6 lg:px-8">
@@ -189,7 +196,7 @@ export default async function VehicleLayout({
 
         <SiteFooter />
 
-        <MobileBottomNav />
+        <MobileBottomNav hasWorkshopAccess={hasWorkshopAccess} />
         <Toaster />
       </SidebarInset>
     </SidebarProvider>

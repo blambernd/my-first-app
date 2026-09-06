@@ -16,13 +16,20 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useSubscription } from "@/hooks/use-subscription";
-import { Crown, Settings } from "lucide-react";
+import { Crown, Settings, Wrench } from "lucide-react";
 
 interface AccountHeaderProps {
   email: string;
+  /**
+   * Zeigt den Navigationspunkt „Werkstatt" (PROJ-37).
+   *
+   * Kommt serverseitig von der jeweiligen Seite, nicht aus einer eigenen
+   * Abfrage im Browser (QA BUG-7).
+   */
+  hasWorkshopAccess?: boolean;
 }
 
-export function AccountHeader({ email }: AccountHeaderProps) {
+export function AccountHeader({ email, hasWorkshopAccess = false }: AccountHeaderProps) {
   const { data: sub, isPremium, isTrial } = useSubscription();
 
   return (
@@ -32,6 +39,19 @@ export function AccountHeader({ email }: AccountHeaderProps) {
           <BrandLogoWithText />
         </Link>
         <div className="flex items-center gap-2">
+          {hasWorkshopAccess && (
+            <Button
+              asChild
+              variant="ghost"
+              size="sm"
+              className="hidden md:inline-flex text-sm gap-2"
+            >
+              <Link href="/werkstatt">
+                <Wrench className="h-4 w-4" />
+                Werkstatt
+              </Link>
+            </Button>
+          )}
           <div className="hidden md:flex items-center gap-1">
             <PendingRequestsBell />
             <NotificationBell />

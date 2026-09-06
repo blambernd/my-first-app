@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Bell, Menu, LogOut, Crown, Trash2, Settings } from "lucide-react";
+import { LayoutDashboard, Bell, Menu, LogOut, Crown, Trash2, Settings, Wrench } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -18,13 +18,23 @@ import { LogoutButton } from "@/components/logout-button";
 import { DeleteAccountButton } from "@/components/delete-account-button";
 import { useSubscription } from "@/hooks/use-subscription";
 
-export function MobileBottomNav() {
+interface MobileBottomNavProps {
+  /**
+   * Zeigt den Navigationspunkt „Werkstatt" (PROJ-37).
+   *
+   * Kommt serverseitig von der jeweiligen Seite (QA BUG-7).
+   */
+  hasWorkshopAccess?: boolean;
+}
+
+export function MobileBottomNav({ hasWorkshopAccess = false }: MobileBottomNavProps = {}) {
   const pathname = usePathname();
   const { isPremium, isTrial } = useSubscription();
 
   const isDashboard = pathname === "/dashboard";
   const isVehicle = pathname.startsWith("/vehicles");
   const isSettings = pathname === "/settings";
+  const isWorkshop = pathname === "/werkstatt";
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-border/40 bg-background md:hidden">
@@ -40,16 +50,33 @@ export function MobileBottomNav() {
           Dashboard
         </Link>
 
-        {/* Einstellungen */}
-        <Link
-          href="/settings"
-          className={`flex-1 flex flex-col items-center justify-center gap-0.5 h-full text-[10px] font-medium transition-colors ${
-            isSettings ? "text-primary" : "text-muted-foreground"
-          }`}
-        >
-          <Settings className="h-5 w-5" />
-          Einstellungen
-        </Link>
+        {/* Werkstatt — nur bei Werkstatt-Rolle an mindestens einem Fahrzeug */}
+        {hasWorkshopAccess && (
+          <Link
+            href="/werkstatt"
+            className={`flex-1 flex flex-col items-center justify-center gap-0.5 h-full text-[10px] font-medium transition-colors ${
+              isWorkshop ? "text-primary" : "text-muted-foreground"
+            }`}
+          >
+            <Wrench className="h-5 w-5" />
+            Werkstatt
+          </Link>
+        )}
+
+        {/* Einstellungen — weicht bei Werkstattzugang ins Menü aus (QA BUG-8):
+            Sechs gleich breite Einträge lassen bei 360 px rund 60 px je
+            Beschriftung, und „Einstellungen" passt dort nicht mehr. */}
+        {!hasWorkshopAccess && (
+          <Link
+            href="/settings"
+            className={`flex-1 flex flex-col items-center justify-center gap-0.5 h-full text-[10px] font-medium transition-colors ${
+              isSettings ? "text-primary" : "text-muted-foreground"
+            }`}
+          >
+            <Settings className="h-5 w-5" />
+            Einstellungen
+          </Link>
+        )}
 
         {/* Pending Requests — only renders when there are open requests */}
         <PendingRequestsBell mobileLabel="Anfragen" />
@@ -89,6 +116,17 @@ export function MobileBottomNav() {
                     {isTrial ? "Trial" : "Premium"}
                   </Badge>
                 </div>
+              )}
+              {/* Bei Werkstattzugang steht Einstellungen nicht in der Leiste
+                  (QA BUG-8) — dann muss es hier erreichbar sein. */}
+              {hasWorkshopAccess && (
+                <Link
+                  href="/settings"
+                  className="flex items-center gap-2 px-3 py-2 text-sm font-medium"
+                >
+                  <Settings className="h-4 w-4" />
+                  Einstellungen
+                </Link>
               )}
               <div className="px-1">
                 <LogoutButton />

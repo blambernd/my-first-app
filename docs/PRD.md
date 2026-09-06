@@ -55,6 +55,10 @@ Eine SaaS-Plattform für Oldtimer-Besitzer, die es ermöglicht, die komplette Hi
 | P1 | PROJ-32: Kostendaten beim Fahrzeug-Transfer | Deployed |
 | P1 | PROJ-33: Verkaufspreis-Erhebung beim Transfer | Deployed |
 | P2 | PROJ-34: Preisübersicht aus echten Verkäufen | Planned |
+| P1 | PROJ-35: Scheckheft-Import aus Dokumenten | Planned |
+| P2 | PROJ-36: Währung pro Fahrzeug | Planned |
+| P1 | PROJ-37: Werkstatt-Dashboard | Planned |
+| P2 | PROJ-38: Händler-Bestandsübersicht | Planned |
 
 ## Success Metrics
 - **Registrierungen:** 500 Nutzer in den ersten 3 Monaten

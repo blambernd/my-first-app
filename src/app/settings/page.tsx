@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase-server";
+import { getWorkshopVehicleCount } from "@/lib/workshop-access";
 import { AccountHeader } from "@/components/account-header";
 import { MobileBottomNav } from "@/components/mobile-bottom-nav";
 import { NotificationSettings } from "@/components/notification-settings";
@@ -21,9 +22,12 @@ export default async function SettingsPage() {
     redirect("/login");
   }
 
+  // PROJ-37: Navigationspunkt „Werkstatt" — serverseitig ermittelt (QA BUG-7)
+  const hasWorkshopAccess = (await getWorkshopVehicleCount(supabase, user.id)) > 0;
+
   return (
     <div className="min-h-screen bg-background">
-      <AccountHeader email={user.email ?? ""} />
+      <AccountHeader email={user.email ?? ""} hasWorkshopAccess={hasWorkshopAccess} />
       <main className="container mx-auto px-6 lg:px-8 py-8 max-w-2xl">
         <div className="mb-6">
           <Link
@@ -59,7 +63,7 @@ export default async function SettingsPage() {
           </div>
         </div>
       </main>
-      <MobileBottomNav />
+      <MobileBottomNav hasWorkshopAccess={hasWorkshopAccess} />
     </div>
   );
 }

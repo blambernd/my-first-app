@@ -10,7 +10,7 @@ import { PlanOverview } from "@/components/plan-overview";
 import { ReferralCard } from "@/components/referral-card";
 import { EventsOverview } from "@/components/events-overview";
 import { PushOptInBanner } from "@/components/push-opt-in-banner";
-import { Car } from "lucide-react";
+import { Car, Wrench } from "lucide-react";
 import type { VehicleWithImages } from "@/lib/validations/vehicle";
 import { ROLE_LABELS, type MemberRole } from "@/lib/validations/member";
 import { toCurrency } from "@/lib/currency";
@@ -48,12 +48,20 @@ export default async function DashboardPage() {
     .eq("user_id", user.id)
     .limit(50);
 
-  const sharedVehicles = (memberships ?? [])
+  const allMemberships = (memberships ?? [])
     .filter((m) => m.vehicles)
     .map((m) => ({
       vehicle: m.vehicles as unknown as VehicleWithImages,
       role: m.role as MemberRole,
     }));
+
+  // PROJ-37: Kundenfahrzeuge leben im Werkstattbereich und nicht zusätzlich
+  // hier — jedes Fahrzeug soll an genau einer Stelle stehen. Damit sie nicht
+  // scheinbar verschwinden, steht unten eine Verweiskachel.
+  const sharedVehicles = allMemberships.filter((m) => m.role !== "werkstatt");
+  const workshopVehicleCount = allMemberships.filter(
+    (m) => m.role === "werkstatt"
+  ).length;
 
   // Get subscription for vehicle limit check
   const { data: subscription } = await supabase
@@ -70,7 +78,7 @@ export default async function DashboardPage() {
   // Fahrzeug kein „EUR" lesen müssen, das nichts aussagt. Geteilte Fahrzeuge
   // zählen mit: Auch sie können in einer anderen Währung geführt sein.
   const waehrungen = new Set(
-    [...typedVehicles, ...sharedVehicles.map((s) => s.vehicle)].map((v) =>
+    [...typedVehicles, ...allMemberships.map((s) => s.vehicle)].map((v) =>
       toCurrency(v.currency)
     )
   );
@@ -79,7 +87,10 @@ export default async function DashboardPage() {
 
   return (
     <div className="bg-muted/40">
-      <AccountHeader email={user.email || ""} />
+      <AccountHeader
+        email={user.email || ""}
+        hasWorkshopAccess={workshopVehicleCount > 0}
+      />
 
       <main className="container mx-auto px-4 py-8 pb-20 md:pb-8">
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-8">
@@ -118,6 +129,26 @@ export default async function DashboardPage() {
           <PushOptInBanner />
         </div>
 
+        {/* PROJ-37: Verweis auf den Werkstattbereich */}
+        {workshopVehicleCount > 0 && (
+          <Link
+            href="/werkstatt"
+            className="mt-6 flex items-center gap-4 rounded-lg border bg-background p-4 transition-colors hover:bg-muted/50"
+          >
+            <Wrench className="h-8 w-8 shrink-0 text-muted-foreground" />
+            <div className="min-w-0">
+              <p className="font-medium">
+                {workshopVehicleCount === 1
+                  ? "1 Kundenfahrzeug im Werkstattbereich"
+                  : `${workshopVehicleCount} Kundenfahrzeuge im Werkstattbereich`}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Anstehende Arbeiten und Schnellzugriff auf das Scheckheft
+              </p>
+            </div>
+          </Link>
+        )}
+
         {/* Shared vehicles */}
         {sharedVehicles.length > 0 && (
           <>
@@ -152,7 +183,7 @@ export default async function DashboardPage() {
         {/* Events Overview - full width */}
         <EventsOverview />
       </main>
-      <MobileBottomNav />
+      <MobileBottomNav hasWorkshopAccess={workshopVehicleCount > 0} />
     </div>
   );
 }
