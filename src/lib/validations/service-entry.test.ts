@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
   serviceEntrySchema,
-  formatCentsToEur,
   eurToCents,
   getEntryTypeLabel,
   SERVICE_ENTRY_TYPES,
@@ -26,9 +25,18 @@ describe("serviceEntrySchema — required fields", () => {
     expect(result.success).toBe(false);
   });
 
-  it("rejects missing description", () => {
+  // Seit PROJ-35 ist die Beschreibung optional: Ein Papier-Scheckheft-Raster
+  // enthält keinen Fließtext, und ein erfundener Text würde die
+  // Vertrauenswürdigkeit der Historie zerstören. Vorher war das Feld Pflicht.
+  it("accepts an empty description", () => {
     const result = serviceEntrySchema.safeParse({ ...validEntry, description: "" });
-    expect(result.success).toBe(false);
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts a completely missing description", () => {
+    const { description: _omitted, ...withoutDescription } = validEntry;
+    const result = serviceEntrySchema.safeParse(withoutDescription);
+    expect(result.success).toBe(true);
   });
 
   it("rejects missing entry_type", () => {
@@ -165,24 +173,6 @@ describe("serviceEntrySchema — is_odometer_correction", () => {
       is_odometer_correction: true,
     });
     expect(result.success).toBe(true);
-  });
-});
-
-describe("formatCentsToEur", () => {
-  it("formats 14990 cents as EUR currency string", () => {
-    const result = formatCentsToEur(14990);
-    expect(result).toContain("149,90");
-    expect(result).toContain("€");
-  });
-
-  it("formats 0 cents", () => {
-    const result = formatCentsToEur(0);
-    expect(result).toContain("0,00");
-  });
-
-  it("formats 1 cent", () => {
-    const result = formatCentsToEur(1);
-    expect(result).toContain("0,01");
   });
 });
 

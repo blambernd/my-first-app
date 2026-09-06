@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
   Plus,
+  FileUp,
   Wrench,
   Droplets,
   Filter,
@@ -45,13 +46,13 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { ServiceEntryForm } from "@/components/service-entry-form";
+import { useCurrency } from "@/components/currency-provider";
 import { createClient } from "@/lib/supabase";
 import {
   SERVICE_ENTRY_TYPES,
   getEntryTypeLabel,
   OIL_CHANGE_CATEGORIES,
   getOilCategoryLabel,
-  formatCentsToEur,
   getNextTuvDate,
   getNextServiceDate,
   getNextOilChangeKm,
@@ -84,6 +85,10 @@ interface ServiceLogProps {
   canEdit?: boolean;
   canEditAll?: boolean;
   userId?: string;
+  /** Formular sofort öffnen — Schnellaktion aus dem Werkstatt-Dashboard (PROJ-37) */
+  autoNew?: boolean;
+  /** Wohin nach Speichern oder Abbrechen zurückgesprungen wird (PROJ-37) */
+  returnTo?: string | null;
 }
 
 const DUE_STATUS_STYLES = {
@@ -549,12 +554,16 @@ function ServiceEntryCard({
   documents: VehicleDocument[];
   supabaseUrl: string;
 }) {
+  const { formatMoney } = useCurrency();
   const [detailOpen, setDetailOpen] = useState(false);
   const hasOilCategories = entry.oil_change_categories && entry.oil_change_categories.length > 0;
   const hasDetails = entry.notes || entry.next_due_date || documents.length > 0 || hasOilCategories;
-  const summaryText = entry.description.length > 120
-    ? entry.description.slice(0, 120) + "…"
-    : entry.description;
+  // Seit PROJ-35 ist die Beschreibung optional — importierte Scheckheft-Einträge
+  // haben oft keine, weil das Papier-Raster keinen Fließtext enthält.
+  const descriptionText = entry.description ?? "";
+  const summaryText = descriptionText.length > 120
+    ? descriptionText.slice(0, 120) + "…"
+    : descriptionText;
 
   return (
     <div className="py-4">
@@ -577,9 +586,12 @@ function ServiceEntryCard({
                   )}
                 </p>
                 <p className="text-base mt-0.5">
-                  {detailOpen ? entry.description : summaryText}
+                  {detailOpen ? descriptionText : summaryText}
                   {entry.cost_cents != null && entry.cost_cents > 0 && (
-                    <span className="text-muted-foreground">{" · "}{formatCentsToEur(entry.cost_cents)}</span>
+                    <span className="text-muted-foreground">
+                      {descriptionText ? " · " : ""}
+                      {formatMoney(entry.cost_cents)}
+                    </span>
                   )}
                 </p>
               </div>
@@ -721,11 +733,13 @@ function ServiceEntryCard({
   );
 }
 
-export function ServiceLog({ vehicleId, supabaseUrl, initialEntries, documentsByEntry = {}, canEdit = true, canEditAll = true, userId }: ServiceLogProps) {
+export function ServiceLog({ vehicleId, supabaseUrl, initialEntries, documentsByEntry = {}, canEdit = true, canEditAll = true, userId, autoNew = false, returnTo = null }: ServiceLogProps) {
   const router = useRouter();
   const [entries, setEntries] = useState<ServiceEntry[]>(initialEntries);
   const [filterType, setFilterType] = useState<string>("all");
-  const [sheetOpen, setSheetOpen] = useState(false);
+  // Kommt der Nutzer über die Schnellaktion des Werkstatt-Dashboards, steht
+  // das Formular schon offen — der Zwischenklick wäre reine Zeremonie.
+  const [sheetOpen, setSheetOpen] = useState(autoNew && canEdit);
   const [editingEntry, setEditingEntry] = useState<ServiceEntry | undefined>();
 
   useEffect(() => {
@@ -742,8 +756,26 @@ export function ServiceLog({ vehicleId, supabaseUrl, initialEntries, documentsBy
     : undefined;
 
   const refreshEntries = useCallback(() => {
+    // Mit Rücksprungziel (Werkstatt-Dashboard) führt der Weg zurück dorthin;
+    // die Zielseite lädt ihre Daten dabei ohnehin neu.
+    if (returnTo) {
+      router.push(returnTo);
+      return;
+    }
     router.refresh();
-  }, [router]);
+  }, [router, returnTo]);
+
+  // Auch der Abbruch führt zurück — wer aus der Liste heraus kam, will nicht
+  // im Scheckheft eines fremden Fahrzeugs stehen bleiben.
+  const handleSheetOpenChange = useCallback(
+    (open: boolean) => {
+      setSheetOpen(open);
+      if (!open && returnTo) {
+        router.push(returnTo);
+      }
+    },
+    [router, returnTo]
+  );
 
   const handleEdit = (entry: ServiceEntry) => {
     setEditingEntry(entry);
@@ -792,10 +824,21 @@ export function ServiceLog({ vehicleId, supabaseUrl, initialEntries, documentsBy
           </Select>
         </div>
         {canEdit && (
-          <Button size="sm" onClick={handleNew}>
-            <Plus className="h-4 w-4 mr-1.5" />
-            Neuer Eintrag
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => router.push(`/vehicles/${vehicleId}/scheckheft/import`)}
+            >
+              <FileUp className="h-4 w-4 sm:mr-1.5" />
+              <span className="hidden sm:inline">Importieren</span>
+              <span className="sr-only sm:hidden">Scheckheft importieren</span>
+            </Button>
+            <Button size="sm" onClick={handleNew}>
+              <Plus className="h-4 w-4 mr-1.5" />
+              Neuer Eintrag
+            </Button>
+          </div>
         )}
       </div>
 
@@ -832,7 +875,7 @@ export function ServiceLog({ vehicleId, supabaseUrl, initialEntries, documentsBy
         entry={editingEntry}
         lastMileage={lastMileage}
         open={sheetOpen}
-        onOpenChange={setSheetOpen}
+        onOpenChange={handleSheetOpenChange}
         onSuccess={refreshEntries}
       />
     </div>

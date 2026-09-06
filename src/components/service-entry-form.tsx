@@ -40,6 +40,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useCurrency } from "@/components/currency-provider";
 import { createClient } from "@/lib/supabase";
 import {
   serviceEntrySchema,
@@ -74,6 +75,7 @@ export function ServiceEntryForm({
   onOpenChange,
   onSuccess,
 }: ServiceEntryFormProps) {
+  const { symbol } = useCurrency();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showOdometerWarning, setShowOdometerWarning] = useState(false);
   const [documentFile, setDocumentFile] = useState<File | null>(null);
@@ -251,7 +253,9 @@ export function ServiceEntryForm({
             .from("vehicle_documents")
             .insert({
               vehicle_id: vehicleId,
-              title: `${getEntryTypeLabel(data.entry_type)} — ${data.description.slice(0, 80)}`,
+              title: data.description
+                ? `${getEntryTypeLabel(data.entry_type)} — ${data.description.slice(0, 80)}`
+                : getEntryTypeLabel(data.entry_type),
               category: documentCategory,
               document_date: data.service_date,
               description: data.description,
@@ -469,7 +473,7 @@ export function ServiceEntryForm({
                 name="cost_cents"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Kosten (EUR)</FormLabel>
+                    <FormLabel>Kosten ({symbol})</FormLabel>
                     <FormControl>
                       <Input
                         type="number"

@@ -406,8 +406,9 @@ export function DocumentUploadForm({
                         <SelectItem value="none">Keine Verknüpfung</SelectItem>
                         {serviceEntries.map((entry) => (
                           <SelectItem key={entry.id} value={entry.id}>
-                            {new Date(entry.service_date).toLocaleDateString("de-DE")} — {getEntryTypeLabel(entry.entry_type)}: {entry.description.slice(0, 50)}
-                            {entry.description.length > 50 ? "…" : ""}
+                            {new Date(entry.service_date).toLocaleDateString("de-DE")} — {getEntryTypeLabel(entry.entry_type)}
+                            {entry.description ? `: ${entry.description.slice(0, 50)}` : ""}
+                            {entry.description && entry.description.length > 50 ? "…" : ""}
                           </SelectItem>
                         ))}
                       </SelectContent>

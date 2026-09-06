@@ -228,7 +228,7 @@ test.describe("PROJ-27: Kostenanalyse — vier Quellen, eine Summe", () => {
     await expect(dialog).toBeVisible({ timeout: 15000 });
     await dialog.getByLabel("Beschreibung *").fill(SERVICE_DESC);
     await dialog.getByLabel("Kilometerstand *").fill("10500");
-    await dialog.getByLabel("Kosten (EUR)").fill("200");
+    await dialog.getByLabel("Kosten (€)").fill("200");
     await dialog.getByRole("button", { name: "Eintrag erstellen" }).click();
     await expect(dialog).not.toBeVisible({ timeout: 25000 });
     await waitForToastsGone(page);

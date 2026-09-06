@@ -248,7 +248,7 @@ test.describe("PROJ-26: Einzelkosten — Erfassen, Verknüpfen, Doppelzählungss
     await expect(dialog).toBeVisible({ timeout: 10000 });
     await dialog.getByLabel("Beschreibung *").fill(SERVICE_DESC);
     await dialog.getByLabel("Kilometerstand *").fill("99000");
-    await dialog.getByLabel("Kosten (EUR)").fill("800");
+    await dialog.getByLabel("Kosten (€)").fill("800");
     await dialog.getByRole("button", { name: "Eintrag erstellen" }).click();
     await expect(dialog).not.toBeVisible({ timeout: 20000 });
     await waitForToastsGone(page);

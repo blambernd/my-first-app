@@ -32,10 +32,14 @@ export const serviceEntrySchema = z.object({
     ["inspection", "oil_change", "repair", "tuv_hu", "restoration", "other"],
     { error: "Bitte wähle einen Typ" }
   ),
+  // Optional seit PROJ-35: Ein Papier-Scheckheft-Raster enthält keinen
+  // Fließtext, und das Modell darf keinen erfinden. Betrifft auch das
+  // manuelle Formular.
   description: z
     .string()
-    .min(1, "Beschreibung ist erforderlich")
-    .max(2000, "Beschreibung darf maximal 2000 Zeichen lang sein"),
+    .max(2000, "Beschreibung darf maximal 2000 Zeichen lang sein")
+    .optional()
+    .or(z.literal("")),
   mileage_km: z.coerce
     .number()
     .int("Kilometerstand muss eine ganze Zahl sein")
@@ -73,7 +77,7 @@ export const serviceEntrySchema = z.object({
 export interface ServiceEntryFormData {
   service_date: string;
   entry_type: ServiceEntryType;
-  description: string;
+  description?: string;
   mileage_km: number;
   is_odometer_correction: boolean;
   cost_cents?: number;
@@ -88,7 +92,7 @@ export interface ServiceEntry {
   vehicle_id: string;
   service_date: string;
   entry_type: ServiceEntryType;
-  description: string;
+  description: string | null;
   mileage_km: number;
   is_odometer_correction: boolean;
   cost_cents: number | null;
@@ -101,13 +105,19 @@ export interface ServiceEntry {
   updated_at: string;
 }
 
-export function formatCentsToEur(cents: number): string {
-  return (cents / 100).toLocaleString("de-DE", {
-    style: "currency",
-    currency: "EUR",
-  });
-}
+// `formatCentsToEur` ist am 2026-08-07 nach lib/currency.ts umgezogen und
+// heißt dort `formatMoney`. Es versorgte von hier aus 11 Komponenten mit
+// Geldbeträgen — in einer Prüfdatei für Scheckheft-Einträge war das sachlich
+// am falschen Ort, und seit PROJ-36 muss es ohnehin eine Währung entgegen-
+// nehmen (siehe lib/currency.ts).
 
+/**
+ * Haupteinheit → Kleinsteinheit (1,50 → 150).
+ *
+ * Bleibt hier, weil es reine Arithmetik ist: Alle neun unterstützten
+ * Währungen haben 100 Kleinsteinheiten, die Umrechnung kennt also keine
+ * Währung. Der Name stammt aus der Zeit, als es nur Euro gab.
+ */
 export function eurToCents(eur: number): number {
   return Math.round(eur * 100);
 }
