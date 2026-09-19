@@ -14,6 +14,7 @@ import { Car, Wrench } from "lucide-react";
 import type { VehicleWithImages } from "@/lib/validations/vehicle";
 import { ROLE_LABELS, type MemberRole } from "@/lib/validations/member";
 import { toCurrency } from "@/lib/currency";
+import { isDealer } from "@/lib/dealer-access";
 import {
   getEffectivePlan,
   canAddVehicle,
@@ -73,6 +74,9 @@ export default async function DashboardPage() {
   const effectivePlan = subscription ? getEffectivePlan(subscription) : isBetaMode ? "premium" : "free";
   const canAdd = canAddVehicle(effectivePlan, typedVehicles.length);
 
+  // PROJ-38: Navigationspunkt „Bestand" — serverseitig, wie bei PROJ-37
+  const dealerMode = await isDealer(supabase, user.id);
+
   // PROJ-36: Die Währung steht nur an den Kacheln, wenn sie tatsächlich etwas
   // unterscheidet. Wer alles in Euro führt — der Normalfall — soll neben jedem
   // Fahrzeug kein „EUR" lesen müssen, das nichts aussagt. Geteilte Fahrzeuge
@@ -90,6 +94,7 @@ export default async function DashboardPage() {
       <AccountHeader
         email={user.email || ""}
         hasWorkshopAccess={workshopVehicleCount > 0}
+        isDealer={dealerMode}
       />
 
       <main className="container mx-auto px-4 py-8 pb-20 md:pb-8">
@@ -183,7 +188,10 @@ export default async function DashboardPage() {
         {/* Events Overview - full width */}
         <EventsOverview />
       </main>
-      <MobileBottomNav hasWorkshopAccess={workshopVehicleCount > 0} />
+      <MobileBottomNav
+        hasWorkshopAccess={workshopVehicleCount > 0}
+        isDealer={dealerMode}
+      />
     </div>
   );
 }

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Bell, Menu, LogOut, Crown, Trash2, Settings, Wrench } from "lucide-react";
+import { LayoutDashboard, Bell, Menu, LogOut, Crown, Trash2, Settings, Store, Wrench } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -25,9 +25,14 @@ interface MobileBottomNavProps {
    * Kommt serverseitig von der jeweiligen Seite (QA BUG-7).
    */
   hasWorkshopAccess?: boolean;
+  /** Zeigt den Navigationspunkt „Bestand" (PROJ-38) — ebenfalls serverseitig */
+  isDealer?: boolean;
 }
 
-export function MobileBottomNav({ hasWorkshopAccess = false }: MobileBottomNavProps = {}) {
+export function MobileBottomNav({
+  hasWorkshopAccess = false,
+  isDealer = false,
+}: MobileBottomNavProps = {}) {
   const pathname = usePathname();
   const { isPremium, isTrial } = useSubscription();
 
@@ -35,6 +40,23 @@ export function MobileBottomNav({ hasWorkshopAccess = false }: MobileBottomNavPr
   const isVehicle = pathname.startsWith("/vehicles");
   const isSettings = pathname === "/settings";
   const isWorkshop = pathname === "/werkstatt";
+  const isBestand = pathname === "/bestand";
+
+  /**
+   * Wie viele Zusatzbereiche dieser Nutzer hat — und wo sie hingehören.
+   *
+   * Die Leiste fasst höchstens fünf Einträge, sonst bleibt bei 360 px keine
+   * lesbare Beschriftung übrig (QA BUG-8). Daraus folgt eine einfache Regel:
+   *
+   *   ein Zusatzbereich  → er steht in der Leiste, Einstellungen weicht ins Menü
+   *   zwei Zusatzbereiche → beide wandern ins Menü, Einstellungen bleibt
+   *
+   * Wer beide Rollen hat, arbeitet ohnehin fortgeschritten; ein Menüklick ist
+   * zumutbarer als drei unleserlich beschnittene Beschriftungen.
+   */
+  const zusatzbereiche = [hasWorkshopAccess, isDealer].filter(Boolean).length;
+  const zusatzInLeiste = zusatzbereiche === 1;
+  const zusatzImMenue = zusatzbereiche > 1;
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-border/40 bg-background md:hidden">
@@ -51,7 +73,7 @@ export function MobileBottomNav({ hasWorkshopAccess = false }: MobileBottomNavPr
         </Link>
 
         {/* Werkstatt — nur bei Werkstatt-Rolle an mindestens einem Fahrzeug */}
-        {hasWorkshopAccess && (
+        {hasWorkshopAccess && zusatzInLeiste && (
           <Link
             href="/werkstatt"
             className={`flex-1 flex flex-col items-center justify-center gap-0.5 h-full text-[10px] font-medium transition-colors ${
@@ -63,10 +85,23 @@ export function MobileBottomNav({ hasWorkshopAccess = false }: MobileBottomNavPr
           </Link>
         )}
 
-        {/* Einstellungen — weicht bei Werkstattzugang ins Menü aus (QA BUG-8):
+        {/* Bestand — nur für gewerblich erklärte Nutzer */}
+        {isDealer && zusatzInLeiste && (
+          <Link
+            href="/bestand"
+            className={`flex-1 flex flex-col items-center justify-center gap-0.5 h-full text-[10px] font-medium transition-colors ${
+              isBestand ? "text-primary" : "text-muted-foreground"
+            }`}
+          >
+            <Store className="h-5 w-5" />
+            Bestand
+          </Link>
+        )}
+
+        {/* Einstellungen — weicht dem einen Zusatzbereich ins Menü (QA BUG-8):
             Sechs gleich breite Einträge lassen bei 360 px rund 60 px je
             Beschriftung, und „Einstellungen" passt dort nicht mehr. */}
-        {!hasWorkshopAccess && (
+        {!zusatzInLeiste && (
           <Link
             href="/settings"
             className={`flex-1 flex flex-col items-center justify-center gap-0.5 h-full text-[10px] font-medium transition-colors ${
@@ -117,9 +152,26 @@ export function MobileBottomNav({ hasWorkshopAccess = false }: MobileBottomNavPr
                   </Badge>
                 </div>
               )}
-              {/* Bei Werkstattzugang steht Einstellungen nicht in der Leiste
-                  (QA BUG-8) — dann muss es hier erreichbar sein. */}
-              {hasWorkshopAccess && (
+              {/* Was der Leiste gewichen ist, muss hier erreichbar sein. */}
+              {zusatzImMenue && hasWorkshopAccess && (
+                <Link
+                  href="/werkstatt"
+                  className="flex items-center gap-2 px-3 py-2 text-sm font-medium"
+                >
+                  <Wrench className="h-4 w-4" />
+                  Werkstatt
+                </Link>
+              )}
+              {zusatzImMenue && isDealer && (
+                <Link
+                  href="/bestand"
+                  className="flex items-center gap-2 px-3 py-2 text-sm font-medium"
+                >
+                  <Store className="h-4 w-4" />
+                  Bestand
+                </Link>
+              )}
+              {zusatzInLeiste && (
                 <Link
                   href="/settings"
                   className="flex items-center gap-2 px-3 py-2 text-sm font-medium"

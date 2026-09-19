@@ -26,6 +26,11 @@ import {
   getEntryTypeLabel,
   type ServiceEntryType,
 } from "@/lib/validations/service-entry";
+import {
+  vehicleLabel,
+  formatDate,
+  formatMileage,
+} from "@/lib/vehicle-format";
 
 /** Vorausschau der Terminliste in Tagen. Überfällige sind immer dabei. */
 export const DUE_HORIZON_DAYS = 90;
@@ -90,13 +95,11 @@ export function dueLabel(source: DueSource, labelKey: string): string {
   return getEntryTypeLabel(labelKey as ServiceEntryType);
 }
 
-/** „Porsche 911 (1973)" — ohne Baujahr, wenn keines erfasst ist. */
-export function vehicleLabel(
-  v: Pick<WorkshopVehicle, "make" | "model" | "year">
-): string {
-  const base = `${v.make} ${v.model}`.trim();
-  return v.year ? `${base} (${v.year})` : base;
-}
+// Die drei Anzeigehilfen liegen seit PROJ-38 in lib/vehicle-format.ts, weil
+// die Händler-Bestandsübersicht sie ebenfalls braucht. Sie werden hier
+// unverändert weitergegeben, damit Tests und Komponenten dieses Bereichs
+// ihren gewohnten Zugriff behalten.
+export { vehicleLabel, formatDate, formatMileage };
 
 /**
  * Tage bis zum Termin. Negativ heißt überfällig.
@@ -209,20 +212,6 @@ export function sortVehicles(
     if (!b.nextDue) return -1;
     return a.nextDue.dueDate.localeCompare(b.nextDue.dueDate);
   });
-}
-
-/** „12.03.2026" — leere Werte werden zum Gedankenstrich, nie zu „Invalid Date". */
-export function formatDate(value: string | null): string {
-  if (!value) return "—";
-  const ms = Date.parse(`${value}T00:00:00Z`);
-  if (Number.isNaN(ms)) return "—";
-  return new Date(ms).toLocaleDateString("de-DE", { timeZone: "UTC" });
-}
-
-/** „87.450 km" */
-export function formatMileage(km: number | null): string {
-  if (km == null) return "—";
-  return `${km.toLocaleString("de-DE")} km`;
 }
 
 /**

@@ -1,7 +1,7 @@
 import { redirect, notFound } from "next/navigation";
 import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase-server";
-import { getWorkshopVehicleCount } from "@/lib/workshop-access";
+import { getNavigationFlags } from "@/lib/navigation-access";
 import { AccountHeader } from "@/components/account-header";
 import { MobileBottomNav } from "@/components/mobile-bottom-nav";
 import { LeaveVehicleButton } from "@/components/leave-vehicle-button";
@@ -116,8 +116,12 @@ export default async function VehicleLayout({
   // und jede vergessene wäre ein Fahrzeug, das wieder Euro anzeigt.
   const currency = toCurrency(typedVehicle.currency);
 
-  // PROJ-37: Navigationspunkt „Werkstatt" — serverseitig ermittelt (QA BUG-7)
-  const hasWorkshopAccess = (await getWorkshopVehicleCount(supabase, user.id)) > 0;
+  // Zusätzliche Navigationspunkte (PROJ-37 Werkstatt, PROJ-38 Bestand) —
+  // serverseitig ermittelt, nicht per Abfrage im Browser (QA BUG-7)
+  const { hasWorkshopAccess, isDealer } = await getNavigationFlags(
+    supabase,
+    user.id
+  );
 
   return (
     // `data-app-shell` markiert eine Seite mit Seitenleiste. Der Footer aus
@@ -139,6 +143,7 @@ export default async function VehicleLayout({
         <AccountHeader
           email={user.email || ""}
           hasWorkshopAccess={hasWorkshopAccess}
+          isDealer={isDealer}
         />
 
         <div className="border-b border-border/30">
@@ -196,7 +201,8 @@ export default async function VehicleLayout({
 
         <SiteFooter />
 
-        <MobileBottomNav hasWorkshopAccess={hasWorkshopAccess} />
+        <MobileBottomNav hasWorkshopAccess={hasWorkshopAccess}
+          isDealer={isDealer} />
         <Toaster />
       </SidebarInset>
     </SidebarProvider>

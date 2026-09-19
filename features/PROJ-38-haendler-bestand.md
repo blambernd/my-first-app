@@ -1,6 +1,6 @@
 # PROJ-38: Händler-Bestandsübersicht
 
-## Status: Architected
+## Status: In Progress
 **Created:** 2026-09-06
 **Last Updated:** 2026-09-19
 
@@ -257,6 +257,43 @@ Bestandsvorgang:
 
 - Ob die Ansicht „Verkauft" eine eigene Seite oder ein Umschalter auf derselben wird, entscheidet die Umsetzung; fachlich ist beides gleichwertig
 - Für die Kennzeichnung als verkauft ist zu klären, ob das Fahrzeug danach gelöscht oder nur aus dem Bestand genommen wird. Empfehlung: **nicht automatisch löschen** — der Händler entscheidet selbst, ob er die Fahrzeugakte behält
+
+## Implementation Notes (Frontend)
+
+**Stand:** 2026-09-19 — Build erfolgreich, Lint ohne Fehler, 776/776 Unit-Tests grün (23 davon neu).
+
+### Neue Dateien
+- `src/lib/dealer-inventory.ts` — Standzeit, Rohspanne, Sortierung, Suche, Auswertung je Währung. Ohne Datenbankzugriff, damit prüfbar ohne Fahrzeugbestand
+- `src/lib/dealer-inventory.test.ts` — 23 Tests, u. a. eingefrorene Standzeit bei verkauften Fahrzeugen, Verluste als negative Spanne, getrennte Währungssummen, unvollständige Vorgänge
+- `src/lib/dealer-access.ts` — liest den gewerblichen Schalter
+- `src/lib/navigation-access.ts` — fasst die Zugangsfragen beider Zusatzbereiche zu einer Abfrage zusammen
+- `src/app/bestand/page.tsx` — Bestandsseite, serverseitig geladen
+- `src/components/dealer-inventory-list.tsx` — Bestandsliste mit Suche, Sortierung, Langsteher-Kennzeichnung, Aktion
+- `src/components/dealer-sold-list.tsx` — abgeschlossene Verkäufe samt Auswertung je Währung
+- `src/components/mark-as-sold-dialog.tsx` — „Als verkauft kennzeichnen"
+- `src/components/dealer-mode-settings.tsx` — der Schalter in den Einstellungen
+- `src/app/api/dealer/sales/route.ts` — nimmt die Kennzeichnung entgegen, prüft Besitz und Datumsfolge
+
+### Geänderte Dateien
+- `src/lib/vehicle-format.ts` (**neu**) — `vehicleLabel`, `formatDate`, `formatMileage` und `dayDiff` lagen im Werkstatt-Modul und wurden hier ein zweites Mal gebraucht. Statt einer Abhängigkeit zwischen zwei fachlich getrennten Bereichen liegen sie jetzt gemeinsam; `workshop-dashboard.ts` gibt sie unverändert weiter, deshalb blieben dessen Tests und Komponenten unberührt (25/25 weiterhin grün)
+- `src/components/account-header.tsx`, `src/components/mobile-bottom-nav.tsx` — Punkt „Bestand"
+- `src/app/settings/page.tsx` — Schalter eingebunden, auf die gemeinsame Zugangsabfrage umgestellt
+- `src/app/vehicles/[id]/layout.tsx`, `src/app/dashboard/page.tsx` — Punkt „Bestand" durchgereicht
+
+### Entscheidungen beim Bauen
+1. **Die mobile Leiste bekam eine Regel statt eines weiteren Eintrags.** Mit zwei Zusatzbereichen wären es sechs Einträge gewesen — genau der Fall, den QA BUG-8 verhindern sollte. Jetzt gilt: ein Zusatzbereich steht in der Leiste (Einstellungen weicht ins Menü), bei zwei wandern beide ins Menü und Einstellungen bleibt. So bleiben es immer höchstens fünf.
+2. **Fehlt das Kaufdatum, wird das Anlagedatum des Fahrzeugs verwendet** und als geschätzt gekennzeichnet — sonst hätte ein Fahrzeug ohne Kaufpreis-Eintrag gar keine Standzeit.
+3. **Ein Hinweis nennt die Zahl der Fahrzeuge ohne Kaufpreis** und sagt, wo er nachzutragen ist. Ohne ihn bliebe unklar, warum Spalten leer sind.
+4. **Der Dialog weist auf die Übergabe hin, erzwingt sie aber nicht** und stellt klar, dass die Fahrzeugakte erhalten bleibt.
+
+### Was das Backend noch liefern muss
+Die Seite ist gebaut und lädt, aber zwei Dinge fehlen in der Datenbank:
+
+- **`subscriptions.is_dealer`** (Ja/Nein am Konto). Bis dahin liefert die Zugangsprüfung „nicht gewerblich": Der Bereich bleibt unsichtbar und `/bestand` leitet ins Dashboard um. Der Schalter in den Einstellungen ist sichtbar, kann aber nicht speichern
+- **Tabelle `dealer_sales`** samt Zugriffsregeln (nur für das eigene Konto lesbar und schreibbar). Bis dahin bleibt die Ansicht „Verkauft" leer — der Fehler wird abgefangen und protokolliert, statt die Seite scheitern zu lassen — und die Kennzeichnung schlägt mit einer Meldung fehl
+- **Schreiben beim Annehmen einer Übergabe**, vor dem Löschen der Kaufdaten, samt Erlösfeld am Übergabevorgang, das dem Käufer nicht ausgeliefert wird
+
+Ohne diese drei Teile ist die Bestandsliste sichtbar, sobald der Schalter gesetzt werden kann; Verkäufe lassen sich noch nicht festhalten.
 
 ## QA Test Results
 _To be added by /qa_

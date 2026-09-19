@@ -1,9 +1,10 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase-server";
-import { getWorkshopVehicleCount } from "@/lib/workshop-access";
+import { getNavigationFlags } from "@/lib/navigation-access";
 import { AccountHeader } from "@/components/account-header";
 import { MobileBottomNav } from "@/components/mobile-bottom-nav";
 import { NotificationSettings } from "@/components/notification-settings";
+import { DealerModeSettings } from "@/components/dealer-mode-settings";
 import { PlanSettings } from "@/components/plan-settings";
 import { ReferralCard } from "@/components/referral-card";
 import { PushOptInBanner } from "@/components/push-opt-in-banner";
@@ -22,12 +23,17 @@ export default async function SettingsPage() {
     redirect("/login");
   }
 
-  // PROJ-37: Navigationspunkt „Werkstatt" — serverseitig ermittelt (QA BUG-7)
-  const hasWorkshopAccess = (await getWorkshopVehicleCount(supabase, user.id)) > 0;
+  // Zusätzliche Navigationspunkte (PROJ-37 Werkstatt, PROJ-38 Bestand) —
+  // serverseitig ermittelt, nicht per Abfrage im Browser (QA BUG-7)
+  const { hasWorkshopAccess, isDealer } = await getNavigationFlags(
+    supabase,
+    user.id
+  );
 
   return (
     <div className="min-h-screen bg-background">
-      <AccountHeader email={user.email ?? ""} hasWorkshopAccess={hasWorkshopAccess} />
+      <AccountHeader email={user.email ?? ""} hasWorkshopAccess={hasWorkshopAccess}
+          isDealer={isDealer} />
       <main className="container mx-auto px-6 lg:px-8 py-8 max-w-2xl">
         <div className="mb-6">
           <Link
@@ -49,6 +55,9 @@ export default async function SettingsPage() {
           <PushOptInBanner />
           <NotificationSettings />
 
+          {/* PROJ-38: schaltet den Bestandsbereich frei */}
+          <DealerModeSettings initialEnabled={isDealer} userId={user.id} />
+
           {/* Account Actions */}
           <div className="border rounded-lg p-4 space-y-3">
             <h2 className="text-base font-medium">Konto</h2>
@@ -63,7 +72,8 @@ export default async function SettingsPage() {
           </div>
         </div>
       </main>
-      <MobileBottomNav hasWorkshopAccess={hasWorkshopAccess} />
+      <MobileBottomNav hasWorkshopAccess={hasWorkshopAccess}
+          isDealer={isDealer} />
     </div>
   );
 }
