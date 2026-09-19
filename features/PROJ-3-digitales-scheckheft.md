@@ -282,3 +282,22 @@ Run the SQL migration in Supabase Dashboard: SQL Editor > New query > Paste cont
 **Production URL:** https://my-first-app-blambernd.vercel.app
 **Git Tag:** v1.2.0-PROJ-3
 **Commit:** b224ba0
+
+## Nachtrag 2026-09-19: Icon-Schaltflächen ohne zugänglichen Namen
+
+**Gefunden** bei der PROJ-37-Abnahme: Ein Test konnte den Löschknopf nicht über seine Rolle ansprechen und musste auf eine Gestaltungsklasse ausweichen. Das war das Symptom, nicht die Ursache.
+
+Sechs Schaltflächen in `src/components/service-log.tsx` bestanden ausschließlich aus einem Symbol — ohne `aria-label` und ohne verstecktes Textlabel:
+
+| Ort | Symbol | Jetzt beschriftet als |
+|---|---|---|
+| Termin-Karte | Haken | „Datum speichern" |
+| Termin-Karte | Kreuz | „Datumsänderung verwerfen" |
+| Ölwechsel-Fälligkeit | Haken | „Kilometerstand für … speichern" |
+| Ölwechsel-Fälligkeit | Kreuz | „Kilometerstandsänderung verwerfen" |
+| Scheckheft-Eintrag | Stift | „Eintrag bearbeiten" |
+| Scheckheft-Eintrag | Mülleimer | „Eintrag löschen" |
+
+Für Screenreader waren es unbeschriftete Schaltflächen; welche davon löscht, war nicht erkennbar — bei einer unwiderruflichen Aktion der unangenehmste Fall. Die Projektregeln fordern ARIA-Beschriftungen ausdrücklich (`.claude/rules/frontend.md`).
+
+**Abgesichert:** Der Aufräumschritt in `tests/PROJ-37-werkstattrolle.spec.ts` löscht den Testeintrag jetzt über `getByRole("button", { name: "Eintrag löschen" })`. Verschwindet die Beschriftung wieder, schlägt dieser Test fehl.

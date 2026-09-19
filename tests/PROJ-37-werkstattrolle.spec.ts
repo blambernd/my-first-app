@@ -239,11 +239,10 @@ test.describe("PROJ-37: Werkstatt-Dashboard (mit Werkstatt-Rolle)", () => {
       timeout: 30000,
     });
 
-    // Der Löschknopf ist ein reiner Icon-Knopf ohne zugänglichen Namen
-    // (siehe Befund BEFUND-C in den QA-Ergebnissen) — deshalb hier über die
-    // Gestaltungsklasse statt über die Rolle. Sobald er beschriftet ist,
-    // gehört das auf getByRole umgestellt.
-    await page.locator("button.text-destructive").first().click();
+    // Über die Rolle ansprechbar, seit die Icon-Knöpfe beschriftet sind
+    // (BEFUND-C, behoben am 2026-09-19). Damit prüft dieser Schritt neben
+    // dem Löschen auch, dass die Beschriftung vorhanden bleibt.
+    await page.getByRole("button", { name: "Eintrag löschen" }).first().click();
     await expect(page.getByText("Eintrag löschen?")).toBeVisible({
       timeout: 10000,
     });

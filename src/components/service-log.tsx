@@ -148,10 +148,22 @@ function DueDateCard({
                 if (e.key === "Escape") setEditing(false);
               }}
             />
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-green-600" onClick={handleSave}>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-green-600"
+              onClick={handleSave}
+              aria-label="Datum speichern"
+            >
               <Check className="h-3.5 w-3.5" />
             </Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditing(false)}>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => setEditing(false)}
+              aria-label="Datumsänderung verwerfen"
+            >
               <X className="h-3.5 w-3.5" />
             </Button>
           </div>
@@ -405,10 +417,22 @@ function OilSubcategoryRow({
             if (e.key === "Escape") onCancel();
           }}
         />
-        <Button variant="ghost" size="icon" className="h-7 w-7 text-green-600" onClick={() => onSave(item.dueType)}>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 text-green-600"
+          onClick={() => onSave(item.dueType)}
+          aria-label={`Kilometerstand für ${item.label} speichern`}
+        >
           <Check className="h-3 w-3" />
         </Button>
-        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onCancel}>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7"
+          onClick={onCancel}
+          aria-label="Kilometerstandsänderung verwerfen"
+        >
           <X className="h-3 w-3" />
         </Button>
       </div>
@@ -601,12 +625,23 @@ function ServiceEntryCard({
                 </span>
                 {canEdit && (
                   <div className="flex gap-0.5" onClick={(e) => e.stopPropagation()}>
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onEdit}>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={onEdit}
+                      aria-label="Eintrag bearbeiten"
+                    >
                       <Pencil className="h-3.5 w-3.5" />
                     </Button>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-destructive"
+                          aria-label="Eintrag löschen"
+                        >
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       </AlertDialogTrigger>

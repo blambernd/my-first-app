@@ -611,7 +611,10 @@ Für die Abnahme wird eine echte Werkstatt-Mitgliedschaft benötigt: ein zweites
 
 ### Neuer Befund außerhalb dieses Features
 
-#### BEFUND-C: Icon-Schaltflächen im Scheckheft ohne zugänglichen Namen — **Low (PROJ-3)**
+#### BEFUND-C: Icon-Schaltflächen im Scheckheft ohne zugänglichen Namen — ~~Low (PROJ-3)~~ **behoben am 2026-09-19**
+
+> **Nachtrag:** Betroffen waren nicht zwei, sondern **sechs** Schaltflächen in `service-log.tsx`. Alle tragen jetzt ein `aria-label`; der Aufräumschritt des Abnahmetests spricht den Löschknopf über seine Rolle an und sichert die Beschriftung damit dauerhaft ab. Einzelheiten im Nachtrag der PROJ-3-Spezifikation.
+
 **Datei:** `src/components/service-log.tsx:603-611`
 **Beschreibung:** Die Schaltflächen zum Bearbeiten und Löschen eines Scheckheft-Eintrags enthalten ausschließlich ein Symbol — kein `aria-label`, kein verstecktes Textlabel. Für Screenreader sind es unbeschriftete Schaltflächen; welche löscht, ist nicht erkennbar.
 **Entdeckt**, weil der Aufräumschritt des Abnahmetests sie nicht über ihre Rolle finden konnte und auf eine Gestaltungsklasse ausweichen musste. Der Test trägt einen Hinweis, dass er auf `getByRole` umzustellen ist, sobald die Schaltflächen beschriftet sind.
