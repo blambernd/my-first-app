@@ -491,7 +491,10 @@ Kein Fehler, aber der größte offene Posten. Die Datei enthält inzwischen ein 
 
 ### Befunde außerhalb dieses Features
 
-#### BEFUND-A: Vier E2E-Tests von PROJ-30 sind dauerhaft rot — **High (fremdes Feature)**
+#### BEFUND-A: Vier E2E-Tests von PROJ-30 sind dauerhaft rot — ~~High~~ **aufgeklärt am 2026-09-19: kein Produktfehler**
+
+> **Nachtrag (2026-09-19):** Die Einstufung war zu hoch gegriffen. Die Navigation ist **nicht** defekt — die Tests maßen die Übersetzungszeit des Entwicklungsservers mit. Beleg: Derselbe Test zweimal hintereinander ausgeführt war im ersten Durchlauf rot und im zweiten grün. Behoben in `tests/PROJ-30-fahrzeug-navigation-auth.spec.ts` (erklärter Zeitrahmen für Seitenwechsel); der Spec läuft jetzt 18/18. Einzelheiten im Nachtrag der PROJ-30-Spezifikation.
+
 Auf dem **unveränderten** Stand ohne PROJ-37-Änderungen scheitern in `tests/PROJ-30-fahrzeug-navigation-auth.spec.ts` vier Tests reproduzierbar: „keine zweite Reiterleiste", „Auswahl schließt das Panel (BUG-1)", „Unterbereich schließt das Panel (BUG-1)", „Navigation bleibt nach der Auswahl stehen". PROJ-30 steht in `INDEX.md` als **Deployed**. Das gehört nicht zu PROJ-37, sollte aber verfolgt werden — ein als ausgeliefert geführtes Feature hat eine rote Regressionsdecke.
 
 #### BEFUND-B: Die Testsuite ist unter Last unzuverlässig — **Medium (Prozess)**

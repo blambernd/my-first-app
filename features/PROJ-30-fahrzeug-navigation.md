@@ -601,3 +601,19 @@ Keine Datenbankänderung.
 | Kopfzeile | Trennzeichen vorhanden |
 | 375 / 768 / 1440 px | je ein Footer, kein Querscrollen |
 | Browser-Konsole | keine Fehler |
+
+## Nachtrag 2026-09-19: Vier E2E-Tests waren reproduzierbar rot
+
+**Gefunden** bei der QA zu PROJ-37, als die Navigationstests zur Regressionsprüfung mitliefen — nicht durch einen Nutzerbericht.
+
+Vier Tests scheiterten zuverlässig, darunter der denkbar einfachste: auf dem Desktop einen Seitenleisten-Link anklicken und erwarten, dass die Adresse wechselt. Die Adresse blieb stehen. Das sah nach defekter Navigation in einem ausgelieferten Feature aus.
+
+**Es war keine.** Die Tests laufen gegen den Entwicklungsserver, und der übersetzt jede Route **beim ersten Aufruf**. Im App Router wechselt die Adresse erst, wenn die Zielseite geliefert ist — dieser erste Bau dauert regelmäßig länger als die fünf Sekunden, die `toHaveURL` voreingestellt wartet.
+
+**Beleg:** Derselbe Test zweimal hintereinander ausgeführt (`--repeat-each=2`) war im ersten Durchlauf rot und im zweiten grün. Betroffen waren genau die Tests, die auf eine bis dahin nicht aufgerufene Route klickten.
+
+**Behoben** in `tests/PROJ-30-fahrzeug-navigation-auth.spec.ts`: Die fünf Adressprüfungen bekommen einen benannten Zeitrahmen (`SEITENWECHSEL`) samt Begründung. Bewusst nur dort und nicht als globale Voreinstellung — ein pauschal hochgesetzter Zeitrahmen verschleiert auch echte Fehler.
+
+**Ergebnis:** 18/18 grün. Einschränkung: Beim Nachlauf war der Übersetzungsspeicher des Entwicklungsservers bereits warm; der tragende Beleg ist deshalb der Doppellauf oben, nicht dieser Durchlauf.
+
+**Merkposten:** Dieselbe Ursache erklärt einen Teil der wechselnden E2E-Ausfälle unter Last. Wer diese Tests künftig gegen einen Produktionsbau laufen lässt (`npm run build && npm start` statt `npm run dev`), wird den Effekt gar nicht erst sehen.

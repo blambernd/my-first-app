@@ -16,6 +16,23 @@ import { test, expect, type Page } from "@playwright/test";
 const VEHICLE_ID = process.env.E2E_VEHICLE_ID ?? "";
 const BASIS = `/vehicles/${VEHICLE_ID}`;
 
+/**
+ * Wartezeit für Seitenwechsel per Klick.
+ *
+ * Die Tests laufen gegen den Entwicklungsserver, und der baut jede Route
+ * **beim ersten Aufruf** übersetzt. Dieser erste Bau dauert regelmäßig
+ * länger als die fünf Sekunden, die `toHaveURL` voreingestellt wartet —
+ * die Adresse wechselt im App Router erst, wenn die Zielseite geliefert
+ * ist. Vier Tests dieser Datei schlugen dadurch **reproduzierbar** fehl,
+ * ohne dass an der Navigation etwas defekt war: Derselbe Test, zweimal
+ * hintereinander ausgeführt, war im ersten Durchlauf rot und im zweiten
+ * grün (2026-09-19).
+ *
+ * Bewusst nur hier und nicht als globale Voreinstellung: Ein pauschal
+ * hochgesetzter Zeitrahmen würde auch echte Fehler lange verschleiern.
+ */
+const SEITENWECHSEL = 30000;
+
 test.describe("PROJ-30: Fahrzeug-Navigation", () => {
   test.skip(!VEHICLE_ID, "E2E_VEHICLE_ID nicht gesetzt");
 
@@ -107,11 +124,15 @@ test.describe("PROJ-30: Fahrzeug-Navigation", () => {
     });
 
     await pfeil.click();
-    await expect(page).toHaveURL(new RegExp(`${BASIS}/scheckheft$`));
+    await expect(page).toHaveURL(new RegExp(`${BASIS}/scheckheft$`), {
+      timeout: SEITENWECHSEL,
+    });
     await expect(page.getByRole("link", { name: "Einzelkosten" })).toHaveCount(0);
 
     await pfeil.click();
-    await expect(page).toHaveURL(new RegExp(`${BASIS}/scheckheft$`));
+    await expect(page).toHaveURL(new RegExp(`${BASIS}/scheckheft$`), {
+      timeout: SEITENWECHSEL,
+    });
     for (const unter of unterbereiche) {
       await expect(page.getByRole("link", { name: unter })).toBeVisible();
     }
@@ -276,7 +297,9 @@ test.describe("PROJ-30: Fahrzeug-Navigation", () => {
     await expect(page.getByRole("dialog")).toBeVisible();
 
     await page.getByRole("link", { name: "Scheckheft", exact: true }).click();
-    await expect(page).toHaveURL(new RegExp(`${BASIS}/scheckheft$`));
+    await expect(page).toHaveURL(new RegExp(`${BASIS}/scheckheft$`), {
+      timeout: SEITENWECHSEL,
+    });
     await expect(page.getByRole("dialog")).toHaveCount(0);
   });
 
@@ -292,7 +315,9 @@ test.describe("PROJ-30: Fahrzeug-Navigation", () => {
     // klicken würde ihn jetzt zuklappen und den Unterpunkt verstecken.
     await page.getByRole("link", { name: "Einzelkosten" }).click();
 
-    await expect(page).toHaveURL(new RegExp(`${BASIS}/kosten/einzelkosten$`));
+    await expect(page).toHaveURL(new RegExp(`${BASIS}/kosten/einzelkosten$`), {
+      timeout: SEITENWECHSEL,
+    });
     await expect(page.getByRole("dialog")).toHaveCount(0);
   });
 
@@ -303,7 +328,9 @@ test.describe("PROJ-30: Fahrzeug-Navigation", () => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto(BASIS);
     await page.getByRole("link", { name: "Tankbuch", exact: true }).click();
-    await expect(page).toHaveURL(new RegExp(`${BASIS}/tankbuch$`));
+    await expect(page).toHaveURL(new RegExp(`${BASIS}/tankbuch$`), {
+      timeout: SEITENWECHSEL,
+    });
     await expect(
       page.locator('[data-sidebar="sidebar"]').first()
     ).toBeVisible();
