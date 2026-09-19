@@ -1,8 +1,8 @@
 # PROJ-38: Händler-Bestandsübersicht
 
-## Status: Planned
+## Status: Architected
 **Created:** 2026-09-06
-**Last Updated:** 2026-09-06
+**Last Updated:** 2026-09-19
 
 ## Dependencies
 - Requires: PROJ-1 (User Authentication) — Kontobezug der Selbstdeklaration
@@ -54,7 +54,7 @@ Der Verkaufserlös für die Händlersicht ist deshalb eine **eigenständige, dem
 ### Standzeit
 - [ ] Die Standzeit wird in Tagen ab dem erfassten Kaufdatum (PROJ-28) berechnet
 - [ ] Fehlt das Kaufdatum, wird ersatzweise das Anlagedatum des Fahrzeugs verwendet und die Angabe als geschätzt gekennzeichnet
-- [ ] Fahrzeuge oberhalb einer einstellbaren Schwelle (Voreinstellung 180 Tage) werden als Langsteher hervorgehoben
+- [ ] Fahrzeuge oberhalb von **180 Tagen** werden als Langsteher hervorgehoben (feste Schwelle, in der Architekturphase entschieden — sie betrifft nur die Darstellung und ist später ohne Datenwanderung änderbar)
 - [ ] Die Hervorhebung ist nicht ausschließlich farblich, sondern auch textlich erkennbar
 - [ ] Bei verkauften Fahrzeugen wird die Standzeit eingefroren auf die Spanne zwischen Kauf- und Verkaufsdatum
 
@@ -68,8 +68,21 @@ Der Verkaufserlös für die Händlersicht ist deshalb eine **eigenständige, dem
 - [ ] Summen und Durchschnitte werden je Währung getrennt gebildet; eine Umrechnung findet nicht statt
 - [ ] Die Auswertung nennt die Zahl der Fahrzeuge, für die mangels Daten keine Spanne berechnet werden konnte
 
+### Als verkauft kennzeichnen (in der Architekturphase ergänzt)
+Im Handel ist der Käufer **ohne** Konto der Regelfall — dann gibt es keine Übergabe. Ohne diesen zweiten Weg beschriebe die Auswertung nur die Minderheit der Verkäufe.
+
+- [ ] Jedes Bestandsfahrzeug bietet die Aktion „Als verkauft kennzeichnen"
+- [ ] Erfasst werden Verkaufsdatum (Pflicht) und Verkaufserlös (freiwillig)
+- [ ] Das Fahrzeug verlässt damit die Bestandsliste und erscheint unter „Verkauft"
+- [ ] Die Fahrzeugakte wird dabei **nicht** gelöscht; ob sie bestehen bleibt, entscheidet der Händler getrennt
+- [ ] Der Vorgang ist zurücknehmbar, solange das Fahrzeug noch existiert
+- [ ] Beim Kennzeichnen wird auf die Übergabe hingewiesen: Sie gibt dem Käufer die Historie mit und stützt damit den Fahrzeugwert — sie ist aber keine Bedingung
+- [ ] Ein auf diesem Weg entstandener Datensatz ist von einem über die Übergabe entstandenen unterscheidbar (Herkunft wird festgehalten)
+
 ### Verkaufte Fahrzeuge
 - [ ] Nach der Übergabe an den Käufer bleibt beim Händler ein Bestandsdatensatz erhalten mit: Marke, Modell, Baujahr, Kaufdatum, Verkaufsdatum, Standzeit, Einkaufspreis, Verkaufserlös
+- [ ] Der Datensatz wird **vor** dem Löschen der Kostendaten geschrieben (PROJ-32 löscht beim Annehmen den Kaufpreis des Vorbesitzers — ohne diese Reihenfolge ginge die Grundlage der Spanne verloren)
+- [ ] Der beim Absenden der Übergabe erfasste Verkaufserlös des Händlers wird dem Käufer zu keinem Zeitpunkt angezeigt
 - [ ] Dieser Datensatz enthält keine Fahrzeughistorie, keine Dokumente und keine personenbezogenen Daten des Käufers
 - [ ] Verkaufte Fahrzeuge sind in einer eigenen Ansicht „Verkauft" erreichbar und in der Bestandsliste standardmäßig nicht enthalten
 - [ ] Der Händler kann einen solchen Datensatz löschen
@@ -125,7 +138,125 @@ Der Verkaufserlös für die Händlersicht ist deshalb eine **eigenständige, dem
 <!-- Sections below are added by subsequent skills -->
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture_
+
+### Überblick
+
+Der Bestandsbereich ist eine neue Seite mit **einer** neuen Tabelle. Alles, was der Händler an Fahrzeugen führt, liegt bereits vor — Fahrzeuge, Kaufpreis und Kaufdatum sind vorhandene Bestände. Neu ist nur, was den Verkauf **überdauert**.
+
+Beim Entwurf kam ein Umstand ans Licht, den die Spezifikation nicht vorhersehen konnte und der das Design bestimmt: **Beim Annehmen einer Übergabe wird der Kaufpreis des Vorbesitzers vollständig gelöscht** (PROJ-32, bewusst so entschieden, damit der Käufer die Einkaufskonditionen nicht sieht). Genau daraus würde sich aber die Spanne errechnen. Ohne Gegenmaßnahme verlöre der Händler seine Zahlen in dem Moment, in dem der Verkauf zustande kommt.
+
+### Der Kern: ein Datensatz, der den Verkauf überlebt
+
+```
+Fahrzeug im Bestand          Verkauf                  Danach
+─────────────────────        ─────────                ──────────────────────
+Fahrzeug + Kaufpreis   ──▶   Bestandsdatensatz   ──▶  Fahrzeug weg oder beim
+(vorhandene Daten)           wird geschrieben          Käufer; Datensatz bleibt
+                             ──────────────────        beim Händler
+                             DANACH erst löscht
+                             die Übergabe
+```
+
+Der Bestandsdatensatz entsteht **vor** dem Löschen, im selben Vorgang. Diese Reihenfolge ist die tragende Entscheidung des Entwurfs; wird sie umgedreht, sind die Daten fort.
+
+### Zwei Wege aus dem Bestand
+
+| Weg | Wann | Was passiert |
+|---|---|---|
+| **Übergabe** (PROJ-7) | Käufer hat ein Konto und übernimmt die Historie | Beim Annehmen: Datensatz schreiben, dann wie bisher löschen |
+| **Als verkauft kennzeichnen** | Käufer hat kein Konto — im Handel der Regelfall | Händler trägt Verkaufsdatum und Erlös ein; Datensatz entsteht sofort |
+
+Ohne den zweiten Weg beschriebe die Auswertung nur die Minderheit der Verkäufe. Beim Kennzeichnen wird auf die Übergabe hingewiesen, weil sie dem Käufer die Historie mitgibt und damit den Fahrzeugwert stützt — aber sie ist keine Bedingung.
+
+### Warum der Erlös eine eigene Angabe des Händlers ist
+
+Beim Annehmen einer Übergabe wird bereits ein Preis erfasst — aber vom **Käufer**, als dessen Kaufpreis, und optional anonym für die Preisstatistik (PROJ-33). Für den Händler ist dieser Wert dreifach unbrauchbar: Er stammt nicht von ihm, er ist ihm nicht zugänglich, und eine Verknüpfung mit der anonymen Erhebung ist ausdrücklich untersagt.
+
+Der Händler erfasst seinen Erlös deshalb selbst — beim Absenden der Übergabe, beim Kennzeichnen als verkauft oder nachträglich am Datensatz. Die Angabe bleibt freiwillig; fehlt sie, entfällt die Spanne, nicht der Datensatz.
+
+**Sichtbarkeitsregel:** Der beim Absenden erfasste Erlös wird dem Käufer zu keinem Zeitpunkt angezeigt. Er soll seinen eigenen Preis nennen, nicht den des Verkäufers bestätigen.
+
+### Seitenstruktur
+
+```
+/einstellungen (bestehend)
++-- Schalter "Ich verkaufe Fahrzeuge gewerblich"
+
+/bestand (NEU — nur bei gesetztem Schalter und Premium)
++-- Kopfbereich (Anzahl, Hinweis bei fehlenden Kaufpreisen)
++-- Bestandsliste
+|   +-- Suchfeld + Sortierung (Standzeit | Kaufdatum | Name)
+|   +-- Zeile: Fahrzeug | Kaufdatum | Standzeit | Einkaufspreis
+|   |   +-- Langsteher-Kennzeichnung ab 180 Tagen (Farbe UND Text)
+|   +-- Aktion "Als verkauft kennzeichnen"
++-- Umschalter zur Ansicht "Verkauft"
+    +-- Zeile: Fahrzeug | Kauf | Verkauf | Standzeit | Rohspanne
+    +-- Aktion "Erlös nachtragen/korrigieren", Aktion "Löschen"
+
+/vehicles/[id]/transfer (bestehend — kleine Ergänzung)
++-- optionales Feld "Mein Verkaufserlös" (nur für gewerbliche Nutzer)
+```
+
+### Datenmodell
+
+**Eine neue Tabelle** — der Bestandsvorgang beim Händler:
+
+```
+Bestandsvorgang:
+- gehört zum Händler-Konto (nicht zum Fahrzeug — es kann weg sein)
+- Fahrzeugbeschreibung zum Verkaufszeitpunkt: Marke, Modell, Baujahr
+- Kaufdatum und Einkaufspreis (Kopie aus dem Kaufpreis-Bestand)
+- Verkaufsdatum und Verkaufserlös (freiwillig)
+- Währung des Fahrzeugs
+- Herkunft: über Übergabe oder von Hand gekennzeichnet
+```
+
+**Was bewusst NICHT darin steht:** keine Fahrzeugkennung, keine Käuferdaten, keine Historie, keine Dokumente. Die Beschreibung ist eine Abschrift, keine Verknüpfung — dadurch überlebt der Datensatz die Löschung des Fahrzeugs, ohne auf Reste zu zeigen.
+
+**Der gewerbliche Schalter** ist eine einzelne Angabe am Konto und wandert zu den vorhandenen Abo-Daten, statt eine eigene Tabelle zu bekommen.
+
+**Nicht neu gespeichert** werden Standzeit und Spanne: Beide sind Rechenergebnisse aus Datum und Preis und würden als gespeicherte Werte nur veralten.
+
+### Tech-Entscheidungen
+
+| Entscheidung | Warum |
+|---|---|
+| Datensatz beim **Annehmen** schreiben, nicht beim Absenden | Dieselbe Begründung wie in PROJ-32: Eine abgelehnte oder abgelaufene Übergabe darf nichts verändert haben |
+| Abschrift statt Verknüpfung zum Fahrzeug | Der Datensatz muss die Löschung des Fahrzeugs überleben; eine Verknüpfung würde ihn mitreißen |
+| Zweiter Weg ohne Übergabe | Im Handel ist der Käufer ohne Konto der Normalfall, nicht die Ausnahme |
+| Erlös als eigene Angabe des Händlers | Der Transferpreis gehört dem Käufer und ist für die anonyme Erhebung reserviert |
+| Erlös dem Käufer nicht anzeigen | Sonst bestätigt er die Vorgabe des Verkäufers, statt seinen Preis zu nennen |
+| Schwelle fest bei 180 Tagen | Betrifft nur die Darstellung; später änderbar ohne Datenwanderung |
+| Kein eigener Tarif | Der Bereich gehört zu Premium; das Fahrzeuglimit bleibt unverändert |
+| Standzeit und Spanne rechnen statt speichern | Gespeicherte Rechenergebnisse veralten beim ersten korrigierten Datum |
+
+### Auswirkungen auf bestehende Bereiche
+
+| Bereich | Änderung |
+|---|---|
+| Einstellungen | neuer Schalter |
+| Kopfzeile / mobile Navigation | Punkt „Bestand", nur bei gesetztem Schalter |
+| Übergabe-Seite | optionales Erlös-Feld für gewerbliche Nutzer |
+| Übergabe annehmen | schreibt den Bestandsdatensatz, **bevor** sie löscht |
+| Fahrzeug löschen | unverändert — ohne Kennzeichnung entsteht kein Datensatz |
+| Anonyme Preiserhebung (PROJ-33) | **keine Änderung**, weder am Datenmodell noch am Ablauf |
+
+### Sicherheit und Datenschutz
+
+- Bestandsdatensätze sind ausschließlich für ihr Händler-Konto lesbar; die Beschränkung wird serverseitig durchgesetzt
+- Keine gemeinsame Kennung und kein gemeinsamer Zeitstempel mit der anonymen Erhebung; beide Schreibvorgänge bleiben getrennt
+- Der Erlös des Verkäufers wird in keiner Ansicht des Käufers ausgegeben
+- Die gewerbliche Angabe bleibt intern — sie erscheint weder im öffentlichen Kurzprofil noch in Inseraten
+- Der Händler kann jeden Datensatz löschen; das Löschen des Kontos nimmt sie mit
+
+### Abhängigkeiten
+
+**Keine neuen Pakete.** Alles mit den vorhandenen Bausteinen umsetzbar.
+
+### Offene Punkte für die Umsetzung
+
+- Ob die Ansicht „Verkauft" eine eigene Seite oder ein Umschalter auf derselben wird, entscheidet die Umsetzung; fachlich ist beides gleichwertig
+- Für die Kennzeichnung als verkauft ist zu klären, ob das Fahrzeug danach gelöscht oder nur aus dem Bestand genommen wird. Empfehlung: **nicht automatisch löschen** — der Händler entscheidet selbst, ob er die Fahrzeugakte behält
 
 ## QA Test Results
 _To be added by /qa_
