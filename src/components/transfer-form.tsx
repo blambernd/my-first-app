@@ -39,13 +39,31 @@ interface TransferFormProps {
   vehicleId: string;
   vehicleName: string;
   onSuccess: () => void;
+  /** Blendet das Erlösfeld ein — nur für gewerbliche Nutzer (PROJ-38) */
+  isDealer?: boolean;
+  /** Währung des Fahrzeugs, für die Beschriftung des Erlösfelds */
+  currencySymbol?: string;
 }
 
-export function TransferForm({ vehicleId, vehicleName, onSuccess }: TransferFormProps) {
+export function TransferForm({
+  vehicleId,
+  vehicleName,
+  onSuccess,
+  isDealer = false,
+  currencySymbol = "€",
+}: TransferFormProps) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [transferLink, setTransferLink] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  /**
+   * Der eigene Verkaufserlös (PROJ-38).
+   *
+   * Bewusst außerhalb des Formularschemas: Die Angabe gehört nicht zur
+   * Übergabe, sondern zur Buchführung des Verkäufers. Sie wird getrennt
+   * gespeichert und dem Käufer nie angezeigt.
+   */
+  const [salePrice, setSalePrice] = useState("");
 
   const form = useForm<TransferFormData>({
     resolver: zodResolver(transferSchema) as Resolver<TransferFormData>,
@@ -66,15 +84,19 @@ export function TransferForm({ vehicleId, vehicleName, onSuccess }: TransferForm
       const expiresAt = new Date();
       expiresAt.setDate(expiresAt.getDate() + 14);
 
-      const { error } = await supabase.from("vehicle_transfers").insert({
-        vehicle_id: vehicleId,
-        from_user_id: user.id,
-        to_email: data.email.toLowerCase().trim(),
-        token,
-        keep_as_viewer: data.keepAsViewer,
-        expires_at: expiresAt.toISOString(),
-        status: "offen",
-      });
+      const { data: angelegt, error } = await supabase
+        .from("vehicle_transfers")
+        .insert({
+          vehicle_id: vehicleId,
+          from_user_id: user.id,
+          to_email: data.email.toLowerCase().trim(),
+          token,
+          keep_as_viewer: data.keepAsViewer,
+          expires_at: expiresAt.toISOString(),
+          status: "offen",
+        })
+        .select("id")
+        .single();
 
       if (error) {
         if (error.code === "23505") {
@@ -82,6 +104,26 @@ export function TransferForm({ vehicleId, vehicleName, onSuccess }: TransferForm
           return;
         }
         throw error;
+      }
+
+      // PROJ-38: Der Erlös liegt in einer eigenen Tabelle, nicht am
+      // Übergabevorgang — dessen Zeile darf der Käufer lesen. Schlägt das
+      // Speichern fehl, ist der Transfer trotzdem gültig: Die Angabe lässt
+      // sich später am Bestandsvorgang nachtragen.
+      if (isDealer && salePrice !== "" && angelegt?.id) {
+        const { error: preisFehler } = await supabase
+          .from("dealer_transfer_prices")
+          .insert({
+            transfer_id: angelegt.id,
+            user_id: user.id,
+            price_cents: Math.round(Number(salePrice) * 100),
+          });
+
+        if (preisFehler) {
+          toast.warning(
+            "Der Verkaufserlös konnte nicht gespeichert werden — nachtragen im Bestand"
+          );
+        }
       }
 
       const link = `${window.location.origin}/transfer/${token}`;
@@ -148,6 +190,31 @@ export function TransferForm({ vehicleId, vehicleName, onSuccess }: TransferForm
               </FormItem>
             )}
           />
+
+          {/* PROJ-38: nur für gewerbliche Nutzer. Die Angabe gehört zur
+              Buchführung des Verkäufers und wird dem Käufer nie gezeigt. */}
+          {isDealer && (
+            <div className="space-y-2 rounded-md border p-4">
+              <label
+                htmlFor="sale-price-transfer"
+                className="text-sm font-medium"
+              >
+                Mein Verkaufserlös ({currencySymbol})
+              </label>
+              <Input
+                id="sale-price-transfer"
+                type="number"
+                inputMode="decimal"
+                placeholder="freiwillig"
+                value={salePrice}
+                onChange={(e) => setSalePrice(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Nur für deine Bestandsauswertung. Der Käufer sieht diesen
+                Betrag nicht — er gibt seinen Kaufpreis selbst an.
+              </p>
+            </div>
+          )}
 
           <FormField
             control={form.control}

@@ -295,6 +295,48 @@ Die Seite ist gebaut und lädt, aber zwei Dinge fehlen in der Datenbank:
 
 Ohne diese drei Teile ist die Bestandsliste sichtbar, sobald der Schalter gesetzt werden kann; Verkäufe lassen sich noch nicht festhalten.
 
+## Implementation Notes (Backend)
+
+**Stand:** 2026-09-19 — Migration **angewendet und in der Datenbank geprüft**. Build erfolgreich, Lint ohne Fehler, 783/783 Unit- und Integrationstests grün (7 davon neu).
+
+### Ein Fund, der das Design geändert hat
+
+Der Erlös sollte laut Entwurf am Übergabevorgang liegen. **Das geht nicht:** Die Policy „Invited user can view transfer" lässt den **Käufer** die Zeile in `vehicle_transfers` vollständig lesen. Ein Erlösfeld dort stünde ihm offen, bevor er seinen eigenen Preis nennt — genau das, was die Spezifikation ausschließt. Zugriffsregeln wirken in PostgreSQL auf Zeilen, nicht auf Spalten.
+
+Deshalb eine eigene kleine Tabelle `dealer_transfer_prices` mit eigener Leseregel: Sie gehört dem Verkäufer, wird beim Annehmen ausgelesen und danach geräumt.
+
+### Migration `20260919_proj38_haendler_bestand.sql`
+
+| Teil | Inhalt |
+|---|---|
+| 1 | `subscriptions.is_dealer` — die Selbstauskunft am Konto |
+| 2 | `dealer_sales` — abgeschlossene Vorgänge, vier Zugriffsregeln, ein Index |
+| 3 | `dealer_transfer_prices` — Erlös eines laufenden Übergabevorgangs, nur für den Verkäufer |
+| 4 | `accept_vehicle_transfer` — ein Einschub **vor** dem Löschen der Kaufdaten |
+
+**Zu Teil 4:** Die Funktion wurde aus der laufenden Datenbank ausgelesen und Zeile für Zeile übernommen; hinzugekommen ist allein der Block, der den Bestandsvorgang schreibt. Er greift nur, wenn der **Verkäufer** sich als gewerblich erklärt hat — sonst entstünde ein Datensatz, den niemand ansieht. Übernommen wird die Währung des Verkäufers, nicht die vom Käufer gewählte: Sein Einkauf ist in seiner Währung erfasst.
+
+`dealer_sales` trägt bewusst **keine Fahrzeugkennung**. Der Vorgang soll das Fahrzeug überleben; eine Verknüpfung würde ihn beim Löschen mitreißen.
+
+### Geprüft in der Datenbank
+
+| Prüfung | Ergebnis |
+|---|---|
+| Spalte, beide Tabellen, Index | vorhanden |
+| Zugriffsregeln | 4 auf `dealer_sales`, 1 auf `dealer_transfer_prices`, RLS auf beiden aktiv |
+| Reihenfolge in der Übergabe | `INSERT INTO dealer_sales` steht **vor** `DELETE FROM vehicle_purchases` — maschinell geprüft, nicht nur gelesen |
+| Isolation zwischen Konten | Probe mit zwei echten Konten: Eigentümer sieht seinen Vorgang, ein fremdes Konto sieht ihn nicht. Der Testdatensatz wurde zurückgerollt |
+
+### Neue und geänderte Dateien
+- `src/app/api/dealer/dealer.test.ts` — 7 Tests: ohne Sitzung wird die Datenbank nicht gefragt, ein fremdes Fahrzeug wird abgewiesen, Verkaufsdatum vor Kaufdatum wird abgelehnt, die geschriebene Zeile trägt **keine** Fahrzeugkennung, ein Vorgang ohne Erlös wird angenommen, ein Schreibfehler täuscht keinen Erfolg vor
+- `src/components/transfer-form.tsx` — Erlösfeld für gewerbliche Nutzer; der Übergabe-Insert liefert jetzt die Kennung zurück, damit der Erlös zugeordnet werden kann. Schlägt dessen Speichern fehl, bleibt die Übergabe gültig und es erscheint ein Hinweis
+- `src/app/vehicles/[id]/transfer/page.tsx`, `client.tsx` — reichen den Schalter und die Währung durch; die Fahrzeugabfrage lädt jetzt auch die Währung
+
+### Offen
+- **Zurücknehmen einer Kennzeichnung** (Kriterium „Der Vorgang ist zurücknehmbar"): Die Zugriffsregel zum Löschen ist da, die Schaltfläche fehlt noch
+- **Nachtragen des Erlöses** am abgeschlossenen Vorgang: Regel vorhanden, Oberfläche fehlt
+- Beides ist Oberflächenarbeit ohne weitere Datenbankänderung
+
 ## QA Test Results
 _To be added by /qa_
 

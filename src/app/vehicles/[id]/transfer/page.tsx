@@ -1,6 +1,8 @@
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase-server";
+import { isDealer } from "@/lib/dealer-access";
+import { getCurrencySymbol, toCurrency } from "@/lib/currency";
 import { TransferPageClient } from "./client";
 import { TransferCostNotice } from "@/components/transfer-cost-notice";
 import { ChevronLeft } from "lucide-react";
@@ -25,7 +27,8 @@ export default async function TransferPage({ params }: TransferPageProps) {
   // Only the owner can access this page
   const { data: vehicle } = await supabase
     .from("vehicles")
-    .select("id, make, model, year")
+    // `currency` seit PROJ-38: beschriftet das Erlösfeld für gewerbliche Nutzer
+    .select("id, make, model, year, currency")
     .eq("id", id)
     .eq("user_id", user.id)
     .single();
@@ -44,6 +47,10 @@ export default async function TransferPage({ params }: TransferPageProps) {
   const transfers = transferData as { active: VehicleTransfer | null; past: VehicleTransfer[] } | null;
   const activeTransfer = transfers?.active ?? null;
   const pastTransfers = transfers?.past ?? [];
+
+  // PROJ-38: Das Erloesfeld erscheint nur fuer gewerbliche Nutzer.
+  const dealerMode = await isDealer(supabase, user.id);
+  const currencySymbol = getCurrencySymbol(toCurrency(vehicle.currency));
 
   const vehicleName = `${vehicle.make} ${vehicle.model} (${vehicle.year})`;
 
@@ -69,6 +76,8 @@ export default async function TransferPage({ params }: TransferPageProps) {
       <TransferCostNotice vehicleId={id} stock={stock} />
 
       <TransferPageClient
+        isDealer={dealerMode}
+        currencySymbol={currencySymbol}
         vehicleId={id}
         vehicleName={vehicleName}
         activeTransfer={(activeTransfer as VehicleTransfer) ?? null}

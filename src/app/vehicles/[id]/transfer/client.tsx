@@ -14,6 +14,9 @@ import {
 } from "@/lib/validations/transfer";
 
 interface TransferPageClientProps {
+  /** PROJ-38: blendet das Erloesfeld ein */
+  isDealer?: boolean;
+  currencySymbol?: string;
   vehicleId: string;
   vehicleName: string;
   activeTransfer: VehicleTransfer | null;
@@ -27,6 +30,8 @@ const PAST_STATUS_CONFIG = {
 } as const;
 
 export function TransferPageClient({
+  isDealer = false,
+  currencySymbol = "€",
   vehicleId,
   vehicleName,
   activeTransfer,
@@ -70,6 +75,8 @@ export function TransferPageClient({
             <TransferForm
               vehicleId={vehicleId}
               vehicleName={vehicleName}
+              isDealer={isDealer}
+              currencySymbol={currencySymbol}
               onSuccess={refresh}
             />
           </CardContent>
