@@ -1,8 +1,8 @@
 # PROJ-37: Werkstatt-Dashboard
 
-## Status: In Progress
+## Status: In Review
 **Created:** 2026-09-06
-**Last Updated:** 2026-09-06
+**Last Updated:** 2026-09-19
 
 ## Dependencies
 - Requires: PROJ-1 (User Authentication) — Werkstatt-Nutzer brauchen ein Konto
@@ -540,6 +540,39 @@ Damit ist der Leerfall wieder prüfbar, **auch ohne angewendete Migration** — 
 **Stand:** Build erfolgreich, Lint 0 Fehler, Typprüfung sauber, 12/13 PROJ-37-E2E grün (1 übersprungen, Begründung im Test).
 
 **Weiterhin offen:** Migration einspielen und gegen echte Daten prüfen; zweites Konto mit Werkstatt-Rolle für die Abnahme der Hauptansicht (5 Kriterien). Die Produktionsreife-Einschätzung des zweiten Durchlaufs bleibt bestehen: Die Kernfunktion ist nie ausgeführt worden.
+
+## Migration angewendet (2026-09-19)
+
+Ausgeführt über die Supabase-Management-API, gezielt diese eine Datei. Bewusst kein `supabase db push`: Die Altmigrationen dieses Projekts liefen von Hand im SQL Editor und stehen nicht in der Migrationstabelle — ein Push hätte versucht, sie alle erneut anzuwenden.
+
+### Was tatsächlich in der Datenbank steht
+
+| Prüfung | Ergebnis |
+|---|---|
+| Policy `Werkstatt can view vehicle due dates` | vorhanden |
+| Funktion `get_workshop_dashboard` | vorhanden |
+| Die drei Indizes | alle drei vorhanden |
+| Ausführungsrechte | `authenticated`, `service_role`, `postgres` — **`anon` nicht**, der `REVOKE` hat gegriffen |
+| Aufruf ohne Sitzung | `{"vehicles":[],"dues":[],"total_vehicle_count":0}` — früher Ausstieg greift |
+
+### Die Rechenlogik gegen echte Daten
+
+Das Risiko aus dem zweiten QA-Durchlauf — „nie ausgeführt" — ist damit erledigt. Geprüft wurde der Rumpf der Funktion über vorhandene Scheckheft-Einträge, ohne etwas zu schreiben (`ws` durch ein konkretes Fahrzeug ersetzt, reine Leseabfrage):
+
+- **Aggregation** liefert Kilometerstand, letzten Eintrag, eigene Eintragszahl und Betragssumme (2 Einträge, 150 EUR) korrekt
+- **Tacho-Korrektur** (BUG-4) ist aktiv; beim geprüften Fahrzeug liegt die Korrektur auf dem höchsten Stand, Ergebnis daher identisch mit der alten Rechnung — kein Gegenbeweis, aber der Zweig läuft
+- **Beide Terminquellen** funktionieren; die Termine des Testfahrzeugs stammen aus `vehicle_due_dates` (TÜV/HU 2027-02-01, Service 2027-04-12) — genau die Quelle, die für die Werkstatt vorher unzugänglich war
+- **`DISTINCT ON`** wählt den früheren der beiden als nächsten Termin
+- **JSON-Struktur** stimmt mit dem TypeScript-Typ der Seite überein
+
+### Anwendung gegen die laufende App
+PROJ-37-E2E: 12 bestanden, 1 übersprungen. Übersprungen wird jetzt der BUG-1-Test — es gibt keinen Ausfall mehr zu prüfen. Der Test zum Leerfall greift wieder regulär. Im Serverprotokoll erscheint kein `PGRST202` mehr.
+
+### Der verbleibende Grund, warum die Hauptansicht unabgenommen bleibt
+
+**Die Tabelle `vehicle_members` ist leer** — im ganzen Projekt existiert keine einzige Mitgliedschaft, weder Werkstatt noch Betrachter. Niemand kann die Hauptansicht erreichen, weil niemand die Rolle hat. Die fünf offenen Akzeptanzkriterien (Fahrzeugliste, Terminübersicht, Suche, Sortierung, Schnellaktion) bleiben deshalb ungeprüft.
+
+Für die Abnahme wird eine echte Werkstatt-Mitgliedschaft benötigt: ein zweites Konto, das an einem Fahrzeug des Testkontos die Rolle `werkstatt` erhält. Das ist eine Datenänderung und wurde bewusst nicht ohne Auftrag vorgenommen.
 
 ## Deployment
 _To be added by /deploy_
