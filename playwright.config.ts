@@ -19,11 +19,17 @@ function loadEnvLocal() {
 loadEnvLocal()
 
 const AUTH_FILE = path.join(process.cwd(), 'playwright/.auth/user.json')
+const WERKSTATT_AUTH_FILE = path.join(process.cwd(), 'playwright/.auth/werkstatt.json')
 
 // Angemeldete Specs tragen die Endung -auth.spec.ts. Sie laufen nur im Projekt
 // "chromium-auth", das zuvor die Anmeldung durchführt. Die übrigen Projekte
 // klammern sie aus, weil sie unangemeldet zwangsläufig scheitern würden.
 const AUTH_SPECS = /.*-auth\.spec\.ts/
+
+// Specs, die das **Werkstatt-Konto** brauchen (PROJ-37): ein zweites Konto,
+// das am Fahrzeug des ersten die Rolle `werkstatt` hat. Eigene Endung, weil
+// sie eine andere Sitzung benötigen als die regulären angemeldeten Specs.
+const WERKSTATT_SPECS = /.*-werkstattrolle\.spec\.ts/
 
 export default defineConfig({
   testDir: './tests',
@@ -41,20 +47,34 @@ export default defineConfig({
       testMatch: /auth\.setup\.ts/,
     },
     {
+      name: 'setup-werkstatt',
+      testMatch: /werkstatt\.setup\.ts/,
+      // Hängt bewusst am regulären Setup, damit sich die beiden Konten nicht
+      // gleichzeitig anmelden: Laufen beide Anmeldungen parallel, brechen
+      // beide mit einer Zeitüberschreitung ab.
+      dependencies: ['setup'],
+    },
+    {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
-      testIgnore: AUTH_SPECS,
+      testIgnore: [AUTH_SPECS, WERKSTATT_SPECS],
     },
     {
       name: 'Mobile Safari',
       use: { ...devices['iPhone 13'] },
-      testIgnore: AUTH_SPECS,
+      testIgnore: [AUTH_SPECS, WERKSTATT_SPECS],
     },
     {
       name: 'chromium-auth',
       use: { ...devices['Desktop Chrome'], storageState: AUTH_FILE },
       testMatch: AUTH_SPECS,
       dependencies: ['setup'],
+    },
+    {
+      name: 'chromium-werkstatt',
+      use: { ...devices['Desktop Chrome'], storageState: WERKSTATT_AUTH_FILE },
+      testMatch: WERKSTATT_SPECS,
+      dependencies: ['setup-werkstatt'],
     },
   ],
   webServer: {

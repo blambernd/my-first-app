@@ -1,6 +1,6 @@
 # PROJ-37: Werkstatt-Dashboard
 
-## Status: In Review
+## Status: Approved
 **Created:** 2026-09-06
 **Last Updated:** 2026-09-19
 
@@ -573,6 +573,57 @@ PROJ-37-E2E: 12 bestanden, 1 übersprungen. Übersprungen wird jetzt der BUG-1-T
 **Die Tabelle `vehicle_members` ist leer** — im ganzen Projekt existiert keine einzige Mitgliedschaft, weder Werkstatt noch Betrachter. Niemand kann die Hauptansicht erreichen, weil niemand die Rolle hat. Die fünf offenen Akzeptanzkriterien (Fahrzeugliste, Terminübersicht, Suche, Sortierung, Schnellaktion) bleiben deshalb ungeprüft.
 
 Für die Abnahme wird eine echte Werkstatt-Mitgliedschaft benötigt: ein zweites Konto, das an einem Fahrzeug des Testkontos die Rolle `werkstatt` erhält. Das ist eine Datenänderung und wurde bewusst nicht ohne Auftrag vorgenommen.
+
+## QA Test Results — dritter Durchlauf (Abnahme der Hauptansicht)
+
+**QA-Datum:** 2026-09-19
+**Anlass:** Werkstatt-Testkonto vorhanden, Migration angewendet — die fünf offenen Kriterien sind erstmals prüfbar
+**Ergebnis:** Alle Kriterien bestanden. 23 E2E-Tests grün, 1 übersprungen (mit Begründung).
+
+### Was dafür eingerichtet wurde
+- **Werkstatt-Testkonto** `werkstatt-test@oldtimer-docs.test` — kein eigenes Fahrzeug, Rolle `werkstatt` am E2E-Testfahrzeug, `can_edit_all: false`. Zugangsdaten in `.env.local` (gitignored).
+- **Fahrzeugtermin** am Testfahrzeug (TÜV/HU, +30 Tage), gepflegt vom **Besitzer** — damit prüfbar ist, ob die Werkstatt ihn sieht.
+- **Zweites Playwright-Projekt** `chromium-werkstatt` mit eigener Sitzung (`tests/werkstatt.setup.ts`), Specs mit der Endung `-werkstattrolle.spec.ts`. Das Setup hängt am regulären Setup: Melden sich beide Konten gleichzeitig an, brechen beide Anmeldungen ab.
+
+### Ergebnisse der bislang offenen Kriterien
+
+| Kriterium | Status | Beleg |
+|---|---|---|
+| Navigationspunkt für Nutzer **mit** Rolle | PASS | Steht im ausgelieferten HTML, nicht erst nach einer Abfrage |
+| Fahrzeugliste zeigt das Kundenfahrzeug | PASS | Marke, Modell und Baujahr in einer Zeile |
+| Verweiskachel statt doppelter Anzeige | PASS | Kachel vorhanden, „Geteilte Fahrzeuge" erscheint nicht zusätzlich |
+| Terminübersicht aus beiden Quellen | PASS | **Der Termin des Besitzers ist für die Werkstatt sichtbar** — der eigentliche Beleg für die neue Leseregel |
+| Überfälligkeit/Restlaufzeit als Text | PASS | „in N Tagen" steht neben der Farbe |
+| Suche filtert | PASS | Treffer, Nicht-Treffer mit erklärendem Leerzustand, Zurücksetzen |
+| Drei Sortierungen, Fälligkeit als Standard | PASS | Alle drei Einträge vorhanden, Umschalten wirkt |
+| Schnellaktion legt Eintrag an | PASS | Formular öffnet direkt, Rückkehr nach `/werkstatt`, Kilometerstand erscheint in der Liste |
+| Beträge nur eigener Einträge | PASS | „1 eigener Eintrag" nach dem Anlegen |
+| Bedienbar bei 375 px | PASS | Liste, Suche und Schnellaktion sichtbar; **kein waagerechtes Überlaufen**; untere Leiste mit höchstens fünf Einträgen (BUG-8 bestätigt behoben) |
+| Werkstatt darf eigene Einträge löschen | PASS | Aufräumschritt entfernt den Abnahme-Eintrag wieder |
+
+### Nachprüfung der Behebungen im laufenden Betrieb
+- **BUG-7** bestätigt: Der Navigationspunkt steht im serverseitig gelieferten HTML, es gibt keine Zusatzabfrage mehr.
+- **BUG-8** bestätigt: Die untere Leiste zählt bei 375 px höchstens fünf Einträge, „Einstellungen" ist ins Menü gewichen.
+- **BUG-1** nicht mehr auslösbar: Der Ausfalltest überspringt sich, weil die Funktion vorhanden ist.
+
+### Neuer Befund außerhalb dieses Features
+
+#### BEFUND-C: Icon-Schaltflächen im Scheckheft ohne zugänglichen Namen — **Low (PROJ-3)**
+**Datei:** `src/components/service-log.tsx:603-611`
+**Beschreibung:** Die Schaltflächen zum Bearbeiten und Löschen eines Scheckheft-Eintrags enthalten ausschließlich ein Symbol — kein `aria-label`, kein verstecktes Textlabel. Für Screenreader sind es unbeschriftete Schaltflächen; welche löscht, ist nicht erkennbar.
+**Entdeckt**, weil der Aufräumschritt des Abnahmetests sie nicht über ihre Rolle finden konnte und auf eine Gestaltungsklasse ausweichen musste. Der Test trägt einen Hinweis, dass er auf `getByRole` umzustellen ist, sobald die Schaltflächen beschriftet sind.
+**Empfehlung:** `aria-label="Eintrag bearbeiten"` bzw. `"Eintrag löschen"` ergänzen — betrifft PROJ-3, nicht PROJ-37.
+
+### Weiterhin nicht geprüft
+- Firefox (im Projekt kein Playwright-Ziel; geprüft sind Chromium und WebKit)
+- Verhalten bei vielen Fahrzeugen (Seitenweise ab 25, Kürzungshinweis ab 100) — dafür fehlen Daten in dieser Größenordnung; die Logik ist durch Unit-Tests abgedeckt
+- Das Performance-Kriterium unter Last
+
+### Produktionsreife (dritter Durchlauf)
+
+**BEREIT.** Kein Critical, kein High. Die Hauptansicht ist erstmals vollständig geprüft — Zugang, Liste, Terminübersicht, Suche, Sortierung, Schnellaktion, Betragssicht und mobile Bedienbarkeit.
+
+Offen bleiben BEFUND-A (rote PROJ-30-Tests), BEFUND-B (instabile Testsuite) und BEFUND-C (fehlende Beschriftungen in PROJ-3) — alle drei außerhalb dieses Features.
 
 ## Deployment
 _To be added by /deploy_

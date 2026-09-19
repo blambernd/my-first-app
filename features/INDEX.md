@@ -51,7 +51,7 @@
 | PROJ-34 | Preisübersicht aus echten Verkäufen | Architected | [PROJ-34-preisuebersicht.md](PROJ-34-preisuebersicht.md) | 2026-08-04 |
 | PROJ-35 | Scheckheft-Import aus Dokumenten | In Progress | [PROJ-35-scheckheft-import.md](PROJ-35-scheckheft-import.md) | 2026-08-05 |
 | PROJ-36 | Währung pro Fahrzeug | Deployed | [PROJ-36-waehrung-pro-fahrzeug.md](PROJ-36-waehrung-pro-fahrzeug.md) | 2026-08-07 |
-| PROJ-37 | Werkstatt-Dashboard | In Review | [PROJ-37-werkstatt-dashboard.md](PROJ-37-werkstatt-dashboard.md) | 2026-09-06 |
+| PROJ-37 | Werkstatt-Dashboard | Approved | [PROJ-37-werkstatt-dashboard.md](PROJ-37-werkstatt-dashboard.md) | 2026-09-06 |
 | PROJ-38 | Händler-Bestandsübersicht | Planned | [PROJ-38-haendler-bestand.md](PROJ-38-haendler-bestand.md) | 2026-09-06 |
 
 <!-- Add features above this line -->
