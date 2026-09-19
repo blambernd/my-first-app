@@ -41,6 +41,9 @@ yarn-error.log*
 # MCP server config (contains SUPABASE_ACCESS_TOKEN — never commit)
 .mcp.json
 
+# Supabase CLI: lokaler Arbeitsordner (Projektverknüpfung, Zwischenstände)
+/supabase/.temp/
+
 # local dev/test scratch output
 dev-server.log
 pw-*.txt
