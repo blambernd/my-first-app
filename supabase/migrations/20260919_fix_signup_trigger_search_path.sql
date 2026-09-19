@@ -1,0 +1,41 @@
+-- Registrierung reparieren: search_path der Anmelde-Trigger
+--
+-- ## Der Fehler
+--
+-- Über die Auth-API (also auch über die Registrierungsseite der Anwendung)
+-- liess sich kein Nutzer mehr anlegen. GoTrue meldete:
+--
+--   500 "Database error creating new user"
+--
+-- ## Die Ursache
+--
+-- Beide Trigger auf auth.users sind SECURITY DEFINER und gehören `postgres`,
+-- hatten aber **kein eigenes `SET search_path`**. Damit gilt der search_path
+-- der aufrufenden Sitzung — und GoTrue schreibt als Rolle
+-- `supabase_auth_admin`, deren search_path auf `auth` steht, ohne `public`.
+--
+-- `create_default_subscription` sucht `subscriptions` also im Schema `auth`,
+-- findet die Tabelle nicht und bricht ab. Da der Trigger keinen
+-- Ausnahmebehandler hat, scheitert die gesamte Nutzeranlage.
+--
+-- Warum das lange unbemerkt blieb: Ein INSERT als `postgres` (SQL Editor,
+-- Skripte) läuft mit `search_path="$user", public, extensions` und
+-- funktioniert tadellos. Nur der Weg über GoTrue war betroffen — und der
+-- letzte Nutzer war am 2026-08-06 entstanden.
+--
+-- ## Die Behebung
+--
+-- Beide Funktionen bekommen einen festen search_path. Das ist zugleich die
+-- Empfehlung für jede SECURITY-DEFINER-Funktion: Ohne festen Suchpfad hängt
+-- ihr Verhalten davon ab, wer sie auslöst.
+--
+-- `process_referral_on_signup` fängt seine Fehler zwar selbst ab und legte
+-- die Registrierung nicht lahm — es verschluckte aber jede Empfehlung
+-- stillschweigend, solange `referrals` nicht auffindbar war.
+
+ALTER FUNCTION public.create_default_subscription() SET search_path = public;
+ALTER FUNCTION public.process_referral_on_signup() SET search_path = public;
+
+-- Hinweis für künftige Änderungen: Wird eine dieser Funktionen mit
+-- CREATE OR REPLACE neu geschrieben, muss `SET search_path = public` in der
+-- Definition stehen — sonst kehrt der Fehler zurück.

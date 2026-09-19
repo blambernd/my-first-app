@@ -283,3 +283,21 @@ Speicherberechnung:
 - **Re-Deploy (BUG-4-Fix):** 2026-07-31 — Commit `b9aaa29`, Vercel-Build erfolgreich, Produktion: https://www.oldtimer-docs.com
 - **Migrations to apply:** `20260408_subscriptions.sql`, `20260408_add_file_size_to_images.sql`, `20260731_reset_vehicle_locks.sql` (noch offen — Code-Fix ist unabhängig davon wirksam)
 - **Env vars required:** `STRIPE_SECRET_KEY`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_MONTHLY`, `STRIPE_PRICE_YEARLY`
+
+## Nachtrag 2026-09-19: Registrierung war defekt
+
+**Gefunden** beim Anlegen eines Testkontos für PROJ-37, **nicht** durch einen Nutzerbericht.
+
+Der Trigger `create_default_subscription` auf `auth.users` ist `SECURITY DEFINER`, hatte aber keinen festen `search_path`. Damit galt der Suchpfad der aufrufenden Sitzung — und GoTrue schreibt als `supabase_auth_admin` mit `search_path=auth`, ohne `public`. Der Trigger fand `subscriptions` nicht, brach ab, und weil er keinen Ausnahmebehandler hat, scheiterte die gesamte Nutzeranlage:
+
+```
+500 "Database error creating new user"
+```
+
+**Über die Registrierungsseite konnte sich damit niemand anmelden.** Unbemerkt blieb es, weil ein INSERT als `postgres` (SQL Editor, Skripte) mit `search_path="$user", public, extensions` läuft und einwandfrei funktioniert — nur der Weg über GoTrue war betroffen. Der letzte Nutzer war am 2026-08-06 entstanden.
+
+**Behoben** mit `supabase/migrations/20260919_fix_signup_trigger_search_path.sql`: fester `search_path` für diesen Trigger und für `process_referral_on_signup` (PROJ-18), der denselben Mangel hatte — er verschluckte seine Fehler allerdings selbst und legte die Registrierung nicht lahm, verlor aber stillschweigend jede Empfehlung.
+
+**Belegt:** Nach der Behebung liess sich ein Konto über die Auth-API anlegen, und der Trigger erzeugte die zugehörige Zeile in `subscriptions` (plan `free`, status `active`, Empfehlungscode gesetzt).
+
+**Für künftige Änderungen:** Wird eine dieser Funktionen mit `CREATE OR REPLACE` neu geschrieben, muss `SET search_path = public` in der Definition stehen — sonst kehrt der Fehler zurück.
