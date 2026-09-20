@@ -154,7 +154,7 @@ describe("POST /api/dealer/sales", () => {
     expect(response.status).toBe(400);
   });
 
-  it("schreibt eine Abschrift ohne Fahrzeugkennung", async () => {
+  it("schreibt eine vollstaendige Abschrift samt Fahrzeugkennung", async () => {
     mockGetUser.mockResolvedValue({ data: { user: { id: "user-1" } } });
     setupSupabase({
       vehicle: FAHRZEUG,
@@ -178,8 +178,10 @@ describe("POST /api/dealer/sales", () => {
       sale_price_cents: 4800000,
       origin: "manual",
     });
-    // Der Vorgang soll das Fahrzeug überleben — deshalb keine Verknüpfung.
-    expect(insertedRow).not.toHaveProperty("vehicle_id");
+    // Die Kennung erlaubt der Bestandsliste zu filtern (QA BUG-1). Dass der
+    // Vorgang das Fahrzeug überlebt, sichert nicht ihre Abwesenheit, sondern
+    // die vollständige Abschrift daneben plus ON DELETE SET NULL.
+    expect(insertedRow).toMatchObject({ vehicle_id: FAHRZEUG.id });
   });
 
   it("nimmt den Vorgang auch ohne Erlös an", async () => {

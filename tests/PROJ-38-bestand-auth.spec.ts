@@ -177,7 +177,13 @@ test.describe("PROJ-38: Bestand (angemeldet, Händlermodus)", () => {
   });
 
   test("BUG-1: Ein gekennzeichnetes Fahrzeug verlässt die Bestandsliste", async () => {
-    // BEKANNTER FEHLER — siehe QA-Ergebnisse. Die Bestandsliste lädt alle
+    // BEHOBEN am 2026-09-20 (optionale Fahrzeugkennung mit ON DELETE SET
+    // NULL), per Datenbankprobe belegt. Der Durchlauf hier bleibt vorerst
+    // ausgesetzt: Er wuerde das Testfahrzeug dauerhaft kennzeichnen, und das
+    // Zuruecknehmen fehlt noch (BUG-4). Sobald es da ist, kann dieser Test
+    // kennzeichnen, pruefen und aufraeumen.
+    //
+    // Urspruengliche Beschreibung: Die Bestandsliste lud alle
     // eigenen Fahrzeuge, ohne die abgeschlossenen Vorgänge abzugleichen; ein
     // Abgleich ist auch gar nicht möglich, weil `dealer_sales` bewusst keine
     // Fahrzeugkennung trägt. Das Fahrzeug bliebe also im Bestand und stünde

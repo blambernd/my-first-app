@@ -81,6 +81,10 @@ export async function POST(request: Request) {
 
   const { error } = await supabase.from("dealer_sales").insert({
     user_id: user.id,
+    // QA BUG-1: Die Kennung erlaubt der Bestandsliste, dieses Fahrzeug
+    // auszuschliessen. Sie steht auf ON DELETE SET NULL - der Vorgang
+    // ueberlebt das Fahrzeug, weil die Abschrift daneben vollstaendig ist.
+    vehicle_id,
     make: vehicle.make,
     model: vehicle.model,
     year: vehicle.year,

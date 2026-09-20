@@ -57,6 +57,8 @@ interface SaleRow {
   sold_on: string;
   sale_price_cents: number | null;
   origin: SaleOrigin;
+  /** Optional — fehlt bei Uebergaben und nach dem Loeschen des Fahrzeugs */
+  vehicle_id: string | null;
 }
 
 export default async function BestandPage() {
@@ -149,7 +151,7 @@ export default async function BestandPage() {
   const { data: saleData, error: saleError } = await supabase
     .from("dealer_sales")
     .select(
-      "id, make, model, year, currency, purchased_on, purchase_price_cents, sold_on, sale_price_cents, origin"
+      "id, make, model, year, currency, purchased_on, purchase_price_cents, sold_on, sale_price_cents, origin, vehicle_id"
     )
     .eq("user_id", user.id)
     .order("sold_on", { ascending: false })
@@ -159,7 +161,18 @@ export default async function BestandPage() {
     console.error("Dealer sales not available:", saleError.message);
   }
 
-  const vehicles: InventoryVehicle[] = vehicleRows.map((v) => {
+  // QA BUG-1: Fahrzeuge mit einem abgeschlossenen Vorgang gehoeren nicht mehr
+  // in den Bestand. Ohne diesen Abgleich stand ein gekennzeichnetes Fahrzeug
+  // in beiden Listen, und die Kopfzeile zaehlte es weiter mit.
+  const verkaufteIds = new Set(
+    ((saleData ?? []) as SaleRow[])
+      .map((s) => s.vehicle_id)
+      .filter((id): id is string => Boolean(id))
+  );
+
+  const vehicles: InventoryVehicle[] = vehicleRows
+    .filter((v) => !verkaufteIds.has(v.id))
+    .map((v) => {
     const kauf = purchases.get(v.id);
     // Ohne erfasstes Kaufdatum wird ersatzweise das Anlagedatum genommen und
     // als geschätzt gekennzeichnet — sonst hätte ein Fahrzeug ohne

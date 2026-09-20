@@ -398,7 +398,7 @@ Anders als bei PROJ-37 war die Migration vor Testbeginn angewendet. Für den reg
 
 ### Gefundene Fehler
 
-#### BUG-1: Ein gekennzeichnetes Fahrzeug bleibt im Bestand und steht zugleich unter „Verkauft" — **High**
+#### BUG-1: Ein gekennzeichnetes Fahrzeug bleibt im Bestand und steht zugleich unter „Verkauft" — ~~High~~ **behoben am 2026-09-20**
 **Dateien:** `src/app/bestand/page.tsx:127-129`, Migration (Tabelle `dealer_sales`)
 **Beschreibung:** Die Bestandsliste lädt alle Fahrzeuge des Kontos, ohne die abgeschlossenen Vorgänge abzugleichen. Nach „Als verkauft kennzeichnen" erscheint dasselbe Fahrzeug in **beiden** Listen.
 **Ursache — und warum das nicht trivial ist:** `dealer_sales` trägt bewusst **keine Fahrzeugkennung**, damit der Vorgang das Fahrzeug überlebt. Damit fehlt aber jede Möglichkeit, verkaufte Fahrzeuge aus dem Bestand zu filtern. Der Entwurf hat die beiden Anforderungen „überlebt das Fahrzeug" und „verlässt den Bestand" nicht zusammen gedacht.
@@ -457,3 +457,45 @@ Anders als bei PROJ-37 war die Migration vor Testbeginn angewendet. Für den reg
 
 ## Deployment
 _To be added by /deploy_
+
+## Fehlerbehebung BUG-1 (2026-09-20)
+
+**Behoben in:** `supabase/migrations/20260920_proj38_bug1_vehicle_ref.sql` (angewendet), `src/app/api/dealer/sales/route.ts`, `src/app/bestand/page.tsx`
+
+### Warum der Fehler entstand
+
+Der Entwurf forderte zweierlei, das sich zu widersprechen schien: Der Vorgang soll das Fahrzeug **überleben**, und das verkaufte Fahrzeug soll den Bestand **verlassen**. Die Umsetzung löste das Erste durch Weglassen der Fahrzeugkennung — und machte das Zweite damit unmöglich.
+
+### Die Auflösung
+
+Eine **optionale** Kennung mit `ON DELETE SET NULL`:
+
+- Sie erlaubt den Filter, solange das Fahrzeug existiert
+- Sie wird beim Löschen des Fahrzeugs von selbst leer
+- Der Vorgang bleibt trotzdem vollständig, weil Marke, Modell, Baujahr und alle Beträge als **Abschrift** daneben stehen — und genau diese Abschrift war der eigentliche Grund für die ursprüngliche Entscheidung
+
+Gesetzt wird die Kennung nur beim Kennzeichnen von Hand. Bei einer Übergabe bleibt sie leer: Dort wechselt der Besitzer, das Fahrzeug verschwindet ohnehin aus dem Bestand, und eine Kennung, die auf das Fahrzeug eines anderen zeigt, hätte dort keinen Zweck.
+
+### Belegt gegen die laufende Datenbank
+
+Probe mit dem echten Testkonto und dem echten Testfahrzeug, anschließend zurückgerollt:
+
+| Messung | Ergebnis |
+|---|---|
+| Bestand vor dem Kennzeichnen | 1 Fahrzeug |
+| Bestand danach | **0** |
+| Verkauft-Liste | 1 |
+| Abschrift nach `vehicle_id = NULL` (simulierte Fahrzeuglöschung) | `E2E-Testfahrzeug Wegwerf 1970 / 1850000 → 2100000` — vollständig |
+
+Die letzte Zeile ist die eigentliche Gegenprobe: Beide Anforderungen gelten nun zugleich.
+
+### Auswirkung auf die Tests
+
+Ein Integrationstest prüfte bisher ausdrücklich die **Abwesenheit** der Fahrzeugkennung — mit der Begründung, der Vorgang müsse das Fahrzeug überleben. Diese Begründung trägt nicht mehr: Das Überleben sichert die Abschrift plus `ON DELETE SET NULL`, nicht die fehlende Kennung. Der Test prüft jetzt das Gegenteil und trägt die neue Begründung im Kommentar.
+
+**Stand:** Build erfolgreich, Lint ohne Fehler, 30/30 Tests der beiden Händler-Dateien grün.
+
+In einem vollständigen Durchlauf fielen zwei fremde Dateien aus (`document-archive.test.tsx`, `scheckheft-import.test.ts`) — isoliert laufen beide grün. Das ist das bekannte Lastverhalten aus BEFUND-B und hat mit dieser Änderung nichts zu tun.
+
+### Weiterhin offen
+BUG-2, BUG-3 und BUG-4 sind unverändert. Der E2E-Test zu BUG-1 bleibt vorerst als bekannt markiert: Ein echter Durchlauf würde das Testfahrzeug dauerhaft kennzeichnen, und das Zurücknehmen fehlt noch (BUG-4). Sobald es da ist, kann der Test kennzeichnen, prüfen und aufräumen.
