@@ -1,6 +1,6 @@
 # PROJ-38: Händler-Bestandsübersicht
 
-## Status: In Review
+## Status: Approved
 **Created:** 2026-09-06
 **Last Updated:** 2026-09-19
 
@@ -630,3 +630,58 @@ Gelöscht werden darf weiterhin beides — es sind die Daten des Händlers. Nur 
 
 ### Nicht durch einen Test abgedeckt
 Ein echter Übergabe-Durchlauf mit anschließendem Löschen des entstandenen Vorgangs. Dafür müsste das Testfahrzeug tatsächlich übertragen werden, was den Testbestand zerstört. Die Benennung ist durch Tests der Logikschicht abgedeckt, die Ergänzungslogik durch die Datenbankprobe oben.
+
+## QA Test Results — dritter Durchlauf (2026-09-20)
+
+**Anlass:** Nachprüfung von BUG-5, BUG-6 und BUG-7
+**Ergebnis:** Alle drei bestätigt behoben. Ein neuer Befund der Stufe Low, kein Critical, kein High.
+**Testlauf:** 793/793 Unit- und Integrationstests grün, 29/29 E2E seriell grün, Build erfolgreich, Lint ohne Fehler
+
+### Nachprüfung der Behebungen
+
+| Fehler | Ergebnis | Beleg |
+|---|---|---|
+| BUG-5 | **Behoben** | `saleRemovalWording` trennt Benennung und Endgültigkeit; drei Tests, darunter einer, der festhält, dass die Zusage „zurück in den Bestand" nur dort steht, wo sie eintritt |
+| BUG-6 | **Behoben** | Datenbankprobe: vorhandener Vorgang wird ergänzt, nicht verdoppelt — vorher 1, nachher 1, Herkunft auf `transfer`, Kennung geleert |
+| BUG-7 | **Behoben** | Erledigt mit BUG-5: Der Text für Übergabe-Vorgänge verspricht keine Rückkehr mehr |
+
+Bemerkenswert an der BUG-5-Behebung: Die Entscheidung liegt jetzt in der Logikschicht, und die Komponente bezieht ihre Texte von dort. Damit können Test und Oberfläche nicht mehr auseinanderlaufen — bei einem reinen Komponententest wäre genau das möglich geblieben.
+
+### Sicherheitsaudit — nach Änderung der Übergabe-Funktion wiederholt
+
+Die Übergabe-Funktion wurde für BUG-6 erneut angefasst; deshalb wurden die tragenden Proben wiederholt (alle zurückgerollt):
+
+| Prüfung | Ergebnis |
+|---|---|
+| Käufer liest den Erlös des Verkäufers | **Kein Befund** — Verkäufer sieht 1, Käufer 0 |
+| Fremdes Konto liest Bestandsvorgänge | **Kein Befund** — 0 sichtbar |
+| Ändern und Löschen fremder Vorgänge | Kein Befund — beide Routen filtern auf `user_id`, Tests vorhanden |
+
+### Neuer Befund
+
+#### BUG-8: Das Verkaufsdatum eines ergänzten Vorgangs bleibt unkommentiert stehen — **Low**
+**Datei:** Migration `20260920_proj38_bug6_kein_doppelvorgang.sql`
+**Beschreibung:** Wird ein von Hand gekennzeichneter Vorgang später durch die Übergabe ergänzt, bleibt `sold_on` auf dem Datum der Kennzeichnung. Das ist fachlich vertretbar — der Verkauf fand statt, als der Händler ihn eintrug, die Übergabe ist die nachgeholte Dokumentation — und wirkt sich auf die ausgewiesene Standzeit aus.
+**Warum trotzdem ein Befund:** Die Entscheidung steht nirgends. Weder Kommentar noch Spezifikation sagen, welches der beiden Daten gilt; die drei Nachbarzeilen begründen ihr Verhalten, diese nicht.
+**Empfehlung:** Einen Satz im Migrationskommentar ergänzen. Kein Verhaltenswechsel nötig.
+
+### Beobachtung zu BEFUND-B (nicht dieses Feature)
+
+Im gemeinsamen Lauf aller fünf E2E-Dateien fielen vier Tests mit `toHaveURL`-Zeitüberschreitungen aus — dieselben PROJ-30-Tests, für die in BEFUND-A bereits ein Zeitrahmen von 30 Sekunden gesetzt wurde. Seriell ausgeführt laufen dieselben Dateien vollständig grün (29/29).
+
+**Das heißt: Der erhöhte Zeitrahmen reicht unter voller Parallellast nicht.** Die dort vorgeschlagene Lösung — diese Tests gegen einen Produktionsbau statt gegen den Entwicklungsserver laufen zu lassen — ist damit nicht mehr nur eine Randnotiz, sondern der eigentliche Ausweg.
+
+### Regressionstest
+- 793/793 Unit- und Integrationstests grün
+- PROJ-37 (Werkstatt) und PROJ-30 (Navigation) seriell vollständig grün
+- PROJ-38: 12/12
+
+### Produktionsreife (dritter Durchlauf)
+
+**BEREIT.** Kein Critical, kein High. Alle acht Befunde der drei Durchläufe sind behoben oder von Low-Schwere ohne Verhaltensfehler.
+
+**Bewusst nicht abgedeckt — beim Ausrollen im Blick behalten:**
+1. **Ein echter Übergabe-Durchlauf** wurde nie gefahren: Er würde das Testfahrzeug dauerhaft übertragen. Geprüft sind die Reihenfolge im Ablauf, die Ergänzungslogik und die Zugriffsregeln — jeweils per Datenbankprobe, nicht als durchlaufener Vorgang. Das ist die größte verbleibende Lücke, und sie betrifft den Pfad, der beim ersten echten Händlerverkauf beschritten wird.
+2. **Der Upgrade-Hinweis ohne Premium** ist im Beta-Modus nicht prüfbar.
+3. **Verhalten bei vielen Fahrzeugen** (Seitenweise ab 25) — dafür fehlen Daten.
+4. **BUG-8** sollte bei Gelegenheit dokumentiert werden.
