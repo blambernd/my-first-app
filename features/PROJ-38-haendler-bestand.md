@@ -1,6 +1,6 @@
 # PROJ-38: Händler-Bestandsübersicht
 
-## Status: In Progress
+## Status: In Review
 **Created:** 2026-09-06
 **Last Updated:** 2026-09-19
 
@@ -338,7 +338,122 @@ Deshalb eine eigene kleine Tabelle `dealer_transfer_prices` mit eigener Leserege
 - Beides ist Oberflächenarbeit ohne weitere Datenbankänderung
 
 ## QA Test Results
-_To be added by /qa_
+
+**QA-Datum:** 2026-09-20
+**Geprüft durch:** QA Engineer (Code-Prüfung, Unit-/Integrationstests, E2E, Sicherheitsaudit gegen die laufende Datenbank)
+**Testlauf:** 783/783 Unit- und Integrationstests grün (41 Dateien), 16/18 E2E grün (2 als bekannte Fehler markiert), Build erfolgreich, Lint ohne Fehler
+
+### Ausgangslage — diesmal vollständig prüfbar
+
+Anders als bei PROJ-37 war die Migration vor Testbeginn angewendet. Für den regulären Testnutzer wurde der Händlermodus gesetzt; er besitzt das E2E-Testfahrzeug (Kaufpreis 18.500 €, Kaufdatum 2026-08-08). Die Hauptansicht war damit vom ersten Durchlauf an prüfbar.
+
+### Ergebnisse je Akzeptanzkriterium
+
+| Bereich | Kriterium | Status | Beleg |
+|---|---|---|---|
+| Zugang | Schalter in den Einstellungen | PASS | E2E: sichtbar und gesetzt |
+| Zugang | Ohne Schalter kein Zugang | PASS (statisch) | Seite leitet ins Dashboard um |
+| Zugang | Navigationspunkt bei gesetztem Schalter | PASS | Steht im ausgelieferten HTML |
+| Zugang | Ohne Premium der Upgrade-Hinweis | NICHT PRÜFBAR | `NEXT_PUBLIC_BETA_MODE=true` macht jeden Plan zu Premium |
+| Zugang | Nicht angemeldet → Anmeldung | PASS | E2E |
+| Zugang | Fahrzeuglimit unverändert | PASS (statisch) | Feature fasst die Limitprüfung nicht an |
+| Bestandsliste | Nur eigene Fahrzeuge | PASS (statisch) | Abfrage filtert auf `user_id` |
+| Bestandsliste | Angezeigte Felder je Zeile | PASS | E2E: Marke, Modell, Baujahr, Standzeit, Einkaufspreis |
+| Bestandsliste | Klick führt zum Fahrzeugprofil | PASS (statisch) | Ganze Zeile klickbar |
+| Bestandsliste | Suche über Marke, Modell, Kennzeichen | PASS | E2E: Treffer, Leerzustand, Zurücksetzen |
+| Bestandsliste | Drei Sortierungen, Standzeit voreingestellt | PASS | E2E |
+| Bestandsliste | Seitenweise ab 25 Fahrzeugen | PASS (statisch) | `PAGE_SIZE = 25` |
+| Standzeit | Berechnung ab Kaufdatum | PASS | Unit-Tests |
+| Standzeit | Ersatzweise Anlagedatum, gekennzeichnet | PASS (statisch) | Kennzeichnung „(geschätzt)" |
+| Standzeit | Langsteher ab 180 Tagen | PASS | Unit-Tests an der Schwelle |
+| Standzeit | Kennzeichnung nicht nur farblich | PASS | Text „seit N Tagen im Bestand" plus Kennzeichen |
+| Standzeit | Bei Verkauf eingefroren | PASS | Unit-Test |
+| Spanne | Einkaufspreis aus dem Kaufpreisfeld | PASS | E2E: 18.500,00 € in der Zeile |
+| Spanne | Erlös beim Absenden der Übergabe | PASS (statisch) | Feld nur für gewerbliche Nutzer |
+| Spanne | Erlös nachträglich erfassen/korrigieren | **FAIL** | Oberfläche fehlt — BUG-3 |
+| Spanne | Als Rohspanne benannt | PASS (statisch) | „ohne Aufbereitung, Reparaturen und Standkosten" |
+| Spanne | Ohne Wert keine Spanne, nichts geschätzt | PASS | Unit-Tests |
+| Spanne | Währung je Fahrzeug, keine Mischsummen | PASS | Unit-Test mit EUR und CHF |
+| Spanne | Zahl der unvollständigen Vorgänge genannt | PASS | Unit-Test |
+| Kennzeichnen | Aktion je Fahrzeug | PASS | E2E |
+| Kennzeichnen | Datum Pflicht, Erlös freiwillig | PASS | E2E + 7 Integrationstests |
+| Kennzeichnen | Fahrzeug verlässt die Bestandsliste | **FAIL** | BUG-1 |
+| Kennzeichnen | Fahrzeugakte bleibt erhalten | PASS | Route fasst das Fahrzeug nicht an |
+| Kennzeichnen | Vorgang zurücknehmbar | **FAIL** | Schaltfläche fehlt — BUG-4 |
+| Kennzeichnen | Hinweis auf die Übergabe | PASS | E2E |
+| Kennzeichnen | Herkunft unterscheidbar | PASS | `origin` in Datenmodell und Anzeige |
+| Verkauft | Datensatz überlebt die Übergabe | PASS (statisch) | Reihenfolge maschinell geprüft |
+| Verkauft | Keine Historie, keine Käuferdaten | PASS | Integrationstest: keine Fahrzeugkennung |
+| Verkauft | Erlös dem Käufer nie sichtbar | PASS | **Sicherheitsprobe mit zwei Konten** |
+| Verkauft | Eigene Ansicht, Leerzustand | PASS | E2E |
+| Verkauft | Vorgang löschbar | PASS (statisch) | Zugriffsregel vorhanden, Schaltfläche fehlt (BUG-4) |
+| Datenschutz | Keine Verknüpfung zu PROJ-33 | PASS | Getrennte Tabellen, kein gemeinsamer Bezug |
+| Datenschutz | Nur für den Kontoinhaber sichtbar | PASS | **Isolationsprobe mit zwei Konten** |
+| Datenschutz | Gewerblich-Angabe nicht öffentlich | PASS (statisch) | Kein Bezug in Kurzprofil oder Inserat |
+| Zustände | Hinweis bei fehlenden Kaufpreisen | PASS (statisch) | Am Testfahrzeug nicht auslösbar, Kaufpreis vorhanden |
+| Zustände | Bedienbar auf Mobilgeräten | PASS | E2E bei 375 px, kein waagerechter Überlauf |
+| Zustände | Alle Texte auf Deutsch | PASS | |
+
+**Zusammenfassung:** 35 bestanden, 3 nicht erfüllt, 1 nicht prüfbar.
+
+### Gefundene Fehler
+
+#### BUG-1: Ein gekennzeichnetes Fahrzeug bleibt im Bestand und steht zugleich unter „Verkauft" — **High**
+**Dateien:** `src/app/bestand/page.tsx:127-129`, Migration (Tabelle `dealer_sales`)
+**Beschreibung:** Die Bestandsliste lädt alle Fahrzeuge des Kontos, ohne die abgeschlossenen Vorgänge abzugleichen. Nach „Als verkauft kennzeichnen" erscheint dasselbe Fahrzeug in **beiden** Listen.
+**Ursache — und warum das nicht trivial ist:** `dealer_sales` trägt bewusst **keine Fahrzeugkennung**, damit der Vorgang das Fahrzeug überlebt. Damit fehlt aber jede Möglichkeit, verkaufte Fahrzeuge aus dem Bestand zu filtern. Der Entwurf hat die beiden Anforderungen „überlebt das Fahrzeug" und „verlässt den Bestand" nicht zusammen gedacht.
+**Auswirkung:** Das Kernversprechen der Seite — Bestand hier, Verkauftes dort — ist gebrochen. Die Kopfzeile zählt verkaufte Fahrzeuge weiter als Bestand, und ihre Standzeit läuft weiter.
+**Empfehlung:** Eine **optionale** Fahrzeugkennung am Vorgang mit `ON DELETE SET NULL`. Sie erlaubt den Filter, solange das Fahrzeug existiert, und wird beim Löschen oder bei der Übergabe von selbst leer — der Vorgang überlebt trotzdem. Alternativ ein Verkaufskennzeichen am Fahrzeug.
+
+#### BUG-2: Auf der Bestandsseite fehlt ihr eigener Navigationspunkt — **Medium**
+**Datei:** `src/app/bestand/page.tsx:98-100, 119, 203-205, 238`
+**Beschreibung:** Die Seite reicht `isDealer` weder an die Kopfzeile noch an die untere Leiste durch. Ausgerechnet im Bestandsbereich fehlt der Punkt „Bestand" — auf dem Smartphone ist der Bereich von dort gar nicht mehr über die Leiste erreichbar.
+**Nebenwirkung:** Da die Leiste den Bereich nicht kennt, zählt sie null Zusatzbereiche und zeigt „Einstellungen" — die Navigation sieht auf dieser einen Seite anders aus als auf allen übrigen.
+**Reproduktion:** Als gewerblicher Nutzer `/bestand` bei 375 px öffnen. Betrifft auch die Upgrade-Hinweis-Variante derselben Seite.
+
+#### BUG-3: Der Verkaufserlös lässt sich nicht nachtragen oder korrigieren — **Medium**
+**Datei:** `src/components/dealer-sold-list.tsx`
+**Beschreibung:** Das Kriterium verlangt ausdrücklich, dass ein Erlös nachträglich erfassbar und korrigierbar ist. Die Zugriffsregel dafür ist vorhanden, die Oberfläche fehlt. Wer beim Kennzeichnen keinen Erlös angibt oder sich vertippt, kann das nicht mehr ändern.
+
+#### BUG-4: Ein Kennzeichnen ist nicht zurücknehmbar — **Medium**
+**Datei:** `src/components/dealer-sold-list.tsx`
+**Beschreibung:** Das Kriterium „Der Vorgang ist zurücknehmbar, solange das Fahrzeug noch existiert" ist nicht umgesetzt. Die Löschregel besteht, es fehlt die Schaltfläche. Ein Fehlklick im Dialog ist damit endgültig — zusammen mit BUG-1 bleibt das Fahrzeug außerdem dauerhaft doppelt gelistet.
+
+### Sicherheitsaudit
+
+| Prüfung | Ergebnis |
+|---|---|
+| Fremdes Konto liest Bestandsvorgänge | **Kein Befund** — Probe mit zwei echten Konten: Eigentümer sieht 1, Fremder sieht 0 |
+| Käufer liest den Erlös des Verkäufers | **Kein Befund** — Probe mit dem Empfänger einer echten Übergabe: Verkäufer sieht 1, Käufer sieht 0. Genau dafür wurde die eigene Tabelle gebaut |
+| Fremdes Fahrzeug in den eigenen Bestand schreiben | Kein Befund — Route prüft Besitz, Integrationstest deckt es ab |
+| Verkaufsmeldung ohne Sitzung | Kein Befund — 401, per E2E bestätigt |
+| Eingabeprüfung | Kein Befund — Datumsformat und Betragsgrenzen serverseitig; Verkaufsdatum vor Kaufdatum wird abgewiesen |
+| Verknüpfung zur anonymen Preiserhebung | Kein Befund — getrennte Tabellen, kein gemeinsamer Bezug, PROJ-33 unverändert |
+| Datensparsamkeit des Vorgangs | Kein Befund — keine Fahrzeugkennung, keine Käuferdaten (Integrationstest) |
+
+### Regressionstest
+- 783/783 Unit- und Integrationstests grün, davon 30 neu für dieses Feature
+- PROJ-37 unberührt: Die gemeinsam genutzten Anzeigehilfen wurden nur verschoben, nicht geändert; die Werkstatt-Tests blieben grün
+- Die Übergabe-Funktion wurde erweitert, nicht umgeschrieben — der Einschub steht vor dem Löschen, maschinell geprüft
+
+### Nicht geprüft
+- Der Upgrade-Hinweis ohne Premium (Beta-Modus macht jeden Plan zu Premium)
+- Ein **echter** Verkauf über die Übergabe samt entstehendem Vorgang — dafür müsste das Testfahrzeug tatsächlich übertragen werden, was den Testbestand zerstören würde. Die Reihenfolge im Ablauf ist maschinell geprüft, der Durchlauf selbst nicht
+- Verhalten bei vielen Fahrzeugen (Seitenweise ab 25) — dafür fehlen Daten
+- Firefox (im Projekt kein Playwright-Ziel)
+
+### Produktionsreife
+
+**NICHT BEREIT** — ein Fehler der Stufe High.
+
+**Vor dem Ausrollen zwingend:**
+1. BUG-1 — ohne ihn trennt die Seite Bestand und Verkauftes nicht, und das ist ihr Zweck
+
+**Vor dem Ausrollen empfohlen:**
+2. BUG-4 (Zurücknehmen) und BUG-3 (Erlös nachtragen) — beide sind Kriterien, und solange BUG-1 besteht, wiegt ein Fehlklick besonders schwer
+3. BUG-2 — kleiner Eingriff, zwei durchgereichte Werte
+
+**Danach:** Den Upgrade-Hinweis außerhalb des Beta-Modus prüfen und einen echten Übergabe-Durchlauf mit einem Wegwerf-Fahrzeug nachziehen.
 
 ## Deployment
 _To be added by /deploy_
