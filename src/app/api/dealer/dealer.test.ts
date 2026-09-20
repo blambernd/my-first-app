@@ -220,3 +220,150 @@ describe("POST /api/dealer/sales", () => {
     errorSpy.mockRestore();
   });
 });
+
+/**
+ * Nachtragen und Zurücknehmen (QA BUG-3 und BUG-4).
+ *
+ * Beide Zugriffe binden an das eigene Konto: Die Abfragen filtern auf
+ * `user_id`, ein fremder Vorgang kommt als „nicht gefunden" zurück.
+ */
+function setupSingleRow(options: {
+  row?: { id: string } | null;
+  error?: { message: string } | null;
+}) {
+  const { row = null, error = null } = options;
+  const aufrufe: Record<string, unknown>[] = [];
+
+  mockFrom.mockImplementation(() => {
+    const chain = {
+      update: vi.fn((werte: Record<string, unknown>) => {
+        aufrufe.push(werte);
+        return chain;
+      }),
+      delete: vi.fn(() => chain),
+      eq: vi.fn(() => chain),
+      select: vi.fn(() => chain),
+      maybeSingle: vi.fn(() => Promise.resolve({ data: row, error })),
+    };
+    return chain;
+  });
+
+  return aufrufe;
+}
+
+const VORGANG = "22222222-2222-4222-8222-222222222222";
+const params = Promise.resolve({ id: VORGANG });
+
+describe("PATCH /api/dealer/sales/[id]", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("weist ohne Sitzung ab", async () => {
+    mockGetUser.mockResolvedValue({ data: { user: null } });
+
+    const { PATCH } = await import("./sales/[id]/route");
+    const response = (await PATCH(
+      new Request("http://localhost", {
+        method: "PATCH",
+        body: JSON.stringify({ sale_price_eur: 1000 }),
+      }),
+      { params }
+    )) as unknown as { status: number };
+
+    expect(response.status).toBe(401);
+  });
+
+  it("trägt einen Erlös nach", async () => {
+    mockGetUser.mockResolvedValue({ data: { user: { id: "user-1" } } });
+    const aufrufe = setupSingleRow({ row: { id: VORGANG } });
+
+    const { PATCH } = await import("./sales/[id]/route");
+    const response = (await PATCH(
+      new Request("http://localhost", {
+        method: "PATCH",
+        body: JSON.stringify({ sale_price_eur: 48000 }),
+      }),
+      { params }
+    )) as unknown as { status: number };
+
+    expect(response.status).toBe(200);
+    expect(aufrufe[0]).toMatchObject({ sale_price_cents: 4800000 });
+  });
+
+  it("entfernt den Erlös bei null, statt ihn auf Null zu setzen", async () => {
+    // Kein Erlös und ein Erlös von null sind verschiedene Aussagen: Das eine
+    // lässt die Spanne entfallen, das andere behauptet einen Verkauf zum
+    // Nulltarif.
+    mockGetUser.mockResolvedValue({ data: { user: { id: "user-1" } } });
+    const aufrufe = setupSingleRow({ row: { id: VORGANG } });
+
+    const { PATCH } = await import("./sales/[id]/route");
+    await PATCH(
+      new Request("http://localhost", {
+        method: "PATCH",
+        body: JSON.stringify({ sale_price_eur: null }),
+      }),
+      { params }
+    );
+
+    expect(aufrufe[0]).toMatchObject({ sale_price_cents: null });
+  });
+
+  it("meldet einen fremden Vorgang als nicht gefunden", async () => {
+    mockGetUser.mockResolvedValue({ data: { user: { id: "user-1" } } });
+    setupSingleRow({ row: null });
+
+    const { PATCH } = await import("./sales/[id]/route");
+    const response = (await PATCH(
+      new Request("http://localhost", {
+        method: "PATCH",
+        body: JSON.stringify({ sale_price_eur: 1000 }),
+      }),
+      { params }
+    )) as unknown as { status: number };
+
+    expect(response.status).toBe(404);
+  });
+});
+
+describe("DELETE /api/dealer/sales/[id]", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("weist ohne Sitzung ab", async () => {
+    mockGetUser.mockResolvedValue({ data: { user: null } });
+
+    const { DELETE } = await import("./sales/[id]/route");
+    const response = (await DELETE(new Request("http://localhost"), {
+      params,
+    })) as unknown as { status: number };
+
+    expect(response.status).toBe(401);
+  });
+
+  it("nimmt einen eigenen Vorgang zurück", async () => {
+    mockGetUser.mockResolvedValue({ data: { user: { id: "user-1" } } });
+    setupSingleRow({ row: { id: VORGANG } });
+
+    const { DELETE } = await import("./sales/[id]/route");
+    const response = (await DELETE(new Request("http://localhost"), {
+      params,
+    })) as unknown as { status: number };
+
+    expect(response.status).toBe(200);
+  });
+
+  it("meldet einen fremden Vorgang als nicht gefunden", async () => {
+    mockGetUser.mockResolvedValue({ data: { user: { id: "user-1" } } });
+    setupSingleRow({ row: null });
+
+    const { DELETE } = await import("./sales/[id]/route");
+    const response = (await DELETE(new Request("http://localhost"), {
+      params,
+    })) as unknown as { status: number };
+
+    expect(response.status).toBe(404);
+  });
+});

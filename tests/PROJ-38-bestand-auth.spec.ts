@@ -156,41 +156,80 @@ test.describe("PROJ-38: Bestand (angemeldet, Händlermodus)", () => {
       () => document.documentElement.scrollWidth > window.innerWidth + 1
     );
     expect(ueberlauf, "Seite läuft bei 375 px waagerecht über").toBe(false);
+  });
 
-    // Der Navigationspunkt fehlt auf dieser Seite - siehe BUG-2.
+  test("Behobene Fehler: kennzeichnen, pruefen, zuruecknehmen", async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
+
+    // Deckt drei behobene Fehler in einem Durchlauf ab:
+    //   BUG-1 — das Fahrzeug verlaesst den Bestand
+    //   BUG-3 — der Erloes laesst sich nachtraeglich korrigieren
+    //   BUG-4 — der Vorgang laesst sich zuruecknehmen
+    //
+    // Der Test raeumt am Ende auf: Ohne die Ruecknahme (BUG-4) waere er nicht
+    // wiederholbar — genau deshalb war er vorher ausgesetzt.
+    await page.goto("/bestand");
+    await expect(bestandsZeile(page)).toHaveCount(1, { timeout: 30000 });
+
+    // 1. Kennzeichnen
+    await page
+      .getByRole("button", { name: "Als verkauft kennzeichnen" })
+      .first()
+      .click();
+    const dialog = page.getByRole("dialog");
+    await expect(dialog).toBeVisible({ timeout: 20000 });
+    await dialog.getByLabel(/Verkaufserlös/).fill("21000");
+    await dialog.getByRole("button", { name: "Kennzeichnen" }).click();
+    await expect(dialog).toHaveCount(0, { timeout: 20000 });
+
+    // 2. BUG-1: nicht mehr im Bestand, dafuer unter "Verkauft"
+    await expect(bestandsZeile(page)).toHaveCount(0, { timeout: 20000 });
+    await expect(page.getByText("0 Fahrzeuge im Bestand")).toBeVisible();
+    const verkauftZeile = page
+      .locator("li")
+      .filter({ hasText: "E2E-Testfahrzeug" });
+    await expect(verkauftZeile).toHaveCount(1);
+    // Rohspanne aus 18.500 Einkauf und 21.000 Erloes
+    await expect(verkauftZeile).toContainText("2.500,00");
+
+    // 3. BUG-3: Erloes korrigieren
+    await page.getByRole("button", { name: /Aktionen für/ }).first().click();
+    await page.getByRole("menuitem", { name: /Erlös korrigieren/ }).click();
+    const erloesDialog = page.getByRole("dialog");
+    await expect(erloesDialog).toBeVisible({ timeout: 20000 });
+    await erloesDialog.getByLabel(/Verkaufserlös/).fill("22000");
+    await erloesDialog.getByRole("button", { name: "Speichern" }).click();
+    await expect(erloesDialog).toHaveCount(0, { timeout: 20000 });
+    await expect(page.getByText("3.500,00").first()).toBeVisible({
+      timeout: 20000,
+    });
+
+    // 4. BUG-4: zuruecknehmen — das Fahrzeug kehrt in den Bestand zurueck
+    await page.getByRole("button", { name: /Aktionen für/ }).first().click();
+    await page.getByRole("menuitem", { name: /zurücknehmen/ }).click();
+    await expect(
+      page.getByRole("alertdialog").getByText(/Das Fahrzeug selbst bleibt unberührt/)
+    ).toBeVisible({ timeout: 20000 });
+    await page.getByRole("button", { name: "Zurücknehmen" }).click();
+
+    await expect(bestandsZeile(page)).toHaveCount(1, { timeout: 20000 });
+    await expect(
+      page.getByText(/Noch kein abgeschlossener Verkauf/)
+    ).toBeVisible();
   });
 
   test("BUG-2: Die Bestandsseite zeigt ihren eigenen Navigationspunkt", async ({
     page,
   }) => {
-    // BEKANNTER FEHLER: bestand/page.tsx reicht  weder an die
-    // Kopfzeile noch an die untere Leiste durch. Ausgerechnet auf der
-    // Bestandsseite fehlt der Punkt damit - und die untere Leiste sieht dort
-    // anders aus als auf jeder anderen Seite.
-    test.fixme();
     await page.setViewportSize({ width: 375, height: 812 });
     await page.goto("/bestand");
     const leiste = page
       .locator("nav")
       .filter({ has: page.getByRole("link", { name: "Dashboard" }) });
-    await expect(leiste.getByRole("link", { name: "Bestand" })).toBeVisible();
-  });
-
-  test("BUG-1: Ein gekennzeichnetes Fahrzeug verlässt die Bestandsliste", async () => {
-    // BEHOBEN am 2026-09-20 (optionale Fahrzeugkennung mit ON DELETE SET
-    // NULL), per Datenbankprobe belegt. Der Durchlauf hier bleibt vorerst
-    // ausgesetzt: Er wuerde das Testfahrzeug dauerhaft kennzeichnen, und das
-    // Zuruecknehmen fehlt noch (BUG-4). Sobald es da ist, kann dieser Test
-    // kennzeichnen, pruefen und aufraeumen.
-    //
-    // Urspruengliche Beschreibung: Die Bestandsliste lud alle
-    // eigenen Fahrzeuge, ohne die abgeschlossenen Vorgänge abzugleichen; ein
-    // Abgleich ist auch gar nicht möglich, weil `dealer_sales` bewusst keine
-    // Fahrzeugkennung trägt. Das Fahrzeug bliebe also im Bestand und stünde
-    // zugleich unter „Verkauft".
-    //
-    // `fixme` statt eines fehlschlagenden Tests: Der Fehler ist dokumentiert,
-    // und dieser Test schlägt von selbst an, sobald er behoben ist.
-    test.fixme();
+    await expect(leiste.getByRole("link", { name: "Bestand" })).toBeVisible({
+      timeout: 30000,
+    });
   });
 });

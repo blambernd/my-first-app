@@ -405,17 +405,17 @@ Anders als bei PROJ-37 war die Migration vor Testbeginn angewendet. Für den reg
 **Auswirkung:** Das Kernversprechen der Seite — Bestand hier, Verkauftes dort — ist gebrochen. Die Kopfzeile zählt verkaufte Fahrzeuge weiter als Bestand, und ihre Standzeit läuft weiter.
 **Empfehlung:** Eine **optionale** Fahrzeugkennung am Vorgang mit `ON DELETE SET NULL`. Sie erlaubt den Filter, solange das Fahrzeug existiert, und wird beim Löschen oder bei der Übergabe von selbst leer — der Vorgang überlebt trotzdem. Alternativ ein Verkaufskennzeichen am Fahrzeug.
 
-#### BUG-2: Auf der Bestandsseite fehlt ihr eigener Navigationspunkt — **Medium**
+#### BUG-2: Auf der Bestandsseite fehlt ihr eigener Navigationspunkt — ~~Medium~~ **behoben am 2026-09-20**
 **Datei:** `src/app/bestand/page.tsx:98-100, 119, 203-205, 238`
 **Beschreibung:** Die Seite reicht `isDealer` weder an die Kopfzeile noch an die untere Leiste durch. Ausgerechnet im Bestandsbereich fehlt der Punkt „Bestand" — auf dem Smartphone ist der Bereich von dort gar nicht mehr über die Leiste erreichbar.
 **Nebenwirkung:** Da die Leiste den Bereich nicht kennt, zählt sie null Zusatzbereiche und zeigt „Einstellungen" — die Navigation sieht auf dieser einen Seite anders aus als auf allen übrigen.
 **Reproduktion:** Als gewerblicher Nutzer `/bestand` bei 375 px öffnen. Betrifft auch die Upgrade-Hinweis-Variante derselben Seite.
 
-#### BUG-3: Der Verkaufserlös lässt sich nicht nachtragen oder korrigieren — **Medium**
+#### BUG-3: Der Verkaufserlös lässt sich nicht nachtragen oder korrigieren — ~~Medium~~ **behoben am 2026-09-20**
 **Datei:** `src/components/dealer-sold-list.tsx`
 **Beschreibung:** Das Kriterium verlangt ausdrücklich, dass ein Erlös nachträglich erfassbar und korrigierbar ist. Die Zugriffsregel dafür ist vorhanden, die Oberfläche fehlt. Wer beim Kennzeichnen keinen Erlös angibt oder sich vertippt, kann das nicht mehr ändern.
 
-#### BUG-4: Ein Kennzeichnen ist nicht zurücknehmbar — **Medium**
+#### BUG-4: Ein Kennzeichnen ist nicht zurücknehmbar — ~~Medium~~ **behoben am 2026-09-20**
 **Datei:** `src/components/dealer-sold-list.tsx`
 **Beschreibung:** Das Kriterium „Der Vorgang ist zurücknehmbar, solange das Fahrzeug noch existiert" ist nicht umgesetzt. Die Löschregel besteht, es fehlt die Schaltfläche. Ein Fehlklick im Dialog ist damit endgültig — zusammen mit BUG-1 bleibt das Fahrzeug außerdem dauerhaft doppelt gelistet.
 
@@ -499,3 +499,35 @@ In einem vollständigen Durchlauf fielen zwei fremde Dateien aus (`document-arch
 
 ### Weiterhin offen
 BUG-2, BUG-3 und BUG-4 sind unverändert. Der E2E-Test zu BUG-1 bleibt vorerst als bekannt markiert: Ein echter Durchlauf würde das Testfahrzeug dauerhaft kennzeichnen, und das Zurücknehmen fehlt noch (BUG-4). Sobald es da ist, kann der Test kennzeichnen, prüfen und aufräumen.
+
+## Fehlerbehebung BUG-2, BUG-3 und BUG-4 (2026-09-20)
+
+Damit sind alle vier Befunde des QA-Durchlaufs behoben.
+
+### BUG-2 — Navigationspunkt auf der eigenen Seite
+**Behoben in:** `src/app/bestand/page.tsx`
+
+Die Seite prüft den Händlermodus ganz oben, reichte ihn aber weder an die Kopfzeile noch an die untere Leiste durch — an vier Stellen, die Upgrade-Variante eingeschlossen. Jetzt steht der Punkt „Bestand" auch dort, und die untere Leiste zählt den Bereich mit: Sie sieht auf dieser Seite nicht mehr anders aus als auf allen übrigen.
+
+### BUG-3 und BUG-4 — Erlös nachtragen, Verkauf zurücknehmen
+**Neu:** `src/app/api/dealer/sales/[id]/route.ts`, `src/components/dealer-sale-actions.tsx`
+
+Beide Kriterien hatten Zugriffsregeln in der Datenbank, aber keine Oberfläche. Ergänzt wurde ein Menü je Zeile der Verkaufsliste:
+
+- **Erlös nachtragen oder korrigieren.** Ein leeres Feld entfernt den Erlös wieder — der Vorgang bleibt, nur die Spanne entfällt. Kein Erlös und ein Erlös von null sind verschiedene Aussagen; die Route hält sie auseinander, und ein Test hält das fest.
+- **Verkauf zurücknehmen.** Löscht ausschließlich den Vorgang. Das Fahrzeug bleibt unberührt und kehrt allein dadurch in den Bestand zurück; der Sicherheitshinweis im Dialog sagt das ausdrücklich.
+
+Beide Zugriffe binden an das eigene Konto. Ein fremder Vorgang wird als „nicht gefunden" beantwortet — wer raten will, ob eine fremde Kennung existiert, erfährt es hier nicht.
+
+### Der Testdurchlauf, der vorher unmöglich war
+
+Der E2E-Test zu BUG-1 war ausgesetzt, weil ein echtes Kennzeichnen ohne Rücknahme nicht wiederholbar gewesen wäre. Mit BUG-4 geht er jetzt vollständig durch und deckt drei Behebungen in einem Ablauf ab:
+
+1. Fahrzeug kennzeichnen (Erlös 21.000 €)
+2. **BUG-1:** Bestand zeigt „0 Fahrzeuge", der Vorgang steht unter „Verkauft", Rohspanne 2.500 €
+3. **BUG-3:** Erlös auf 22.000 € korrigieren → Spanne 3.500 €
+4. **BUG-4:** zurücknehmen → Fahrzeug wieder im Bestand, Verkaufsliste wieder leer
+
+Der Test räumt damit hinter sich auf und ist beliebig wiederholbar.
+
+**Stand:** 12/12 E2E grün, 14/14 Tests der Händler-Route grün, Lint ohne Fehler, Typprüfung sauber.

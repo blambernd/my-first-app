@@ -100,6 +100,7 @@ export default async function BestandPage() {
         <AccountHeader
           email={user.email || ""}
           hasWorkshopAccess={hasWorkshopAccess}
+          isDealer
         />
         <main className="container mx-auto px-4 py-8 pb-20 md:pb-8">
           <h1 className="mb-6 text-2xl font-bold">Bestand</h1>
@@ -118,7 +119,7 @@ export default async function BestandPage() {
             </AlertDescription>
           </Alert>
         </main>
-        <MobileBottomNav hasWorkshopAccess={hasWorkshopAccess} />
+        <MobileBottomNav hasWorkshopAccess={hasWorkshopAccess} isDealer />
       </div>
     );
   }
@@ -216,6 +217,7 @@ export default async function BestandPage() {
       <AccountHeader
         email={user.email || ""}
         hasWorkshopAccess={hasWorkshopAccess}
+        isDealer
       />
 
       <main className="container mx-auto px-4 py-8 pb-20 md:pb-8">
@@ -248,7 +250,7 @@ export default async function BestandPage() {
         </div>
       </main>
 
-      <MobileBottomNav hasWorkshopAccess={hasWorkshopAccess} />
+      <MobileBottomNav hasWorkshopAccess={hasWorkshopAccess} isDealer />
     </div>
   );
 }

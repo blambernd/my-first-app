@@ -1,4 +1,5 @@
 import { Handshake, PackageCheck } from "lucide-react";
+import { DealerSaleActions } from "@/components/dealer-sale-actions";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatMoney } from "@/lib/currency";
@@ -98,7 +99,7 @@ export function DealerSoldList({ records }: DealerSoldListProps) {
                 return (
                   <li
                     key={r.id}
-                    className="grid grid-cols-1 items-center gap-3 py-4 md:grid-cols-[2fr_1.2fr_1fr_1fr_1fr] md:gap-4"
+                    className="grid grid-cols-1 items-center gap-3 py-4 md:grid-cols-[2fr_1.1fr_1fr_1fr_1fr_auto] md:gap-4"
                   >
                     <div className="min-w-0">
                       <p className="font-medium">{vehicleLabel(r)}</p>
@@ -151,6 +152,14 @@ export function DealerSoldList({ records }: DealerSoldListProps) {
                           Angaben unvollständig
                         </Badge>
                       )}
+                    </div>
+
+                    {/* Erlös nachtragen, Verkauf zurücknehmen (BUG-3, BUG-4) */}
+                    <div className="md:justify-self-end">
+                      <DealerSaleActions
+                        record={r}
+                        label={vehicleLabel(r)}
+                      />
                     </div>
                   </li>
                 );
