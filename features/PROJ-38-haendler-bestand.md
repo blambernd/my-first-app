@@ -531,3 +531,67 @@ Der E2E-Test zu BUG-1 war ausgesetzt, weil ein echtes Kennzeichnen ohne Rücknah
 Der Test räumt damit hinter sich auf und ist beliebig wiederholbar.
 
 **Stand:** 12/12 E2E grün, 14/14 Tests der Händler-Route grün, Lint ohne Fehler, Typprüfung sauber.
+
+## QA Test Results — zweiter Durchlauf (2026-09-20)
+
+**Anlass:** Nachprüfung der vier behobenen Befunde
+**Ergebnis:** Alle vier bestätigt behoben. Drei **neue** Befunde, die aus den Behebungen folgen — einer davon wiegt schwerer als die behobenen.
+**Testlauf:** 790/790 Unit- und Integrationstests grün, 34/35 E2E grün (1 übersprungen), Build erfolgreich, Lint ohne Fehler
+
+### Nachprüfung der Behebungen
+
+| Fehler | Ergebnis | Beleg |
+|---|---|---|
+| BUG-1 | **Behoben** | E2E-Durchlauf: nach dem Kennzeichnen „0 Fahrzeuge im Bestand", Vorgang unter „Verkauft", Rohspanne 2.500 € |
+| BUG-2 | **Behoben** | E2E bei 375 px: Punkt „Bestand" steht in der unteren Leiste der Bestandsseite |
+| BUG-3 | **Behoben** | E2E: Erlös von 21.000 auf 22.000 € korrigiert, Spanne wechselt auf 3.500 € |
+| BUG-4 | **Behoben** | E2E: Rücknahme stellt den Bestand wieder her, Verkaufsliste wieder leer |
+
+Besonders wertvoll: Der Durchlauf räumt hinter sich auf und ist dadurch wiederholbar — vorher war er gar nicht möglich.
+
+### Neue Befunde
+
+#### BUG-5: Ein zurückgenommener Übergabe-Vorgang ist unwiederbringlich — **High**
+**Dateien:** `src/app/api/dealer/sales/[id]/route.ts`, `src/components/dealer-sale-actions.tsx:180`
+**Beschreibung:** Das Zurücknehmen löscht jeden Vorgang, auch einen aus einer Fahrzeugübergabe (`origin = 'transfer'`). Ein solcher Vorgang lässt sich **nicht wiederherstellen**: Sein Einkaufspreis stammt aus `vehicle_purchases`, und die Zeile wurde beim Annehmen der Übergabe gelöscht (PROJ-32). Das Fahrzeug gehört inzwischen dem Käufer.
+**Verschärfend ist der Bestätigungstext:** Er sagt, das Fahrzeug „erscheint wieder im Bestand — sofern es noch existiert". Bei einem Übergabe-Vorgang existiert es, gehört aber einem anderen und kehrt nicht zurück. Der Dialog beschreibt also eine harmlose Folge, während die tatsächliche Folge unwiederbringlicher Datenverlust ist.
+**Reproduktion:** Fahrzeug per Übergabe verkaufen, im Bestandsbereich unter „Verkauft" den Vorgang zurücknehmen. Der Verkauf ist aus der Auswertung verschwunden und nicht wiederherstellbar.
+**Warum nicht Critical:** Es ist eine bewusste Aktion mit Bestätigung, kein stiller Verlust. Die Bestätigung führt jedoch in die Irre, und die Aktion ist zwei Klicks entfernt.
+**Empfehlung:** Für `origin = 'transfer'` entweder sperren oder mit einem eigenen, deutlichen Hinweis versehen („Dieser Vorgang stammt aus einer Übergabe und kann nicht wiederhergestellt werden"). Den Text für den anderen Fall entsprechend trennen.
+
+#### BUG-6: Dasselbe Fahrzeug kann zweimal als verkauft erscheinen — **Medium**
+**Datei:** Migration `20260919_proj38_haendler_bestand.sql`, Abschnitt 4 (`accept_vehicle_transfer`)
+**Beschreibung:** Die Übergabe prüft nicht, ob für dieses Fahrzeug bereits ein Vorgang besteht. Realistischer Ablauf: Der Händler kennzeichnet ein Fahrzeug als verkauft (Käufer ohne Konto), der Käufer legt später doch ein Konto an, und die Übergabe wird nachgeholt. Ergebnis: **zwei** Vorgänge zum selben Verkauf, und die Rohspanne wird doppelt gezählt.
+**Beleg:** Die Funktionsdefinition enthält keine Prüfung auf einen bestehenden Vorgang (maschinell geprüft).
+**Empfehlung:** Beim Schreiben aus der Übergabe einen vorhandenen Vorgang zum selben Fahrzeug erkennen und ihn ergänzen statt einen zweiten anzulegen.
+
+#### BUG-7: Der Rücknahme-Text trifft für Übergabe-Vorgänge nicht zu — **Low**
+**Datei:** `src/components/dealer-sale-actions.tsx:180`
+**Beschreibung:** Siehe BUG-5. Auch unabhängig vom Datenverlust ist die Aussage „erscheint wieder im Bestand" für Vorgänge aus einer Übergabe schlicht falsch — das Fahrzeug gehört dem Käufer. Wird BUG-5 behoben, erledigt sich dieser Punkt mit.
+
+### Sicherheitsaudit der neuen Route
+
+| Prüfung | Ergebnis |
+|---|---|
+| Ändern ohne Sitzung | Kein Befund — 401, Test vorhanden |
+| Zurücknehmen ohne Sitzung | Kein Befund — 401, Test vorhanden |
+| Fremder Vorgang | Kein Befund — beide Zugriffe filtern auf `user_id` und antworten mit „nicht gefunden", ohne die Existenz preiszugeben |
+| Betragsgrenzen | Kein Befund — serverseitig geprüft |
+| Erlös entfernen vs. auf null setzen | Kein Befund — werden auseinandergehalten, Test vorhanden |
+
+### Regressionstest
+- 790/790 Unit- und Integrationstests grün — diesmal ohne die sonst beobachteten Lastausfälle
+- PROJ-37 unberührt: Werkstatt-Suiten vollständig grün, obwohl die Navigation für zwei Zusatzbereiche erweitert wurde
+- 34/35 E2E grün über beide Features
+
+### Produktionsreife (zweiter Durchlauf)
+
+**NICHT BEREIT** — ein Fehler der Stufe High.
+
+**Vor dem Ausrollen zwingend:**
+1. BUG-5 — unwiederbringlicher Verlust hinter einer Bestätigung, die das Gegenteil verspricht
+
+**Vor dem Ausrollen empfohlen:**
+2. BUG-6 — eine doppelt gezählte Spanne macht die Auswertung falsch, und genau dafür gibt es die Seite
+
+**Danach:** BUG-7 erledigt sich mit BUG-5.
