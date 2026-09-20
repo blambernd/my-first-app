@@ -7,6 +7,7 @@ import {
   grossMarginCents,
   isLongStanding,
   soldStandingDays,
+  saleRemovalWording,
   sortInventory,
   standingDays,
   summarizeSales,
@@ -228,5 +229,31 @@ describe("Anzeigehilfen", () => {
     expect(formatHoldingDays(null)).toBe("—");
     expect(formatHoldingDays(1)).toBe("1 Tag");
     expect(formatHoldingDays(151)).toBe("151 Tage");
+  });
+});
+
+describe("saleRemovalWording (QA BUG-5)", () => {
+  it("nennt das Entfernen eines selbst gekennzeichneten Verkaufs eine Rücknahme", () => {
+    const w = saleRemovalWording("manual");
+    expect(w.menuLabel).toBe("Verkauf zurücknehmen");
+    expect(w.actionLabel).toBe("Zurücknehmen");
+    expect(w.irreversible).toBe(false);
+    expect(w.successMessage).toMatch(/wieder im Bestand/);
+  });
+
+  it("nennt das Entfernen eines Übergabe-Vorgangs eine Löschung", () => {
+    // Hier gibt es nichts zurückzunehmen: Das Fahrzeug gehört dem Käufer,
+    // und der Einkaufspreis wurde beim Annehmen gelöscht.
+    const w = saleRemovalWording("transfer");
+    expect(w.menuLabel).toBe("Vorgang löschen");
+    expect(w.actionLabel).toBe("Endgültig löschen");
+    expect(w.irreversible).toBe(true);
+    expect(w.successMessage).not.toMatch(/Bestand/);
+  });
+
+  it("verspricht nur dort eine Rückkehr in den Bestand, wo sie eintritt", () => {
+    // Der Kern des Befunds: Die Zusage darf nicht für beide Fälle gelten.
+    expect(saleRemovalWording("manual").successMessage).toMatch(/Bestand/);
+    expect(saleRemovalWording("transfer").successMessage).not.toMatch(/Bestand/);
   });
 });

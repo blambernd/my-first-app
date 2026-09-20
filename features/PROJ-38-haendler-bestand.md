@@ -551,7 +551,7 @@ Besonders wertvoll: Der Durchlauf räumt hinter sich auf und ist dadurch wiederh
 
 ### Neue Befunde
 
-#### BUG-5: Ein zurückgenommener Übergabe-Vorgang ist unwiederbringlich — **High**
+#### BUG-5: Ein zurückgenommener Übergabe-Vorgang ist unwiederbringlich — ~~High~~ **behoben am 2026-09-20**
 **Dateien:** `src/app/api/dealer/sales/[id]/route.ts`, `src/components/dealer-sale-actions.tsx:180`
 **Beschreibung:** Das Zurücknehmen löscht jeden Vorgang, auch einen aus einer Fahrzeugübergabe (`origin = 'transfer'`). Ein solcher Vorgang lässt sich **nicht wiederherstellen**: Sein Einkaufspreis stammt aus `vehicle_purchases`, und die Zeile wurde beim Annehmen der Übergabe gelöscht (PROJ-32). Das Fahrzeug gehört inzwischen dem Käufer.
 **Verschärfend ist der Bestätigungstext:** Er sagt, das Fahrzeug „erscheint wieder im Bestand — sofern es noch existiert". Bei einem Übergabe-Vorgang existiert es, gehört aber einem anderen und kehrt nicht zurück. Der Dialog beschreibt also eine harmlose Folge, während die tatsächliche Folge unwiederbringlicher Datenverlust ist.
@@ -559,13 +559,13 @@ Besonders wertvoll: Der Durchlauf räumt hinter sich auf und ist dadurch wiederh
 **Warum nicht Critical:** Es ist eine bewusste Aktion mit Bestätigung, kein stiller Verlust. Die Bestätigung führt jedoch in die Irre, und die Aktion ist zwei Klicks entfernt.
 **Empfehlung:** Für `origin = 'transfer'` entweder sperren oder mit einem eigenen, deutlichen Hinweis versehen („Dieser Vorgang stammt aus einer Übergabe und kann nicht wiederhergestellt werden"). Den Text für den anderen Fall entsprechend trennen.
 
-#### BUG-6: Dasselbe Fahrzeug kann zweimal als verkauft erscheinen — **Medium**
+#### BUG-6: Dasselbe Fahrzeug kann zweimal als verkauft erscheinen — ~~Medium~~ **behoben am 2026-09-20**
 **Datei:** Migration `20260919_proj38_haendler_bestand.sql`, Abschnitt 4 (`accept_vehicle_transfer`)
 **Beschreibung:** Die Übergabe prüft nicht, ob für dieses Fahrzeug bereits ein Vorgang besteht. Realistischer Ablauf: Der Händler kennzeichnet ein Fahrzeug als verkauft (Käufer ohne Konto), der Käufer legt später doch ein Konto an, und die Übergabe wird nachgeholt. Ergebnis: **zwei** Vorgänge zum selben Verkauf, und die Rohspanne wird doppelt gezählt.
 **Beleg:** Die Funktionsdefinition enthält keine Prüfung auf einen bestehenden Vorgang (maschinell geprüft).
 **Empfehlung:** Beim Schreiben aus der Übergabe einen vorhandenen Vorgang zum selben Fahrzeug erkennen und ihn ergänzen statt einen zweiten anzulegen.
 
-#### BUG-7: Der Rücknahme-Text trifft für Übergabe-Vorgänge nicht zu — **Low**
+#### BUG-7: Der Rücknahme-Text trifft für Übergabe-Vorgänge nicht zu — ~~Low~~ **behoben am 2026-09-20**
 **Datei:** `src/components/dealer-sale-actions.tsx:180`
 **Beschreibung:** Siehe BUG-5. Auch unabhängig vom Datenverlust ist die Aussage „erscheint wieder im Bestand" für Vorgänge aus einer Übergabe schlicht falsch — das Fahrzeug gehört dem Käufer. Wird BUG-5 behoben, erledigt sich dieser Punkt mit.
 
@@ -595,3 +595,38 @@ Besonders wertvoll: Der Durchlauf räumt hinter sich auf und ist dadurch wiederh
 2. BUG-6 — eine doppelt gezählte Spanne macht die Auswertung falsch, und genau dafür gibt es die Seite
 
 **Danach:** BUG-7 erledigt sich mit BUG-5.
+
+## Fehlerbehebung BUG-5, BUG-6 und BUG-7 (2026-09-20)
+
+Damit sind alle sieben Befunde beider QA-Durchläufe behoben.
+
+### BUG-6 — kein zweiter Vorgang zum selben Verkauf
+**Behoben in:** `supabase/migrations/20260920_proj38_bug6_kein_doppelvorgang.sql` (angewendet)
+
+Die Übergabe legte immer einen neuen Vorgang an. Jetzt wird ein vorhandener Vorgang zum selben Fahrzeug **ergänzt** statt verdoppelt: Die Herkunft wechselt auf „Übergabe", ein beim Absenden erfasster Erlös ersetzt den alten, und die Fahrzeugkennung wird geleert — sie zeigt ab jetzt auf ein Fahrzeug, das dem Käufer gehört.
+
+Die Funktion wurde erneut Zeile für Zeile aus der vorherigen Fassung übernommen; geändert ist allein dieser Block.
+
+**Belegt gegen die laufende Datenbank** (zurückgerollt): Ein von Hand gekennzeichnetes Fahrzeug, danach der Übergabe-Ablauf — Vorgänge vorher **1**, nachher **1**. Herkunft auf `transfer` gewechselt, Erlös aktualisiert, Kennung geleert.
+
+### BUG-5 und BUG-7 — der Dialog sagt, was wirklich geschieht
+**Behoben in:** `src/lib/dealer-inventory.ts`, `src/components/dealer-sale-actions.tsx`
+
+Das Entfernen eines Vorgangs hat je nach Herkunft völlig verschiedene Folgen, und die Oberfläche benannte beide gleich:
+
+| | Von Hand gekennzeichnet | Aus einer Übergabe |
+|---|---|---|
+| Menü | „Verkauf zurücknehmen" | „Vorgang löschen" |
+| Sicherheitsabfrage | „Verkauf zurücknehmen?" | „Vorgang endgültig löschen?" |
+| Aussage | Fahrzeug erscheint wieder im Bestand | **Nicht wiederherstellbar** — Einkaufspreis beim Besitzerwechsel gelöscht, Fahrzeug gehört dem Käufer |
+| Schaltfläche | „Zurücknehmen" | „Endgültig löschen" (rot) |
+| Meldung | „…steht wieder im Bestand" | „Vorgang gelöscht" |
+
+Gelöscht werden darf weiterhin beides — es sind die Daten des Händlers. Nur verspricht der Dialog jetzt nicht mehr eine Rückkehr, die nicht eintritt.
+
+**Die Entscheidung liegt in der Logikschicht, nicht in der Komponente.** Ein Versuch, sie per Komponententest zu prüfen, scheiterte an Radix: Dessen Menüs reagieren nicht auf einfache Klick-Ereignisse in jsdom, und ein Test, der das nachbaut, prüft mehr Bedienbibliothek als eigene Aussage. Stattdessen entscheidet `saleRemovalWording()` über Benennung und Endgültigkeit; die Komponente stellt nur dar. Drei Tests sichern das ab — darunter einer, der festhält, dass die Zusage „zurück in den Bestand" **nur** dort steht, wo sie eintritt.
+
+**Stand:** 793/793 Unit- und Integrationstests grün, 12/12 E2E grün, Build erfolgreich, Lint ohne Fehler.
+
+### Nicht durch einen Test abgedeckt
+Ein echter Übergabe-Durchlauf mit anschließendem Löschen des entstandenen Vorgangs. Dafür müsste das Testfahrzeug tatsächlich übertragen werden, was den Testbestand zerstört. Die Benennung ist durch Tests der Logikschicht abgedeckt, die Ergänzungslogik durch die Datenbankprobe oben.

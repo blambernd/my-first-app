@@ -32,7 +32,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { getCurrencySymbol } from "@/lib/currency";
-import type { SoldRecord } from "@/lib/dealer-inventory";
+import { saleRemovalWording, type SoldRecord } from "@/lib/dealer-inventory";
 
 interface DealerSaleActionsProps {
   record: SoldRecord;
@@ -52,6 +52,17 @@ interface DealerSaleActionsProps {
 export function DealerSaleActions({ record, label }: DealerSaleActionsProps) {
   const router = useRouter();
   const symbol = getCurrencySymbol(record.currency);
+
+  /**
+   * QA BUG-5: Ein Vorgang aus einer Übergabe lässt sich nicht
+   * wiederherstellen. Sein Einkaufspreis stammte aus `vehicle_purchases`,
+   * und diese Zeile wurde beim Annehmen gelöscht (PROJ-32); das Fahrzeug
+   * gehört inzwischen dem Käufer. Löschen bleibt möglich — es sind die
+   * Daten des Händlers —, aber der Dialog muss sagen, was wirklich
+   * geschieht, statt eine Rückkehr in den Bestand zu versprechen.
+   */
+  const wording = saleRemovalWording(record.origin);
+  const ausUebergabe = wording.irreversible;
 
   const [erloesOffen, setErloesOffen] = useState(false);
   const [ruecknahmeOffen, setRuecknahmeOffen] = useState(false);
@@ -94,7 +105,7 @@ export function DealerSaleActions({ record, label }: DealerSaleActionsProps) {
 
       if (!antwort.ok) throw new Error(await antwort.text());
 
-      toast.success("Verkauf zurückgenommen — das Fahrzeug steht wieder im Bestand");
+      toast.success(wording.successMessage);
       setRuecknahmeOffen(false);
       router.refresh();
     } catch {
@@ -126,7 +137,7 @@ export function DealerSaleActions({ record, label }: DealerSaleActionsProps) {
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => setRuecknahmeOffen(true)}>
             <Undo2 className="mr-2 h-4 w-4" />
-            Verkauf zurücknehmen
+            {wording.menuLabel}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -174,17 +185,39 @@ export function DealerSaleActions({ record, label }: DealerSaleActionsProps) {
       <AlertDialog open={ruecknahmeOffen} onOpenChange={setRuecknahmeOffen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Verkauf zurücknehmen?</AlertDialogTitle>
+            <AlertDialogTitle>{wording.title}</AlertDialogTitle>
             <AlertDialogDescription>
-              Der Vorgang zu {label} wird gelöscht. Das Fahrzeug selbst bleibt
-              unberührt und erscheint wieder im Bestand — sofern es noch
-              existiert.
+              {ausUebergabe ? (
+                <>
+                  Dieser Vorgang stammt aus einer Fahrzeugübergabe. Das
+                  Fahrzeug gehört inzwischen dem Käufer und kehrt nicht in
+                  deinen Bestand zurück.{" "}
+                  <strong>
+                    Der Vorgang lässt sich nicht wiederherstellen
+                  </strong>{" "}
+                  — der Einkaufspreis wurde beim Besitzerwechsel gelöscht.
+                  Damit verschwindet {label} dauerhaft aus deiner Auswertung.
+                </>
+              ) : (
+                <>
+                  Der Vorgang zu {label} wird gelöscht. Das Fahrzeug selbst
+                  bleibt unberührt und erscheint wieder in deinem Bestand.
+                </>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={saving}>Abbrechen</AlertDialogCancel>
-            <AlertDialogAction onClick={zuruecknehmen} disabled={saving}>
-              Zurücknehmen
+            <AlertDialogAction
+              onClick={zuruecknehmen}
+              disabled={saving}
+              className={
+                ausUebergabe
+                  ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  : undefined
+              }
+            >
+              {wording.actionLabel}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

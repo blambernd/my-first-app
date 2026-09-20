@@ -222,3 +222,53 @@ export function formatHoldingDays(days: number | null): string {
   if (days == null) return "—";
   return days === 1 ? "1 Tag" : `${days} Tage`;
 }
+
+export interface RemovalWording {
+  /** Beschriftung im Menü */
+  menuLabel: string;
+  /** Überschrift der Sicherheitsabfrage */
+  title: string;
+  /** Beschriftung der bestätigenden Schaltfläche */
+  actionLabel: string;
+  /** Meldung nach dem Vollzug */
+  successMessage: string;
+  /** Ist der Schritt unwiederbringlich? */
+  irreversible: boolean;
+}
+
+/**
+ * Wie das Entfernen eines Vorgangs benannt wird — je nach Herkunft (QA BUG-5).
+ *
+ * Die Folgen unterscheiden sich fundamental, und die Oberfläche muss das
+ * sagen:
+ *
+ * - **Von Hand gekennzeichnet:** Das Fahrzeug gehört noch dem Händler und
+ *   kehrt in den Bestand zurück. Eine echte Rücknahme.
+ * - **Aus einer Übergabe:** Der Einkaufspreis wurde beim Annehmen gelöscht
+ *   (PROJ-32), das Fahrzeug gehört dem Käufer. Der Vorgang ist die letzte
+ *   Aufzeichnung dieses Verkaufs und **nicht wiederherstellbar**.
+ *
+ * Ein Dialog, der in beiden Fällen „erscheint wieder im Bestand" verspricht,
+ * führt genau dort in die Irre, wo es weh tut. Die Entscheidung steht hier
+ * und nicht in der Komponente, damit sie ohne Bedienoberfläche prüfbar ist.
+ */
+export function saleRemovalWording(origin: SaleOrigin): RemovalWording {
+  if (origin === "transfer") {
+    return {
+      menuLabel: "Vorgang löschen",
+      title: "Vorgang endgültig löschen?",
+      actionLabel: "Endgültig löschen",
+      successMessage: "Vorgang gelöscht",
+      irreversible: true,
+    };
+  }
+
+  return {
+    menuLabel: "Verkauf zurücknehmen",
+    title: "Verkauf zurücknehmen?",
+    actionLabel: "Zurücknehmen",
+    successMessage:
+      "Verkauf zurückgenommen — das Fahrzeug steht wieder im Bestand",
+    irreversible: false,
+  };
+}
