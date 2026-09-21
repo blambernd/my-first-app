@@ -1,10 +1,12 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { getWorkshopVehicleCount } from "@/lib/workshop-access";
+import { getWorkshopVehicleCount, isWorkshop } from "@/lib/workshop-access";
 import { isDealer } from "@/lib/dealer-access";
 
 export interface NavigationFlags {
-  /** Punkt „Werkstatt" (PROJ-37) */
+  /** Punkt „Werkstatt" (PROJ-37) — per Einladung oder Selbstauskunft */
   hasWorkshopAccess: boolean;
+  /** Selbstauskunft „Ich bin eine Werkstatt" (PROJ-39) */
+  isWorkshop: boolean;
   /** Punkt „Bestand" (PROJ-38) */
   isDealer: boolean;
 }
@@ -24,13 +26,21 @@ export async function getNavigationFlags(
   supabase: SupabaseClient,
   userId: string
 ): Promise<NavigationFlags> {
-  const [workshopCount, dealer] = await Promise.all([
+  const [workshopCount, workshopMode, dealer] = await Promise.all([
     getWorkshopVehicleCount(supabase, userId),
+    isWorkshop(supabase, userId),
     isDealer(supabase, userId),
   ]);
 
+  // Zwei Wege führen in den Werkstattbereich, und sie sind unabhängig
+  // voneinander (PROJ-39): die Einladung eines Besitzers — der Weg aus
+  // PROJ-37 — oder die eigene Selbstauskunft. Eine Werkstatt, die ihre
+  // ersten Kundenfahrzeuge selbst anlegt, hat noch keine einzige Einladung;
+  // ohne den zweiten Weg käme sie nie an die Seite, auf der sie sie anlegen
+  // könnte.
   return {
-    hasWorkshopAccess: workshopCount > 0,
+    hasWorkshopAccess: workshopCount > 0 || workshopMode,
+    isWorkshop: workshopMode,
     isDealer: dealer,
   };
 }

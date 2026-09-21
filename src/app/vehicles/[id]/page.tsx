@@ -2,6 +2,9 @@ import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase-server";
 import { VehicleGallery, type GalleryImage } from "@/components/vehicle-gallery";
+import { VehicleCustomerCard } from "@/components/vehicle-customer-card";
+import { isWorkshop } from "@/lib/workshop-access";
+import type { CustomerNote } from "@/lib/workshop-customers";
 import {
   getConditionGradeLabel,
   type VehicleWithImages,
@@ -100,6 +103,31 @@ export default async function VehicleDetailPage({
 
   const typedVehicle = vehicle as VehicleWithImages;
 
+  // Die Kundenangabe erscheint nur für erklärte Werkstätten am eigenen
+  // Fahrzeug (PROJ-39). Für alle anderen wird sie weder geladen noch
+  // angezeigt — Mitglieder eines Fahrzeugs dürfen sie ohnehin nicht sehen,
+  // dafür sorgt die Zugriffsregel in der Datenbank.
+  let kunde: CustomerNote | null = null;
+  let zeigeKundenfeld = false;
+
+  if (isOwner && (await isWorkshop(supabase, user.id))) {
+    zeigeKundenfeld = true;
+
+    const { data: kundenzeile } = await supabase
+      .from("vehicle_customers")
+      .select("customer_name, customer_phone, customer_email")
+      .eq("vehicle_id", id)
+      .maybeSingle();
+
+    if (kundenzeile) {
+      kunde = {
+        name: kundenzeile.customer_name ?? null,
+        phone: kundenzeile.customer_phone ?? null,
+        email: kundenzeile.customer_email ?? null,
+      };
+    }
+  }
+
   // Die Anschaffung ist seit dem 2026-08-03 unter Kosten → Wertentwicklung
   // zu Hause, wo sie neben Investition, laufendem Aufwand und Marktwert steht.
   // Hier wird sie deshalb weder geladen noch angezeigt — der Kaufpreis gerät
@@ -180,6 +208,10 @@ export default async function VehicleDetailPage({
       </div>
 
       <div className="lg:col-span-2 space-y-6">
+        {zeigeKundenfeld && (
+          <VehicleCustomerCard vehicleId={id} initial={kunde} />
+        )}
+
         {groups.length > 0 ? (
           <div className="space-y-6">
             {groups.map((group) => (

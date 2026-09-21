@@ -33,3 +33,44 @@ export async function getWorkshopVehicleCount(
 
   return count ?? 0;
 }
+
+/**
+ * Selbstauskunft „Ich bin eine Werkstatt" (PROJ-39).
+ *
+ * ## Was diese Angabe NICHT ist
+ *
+ * Sie ist **keine Berechtigung**. Sie entscheidet allein darüber, ob jemand
+ * den Werkstattbereich sieht und dort eigene Kundenfahrzeuge anlegen kann —
+ * Fahrzeuge, bei denen er ohnehin Besitzer ist. Der Zugriff auf **fremde**
+ * Fahrzeuge bleibt ausschließlich an die Einladung des Besitzers gebunden
+ * (PROJ-6).
+ *
+ * Genau deshalb darf die Angabe ungeprüft bleiben: Wer sie wahrheitswidrig
+ * setzt, gewinnt nichts. Wer sie an anderer Stelle als Zugriffsprüfung
+ * verwendet, macht aus einer Selbstauskunft einen Schlüssel zu fremden
+ * Fahrzeughistorien — das wäre ein Sicherheitsfehler, kein Feature.
+ *
+ * ## Solange die Spalte fehlt
+ *
+ * Bis der Backend-Schritt `subscriptions.is_workshop` anlegt, schlägt die
+ * Abfrage fehl. Das wird als „keine Werkstatt" behandelt: Der Bereich bleibt
+ * unsichtbar, alles andere läuft unverändert weiter. Dasselbe Vorgehen wie
+ * bei `isDealer` (PROJ-38).
+ */
+export async function isWorkshop(
+  supabase: SupabaseClient,
+  userId: string
+): Promise<boolean> {
+  const { data, error } = await supabase
+    .from("subscriptions")
+    .select("is_workshop")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Workshop mode check failed:", error.message);
+    return false;
+  }
+
+  return Boolean(data?.is_workshop);
+}
