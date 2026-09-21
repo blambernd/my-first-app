@@ -1,3 +1,25 @@
+/**
+ * Verarbeitet offene Scheckheft-Importe (PROJ-35).
+ *
+ * ## Diese Route hat KEINEN Cron-Eintrag mehr
+ *
+ * Bis zum 2026-09-21 stand in vercel.json ein Eintrag, der diese Route alle
+ * zehn Minuten aufrief. Auf einem Hobby-Konto sind nur **tägliche**
+ * Cron-Läufe erlaubt — Vercel lehnt deshalb **jedes Deployment ab, das diese
+ * Datei enthält**, noch bevor ein Build startet:
+ *
+ *     cron_jobs_limits_reached — Hobby accounts are limited to daily
+ *     cron jobs. This cron expression would run more than once per day.
+ *
+ * Die Ablehnung erzeugt keinen fehlgeschlagenen Build, sondern gar keinen
+ * Eintrag. Dadurch blieb sie zwei Wochen unbemerkt: Seit dem 2026-09-06
+ * wurde jeder Push still verworfen, und zwei fertige Features kamen nicht
+ * in Produktion.
+ *
+ * **Wer den Eintrag wieder einträgt, legt damit die gesamte Auslieferung
+ * still.** Möglich sind: ein täglicher Takt (z. B. `0 3 * * *`), ein
+ * externer Aufruf dieser Route, oder der Pro-Plan.
+ */
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import {

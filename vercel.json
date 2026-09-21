@@ -11,10 +11,6 @@
     {
       "path": "/api/cron/scrape-events",
       "schedule": "0 3 * * 1"
-    },
-    {
-      "path": "/api/cron/process-imports",
-      "schedule": "*/10 * * * *"
     }
   ]
 }

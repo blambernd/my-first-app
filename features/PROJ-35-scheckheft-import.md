@@ -308,3 +308,22 @@ _To be added by /qa_
 
 ## Deployment
 _To be added by /deploy_
+
+## Nachtrag 2026-09-21: Der Cron-Eintrag blockierte die gesamte Auslieferung
+
+**Gefunden** bei der Suche danach, warum PROJ-37 und PROJ-38 nicht in Produktion kamen — nicht durch einen Nutzerbericht.
+
+Mit dem Arbeitsstand dieses Features kam ein Cron-Eintrag mit dem Takt `*/10 * * * *` in `vercel.json`. Auf einem Hobby-Konto sind nur **tägliche** Cron-Läufe erlaubt, und Vercel lehnt deshalb **jedes Deployment ab, das diese Datei enthält** — noch bevor ein Build startet:
+
+```
+cron_jobs_limits_reached — Hobby accounts are limited to daily cron jobs.
+This cron expression (*/10 * * * *) would run more than once per day.
+```
+
+**Warum das so lange unbemerkt blieb:** Die Ablehnung erzeugt keinen fehlgeschlagenen Build, sondern überhaupt keinen Eintrag. Im Dashboard stand weder eine Fehlermeldung noch ein roter Deploy — es sah aus, als hätte GitHub schlicht nichts gemeldet. Erst ein Deployment-Versuch über die API brachte die Meldung zutage.
+
+**Die Folge:** Seit dem 2026-09-06 (Commit `279c6ba`, dem letzten ausgerollten) wurde jeder Push still verworfen. Zwei fertige, abgenommene Features warteten zwei Wochen auf eine Auslieferung, die nie stattfand.
+
+**Behoben** durch Entfernen des Eintrags aus `vercel.json`. Die Route `/api/cron/process-imports` bleibt bestehen und lässt sich manuell oder extern anstoßen; am Kopf der Datei steht der Zusammenhang.
+
+**Für die Fertigstellung dieses Features zu klären:** Der Import braucht eine regelmäßige Verarbeitung. Möglich sind ein täglicher Takt, ein externer Auslöser oder der Pro-Plan. Wer den alten Eintrag zurückholt, legt damit erneut die gesamte Auslieferung still.
