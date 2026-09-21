@@ -59,7 +59,7 @@ Eine SaaS-Plattform für Oldtimer-Besitzer, die es ermöglicht, die komplette Hi
 | P2 | PROJ-36: Währung pro Fahrzeug | Deployed |
 | P1 | PROJ-37: Werkstatt-Dashboard | Deployed |
 | P2 | PROJ-38: Händler-Bestandsübersicht | Deployed |
-| P1 | PROJ-39: Werkstatt-Konto & Kundenfahrzeuge | Approved |
+| P1 | PROJ-39: Werkstatt-Konto & Kundenfahrzeuge | Deployed |
 | P1 | PROJ-40: Fahrzeug-Übergabe an den Kunden | In Review |
 
 ## Success Metrics

@@ -1,6 +1,6 @@
 # PROJ-39: Werkstatt-Konto & Kundenfahrzeuge
 
-## Status: Approved
+## Status: Deployed
 **Created:** 2026-09-21
 **Last Updated:** 2026-09-21
 
@@ -533,4 +533,73 @@ Der Datenrest entstand im selben Lauf **erneut**: Der Test kennzeichnet das Fahr
 PROJ-40 bleibt bewusst in Prüfung, obwohl kein Befund der Stufen Kritisch oder Hoch offen ist: Ein Feature, dessen Kriterien zu einem Viertel unerfüllt sind, ist nicht abgenommen, sondern unfertig. Sein Kern — die verbleibende Werkstattrolle — ist dagegen geprüft und belegt.
 
 ## Deployment
-_To be added by /deploy_
+
+- **Produktions-URL:** https://www.oldtimer-docs.com
+- **Ausgeliefert:** 2026-09-21
+- **Deployment:** `8d7b8b1` (production, READY)
+- **Git-Tag:** `v1.39.0-PROJ-39`
+
+### Vor der Auslieferung geprüft
+
+| Prüfung | Ergebnis |
+|---|---|
+| Produktionsbau | erfolgreich |
+| Lint | keine Fehler |
+| Einheitentests | 813 von 813 |
+| Abnahme | Approved, keine Befunde der Stufen Kritisch oder Hoch |
+| Migrationen eingespielt | ja, im Systemkatalog nachgeprüft |
+| Geheimnisse im Repository | keine; `.env.local` ist ignoriert |
+| Umgebungsvariablen in Vercel | alle gesetzt |
+
+### Nach der Auslieferung geprüft
+
+Gegen die **ausgelieferte** Anwendung, nicht gegen den Entwicklungsserver
+(`npx playwright test --config playwright.prod.config.ts`): **10 von 10 grün**,
+darunter vier neue für dieses Feature.
+
+| Prüfung | Ergebnis |
+|---|---|
+| `/werkstatt`, `/bestand`, `/settings` unangemeldet | Weiterleitung zur Anmeldung |
+| Ausgeliefertes Dokument enthält Kundendaten | nein — weder Namen noch Feldbezeichner |
+| Selbstauskunft setzen und zurücknehmen | funktioniert |
+| Übergaben lesbar | HTTP 200 |
+
+Die dritte Zeile ist die wichtigste: Die Kundenangaben einer Werkstatt sind
+Namen und Rufnummern von Leuten, die die Plattform nicht einmal kennen. Sie
+stehen in keinem unangemeldeten Dokument.
+
+### Der Rollout lief diesmal sofort an
+
+Nach dem Cron-Fix vom Vortag (siehe Nachtrag in PROJ-35) nimmt Vercel
+Deployments wieder an: vom Push bis `READY` ohne Eingriff. Zum Vergleich —
+PROJ-37 und PROJ-38 warteten zwei Wochen auf eine Auslieferung, die nie
+stattfand.
+
+### Mit ausgeliefert, aber nicht abgenommen
+
+Der Code von **PROJ-40** liegt in denselben Commits und ist damit live. Das
+Feature steht trotzdem auf **In Review**: Der Abschnitt „Offene Übergaben"
+ist nicht gebaut. Sein Kern — die verbleibende Werkstattrolle — ist geprüft
+und durch den Übergabe-Durchlauf belegt; ausgeliefert im Sinne der
+Abnahme ist er deshalb noch nicht.
+
+Praktisch ist das unschädlich: Ohne den fehlenden Abschnitt fehlt der
+Werkstatt nur die Anzeige, welche Übergaben offen sind. Anstoßen, annehmen
+und die Rolle behalten funktionieren.
+
+### Ebenfalls enthalten: zwei Fehlerbehebungen an ausgeliefertem Code
+
+- `3c5bdf9` — die Selbstauskünfte ließen sich nicht speichern; der
+  Händlerschalter aus PROJ-38 funktioniert damit erstmals
+- `e4b4f46` — die Leseregel aus PROJ-7 blockierte seit dem Vortag **jede**
+  Fahrzeugübergabe
+
+Beide sind in Produktion nachgeprüft.
+
+### Umgebungsvariablen
+
+Alle für dieses Feature nötigen Werte sind gesetzt. Zwei Lücken betreffen es
+nicht, bleiben aber vermerkt:
+
+- `ANTHROPIC_API_KEY` fehlt — betrifft allein den Scheckheft-Import (PROJ-35)
+- `E2E_VEHICLE_ID` fehlt — eine Testvariable, gehört nicht nach Vercel
