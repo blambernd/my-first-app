@@ -10,7 +10,7 @@ import { defineConfig, devices } from "@playwright/test";
  */
 export default defineConfig({
   testDir: "./tests",
-  testMatch: /PROJ-(3[789])-(werkstatt|bestand)\.spec\.ts/,
+  testMatch: /PROJ-(3[789])-(werkstatt|bestand|registrierung)\.spec\.ts/,
   fullyParallel: true,
   reporter: "line",
   use: {
