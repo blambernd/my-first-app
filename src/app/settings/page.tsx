@@ -5,6 +5,7 @@ import { AccountHeader } from "@/components/account-header";
 import { MobileBottomNav } from "@/components/mobile-bottom-nav";
 import { NotificationSettings } from "@/components/notification-settings";
 import { DealerModeSettings } from "@/components/dealer-mode-settings";
+import { WorkshopModeSettings } from "@/components/workshop-mode-settings";
 import { PlanSettings } from "@/components/plan-settings";
 import { ReferralCard } from "@/components/referral-card";
 import { PushOptInBanner } from "@/components/push-opt-in-banner";
@@ -25,7 +26,7 @@ export default async function SettingsPage() {
 
   // Zusätzliche Navigationspunkte (PROJ-37 Werkstatt, PROJ-38 Bestand) —
   // serverseitig ermittelt, nicht per Abfrage im Browser (QA BUG-7)
-  const { hasWorkshopAccess, isDealer } = await getNavigationFlags(
+  const { hasWorkshopAccess, isWorkshop, isDealer } = await getNavigationFlags(
     supabase,
     user.id
   );
@@ -55,8 +56,11 @@ export default async function SettingsPage() {
           <PushOptInBanner />
           <NotificationSettings />
 
+          {/* PROJ-39: schaltet den Werkstattbereich frei */}
+          <WorkshopModeSettings initialEnabled={isWorkshop} />
+
           {/* PROJ-38: schaltet den Bestandsbereich frei */}
-          <DealerModeSettings initialEnabled={isDealer} userId={user.id} />
+          <DealerModeSettings initialEnabled={isDealer} />
 
           {/* Account Actions */}
           <div className="border rounded-lg p-4 space-y-3">

@@ -10,7 +10,6 @@ import { createClient } from "@/lib/supabase";
 interface DealerModeSettingsProps {
   /** Serverseitig gelesener Ausgangszustand */
   initialEnabled: boolean;
-  userId: string;
 }
 
 /**
@@ -26,7 +25,6 @@ interface DealerModeSettingsProps {
  */
 export function DealerModeSettings({
   initialEnabled,
-  userId,
 }: DealerModeSettingsProps) {
   const [enabled, setEnabled] = useState(initialEnabled);
   const [saving, setSaving] = useState(false);
@@ -39,12 +37,27 @@ export function DealerModeSettings({
 
     try {
       const supabase = createClient();
-      const { error } = await supabase
-        .from("subscriptions")
-        .update({ is_dealer: next })
-        .eq("user_id", userId);
+
+      // BUG-1: Nicht direkt auf die Tabelle schreiben — `subscriptions` ist
+      // für den Browser absichtlich schreibgeschützt (in derselben Zeile
+      // steht `plan`). Der bisherige direkte Schreibversuch traf keine Zeile
+      // und meldete trotzdem Erfolg; dieser Schalter hat deshalb seit seiner
+      // Auslieferung nie funktioniert.
+      const { data, error } = await supabase.rpc("set_business_flags", {
+        p_is_dealer: next,
+      });
 
       if (error) throw error;
+
+      const ergebnis = data as
+        | { success?: boolean; isDealer?: boolean; error?: string }
+        | null;
+
+      if (ergebnis?.error) throw new Error(ergebnis.error);
+
+      if (ergebnis?.isDealer !== next) {
+        throw new Error("Die Einstellung wurde nicht übernommen");
+      }
 
       toast.success(
         next
