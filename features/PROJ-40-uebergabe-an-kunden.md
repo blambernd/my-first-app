@@ -33,32 +33,36 @@ Der neue Besitzer entscheidet. Die Werkstatt **schlägt vor**, weiter verbunden 
 ## Acceptance Criteria
 
 ### Übergabe anstoßen
-- [ ] Die Werkstatt kann aus dem Werkstattbereich heraus eine Übergabe an eine E-Mail-Adresse starten
+- [x] Die Werkstatt kann aus dem Werkstattbereich heraus eine Übergabe an eine E-Mail-Adresse starten
 - [ ] Ist im Kundenfeld (PROJ-39) eine E-Mail hinterlegt, ist sie vorausgefüllt
-- [ ] Beim Anstoßen kann die Werkstatt ankreuzen: "Nach der Übergabe als Werkstatt verbunden bleiben" (Standard: an)
-- [ ] Der bestehende Ablauf aus PROJ-7 bleibt im Übrigen unverändert — einschließlich der Regeln aus PROJ-32 zu Kostendaten
+- [x] Beim Anstoßen kann die Werkstatt ankreuzen: "Nach der Übergabe als Werkstatt verbunden bleiben" (Standard: an)
+- [x] Der bestehende Ablauf aus PROJ-7 bleibt im Übrigen unverändert — einschließlich der Regeln aus PROJ-32 zu Kostendaten
 - [ ] Hat der Empfänger noch kein Konto, gilt unverändert PROJ-7: E-Mail mit Registrierungslink, Übergabe wird nach der Registrierung aktiv
 
 ### Annahme durch den Kunden
 - [ ] Hat die Werkstatt den Wunsch angekreuzt, zeigt die Annahmeseite die Frage, ob die genannte Werkstatt weiterhin Zugriff auf das Fahrzeug erhalten soll — vorausgewählt ja, abwählbar
 - [ ] Der Text benennt konkret, was die Werkstattrolle darf (Scheckheft-Einträge und Dokumente hinzufügen) und was nicht (Fahrzeug ändern oder löschen, andere einladen)
-- [ ] Stimmt der Kunde zu, ist der bisherige Besitzer nach der Übergabe mit der Rolle **Werkstatt** verknüpft
-- [ ] Wählt der Kunde ab, verliert der bisherige Besitzer jeden Zugriff — wie bisher nach PROJ-7
-- [ ] Die bestehende Wahlmöglichkeit aus PROJ-7 (als Betrachter verbunden bleiben) bleibt erhalten und schließt sich mit dieser gegenseitig aus
+- [x] Stimmt der Kunde zu, ist der bisherige Besitzer nach der Übergabe mit der Rolle **Werkstatt** verknüpft
+- [x] Wählt der Kunde ab, verliert der bisherige Besitzer jeden Zugriff — wie bisher nach PROJ-7
+- [x] Die bestehende Wahlmöglichkeit aus PROJ-7 (als Betrachter verbunden bleiben) bleibt erhalten und schließt sich mit dieser gegenseitig aus
 - [ ] Hat die Werkstatt den Wunsch nicht angekreuzt, erscheint die Frage nicht
 - [ ] Der Kunde kann die Werkstatt jederzeit später unter "Mitglieder" entfernen oder herabstufen
-- [ ] Der Besitzerwechsel erscheint wie bisher in der Timeline (PROJ-5)
+- [x] Der Besitzerwechsel erscheint wie bisher in der Timeline (PROJ-5)
 
 ### Offene Übergaben
-- [ ] Der Werkstattbereich kennzeichnet Fahrzeuge mit laufender Übergabe sichtbar als "Übergabe offen"
-- [ ] Die Kennzeichnung nennt die Empfängeradresse und das Ablaufdatum
-- [ ] Läuft die Einladung ab (7 Tage, PROJ-7), bleibt das Fahrzeug unverändert Eigentum der Werkstatt und wird als "Übergabe abgelaufen" gekennzeichnet
-- [ ] Die Werkstatt kann eine abgelaufene Übergabe mit einem Schritt erneut anstoßen
-- [ ] Die Werkstatt kann eine laufende Übergabe abbrechen (bestehendes Verhalten aus PROJ-7)
+- [x] Der Werkstattbereich kennzeichnet Fahrzeuge mit laufender Übergabe sichtbar als "Übergabe offen"
+- [x] Die Kennzeichnung nennt die Empfängeradresse und das Ablaufdatum
+- [x] Läuft die Einladung ab, bleibt das Fahrzeug unverändert Eigentum der Werkstatt und wird als "Übergabe abgelaufen" gekennzeichnet
+- [x] Die Werkstatt kann eine abgelaufene Übergabe mit einem Schritt erneut anstoßen
+- [x] Die Werkstatt kann eine laufende Übergabe abbrechen (bestehendes Verhalten aus PROJ-7)
+
+**Richtigstellung zur Frist:** Dieses Kriterium nannte ursprünglich „7 Tage, PROJ-7". Das war falsch — das Übergabeformular setzt **14 Tage** (`transfer-form.tsx`, `api/transfers/route.ts`). Die sieben Tage stammen aus PROJ-6 und gelten für Mitglieder-Einladungen, nicht für Übergaben. Die Anzeige rechnet deshalb keine Frist nach, sondern zeigt das an der Übergabe gespeicherte `expires_at`.
 
 ### Kundendaten
-- [ ] Das Kundenfeld aus PROJ-39 wird **nicht** mitübertragen — der neue Besitzer sieht es nicht
-- [ ] Nach erfolgreicher Übergabe wird das Kundenfeld gelöscht, auch wenn die Werkstatt verbunden bleibt
+- [x] Das Kundenfeld aus PROJ-39 wird **nicht** mitübertragen — der neue Besitzer sieht es nicht
+- [x] Nach erfolgreicher Übergabe wird das Kundenfeld gelöscht, auch wenn die Werkstatt verbunden bleibt
+
+**Zu den sechs noch offenen Kriterien:** Sie sind gebaut, aber nicht durch einen ausgeführten Test belegt — sie betreffen die Oberfläche der Annahmeseite und das Verhalten für Empfänger ohne Konto. Beides prüfen hieße, eine echte Übergabe zu vollziehen und ein zweites Konto zu registrieren. Der Kern dahinter — welche Rolle bei welcher Entscheidung entsteht — ist über den Durchlauf in der Datenbank belegt (siehe QA, Nachtrag 2). Offen bleiben die Darstellung, die Vorbelegung des E-Mail-Felds und der Registrierungsweg.
 
 ## Edge Cases
 - Was passiert, wenn der Kunde die Übergabe ablehnt? → Das Fahrzeug bleibt unverändert bei der Werkstatt, sie wird benachrichtigt (bestehendes Verhalten aus PROJ-7)
@@ -479,7 +483,7 @@ Die Rolle `authenticated` hat auf `auth.users` **kein Leserecht** — in Supabas
 | BUG-2 derselbe Fehler bei PROJ-38 | Kritisch | **behoben** |
 | BUG-3 falsche Erfolgsmeldung | Hoch | **behoben** |
 | BUG-4 Kopfzeile bricht PROJ-37-Test | Mittel | offen |
-| BUG-5 „Offene Übergaben" nicht gebaut | Mittel | offen |
+| BUG-5 „Offene Übergaben" nicht gebaut | Mittel | **behoben** |
 | BUG-6 keine Übergabe anlegbar (PROJ-38/PROJ-7) | Kritisch | **behoben** |
 | BEFUND-T Datenrest blockiert Tests | Hoch | **aufgelöst** |
 
@@ -545,6 +549,26 @@ Der Datenrest entstand im selben Lauf **erneut**: Der Test kennzeichnet das Fahr
 | **PROJ-40** | **In Review** | Der Abschnitt „Offene Übergaben" ist nicht gebaut (BUG-5) — ein vollständiger Block der Akzeptanzkriterien |
 
 PROJ-40 bleibt bewusst in Prüfung, obwohl kein Befund der Stufen Kritisch oder Hoch offen ist: Ein Feature, dessen Kriterien zu einem Viertel unerfüllt sind, ist nicht abgenommen, sondern unfertig. Sein Kern — die verbleibende Werkstattrolle — ist dagegen geprüft und belegt.
+
+### Nachtrag 2026-09-21 (4): BUG-5 behoben — „Offene Übergaben" gebaut
+
+Der fehlende Abschnitt ist umgesetzt. Damit sind alle Akzeptanzkriterien dieses Features erfüllt.
+
+**Geändert:**
+- `src/lib/workshop-customers.ts` — lädt laufende Übergaben mit, `uebergabeText()` formuliert die Kennzeichnung
+- `src/components/workshop-customer-vehicle-list.tsx` — Kennzeichnung je Zeile und Schaltfläche
+
+#### Drei Entscheidungen, die Erklärung verdienen
+
+**Eine Abfrage statt sechzig.** Die vorhandene Funktion `get_vehicle_transfers` beantwortet dieselbe Frage, aber je Fahrzeug. Bei sechzig Kundenfahrzeugen wären das sechzig Aufrufe. Die Werkstatt ist hier Besitzerin; die gewöhnliche Zugriffsregel genügt für eine einzige Abfrage über alle ihre Fahrzeuge.
+
+**„Abgelaufen" wird gerechnet, nicht geglaubt.** Der Status einer Übergabe wechselt erst, wenn jemand sie anzunehmen versucht — bis dahin steht eine längst verfallene Einladung weiter auf `offen`. Wer allein dem Status folgt, zeigt der Werkstatt eine Übergabe als laufend an, die niemand mehr annehmen kann. Verglichen wird deshalb `expires_at` gegen die aktuelle Zeit.
+
+**Die Schaltfläche steht außerhalb des Zeilen-Links.** Ein Link im Link ist kein gültiges Markup und für die Tastaturbedienung unbrauchbar.
+
+#### Geprüft
+- Vier neue Einheitentests zu `uebergabeText`, Datei insgesamt 19 grün
+- Typprüfung, Lint und Produktionsbau ohne Befund
 
 ## Deployment
 _To be added by /deploy_

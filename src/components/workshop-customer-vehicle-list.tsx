@@ -6,10 +6,12 @@ import { Plus, Search, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { formatDate, formatMileage, vehicleLabel } from "@/lib/vehicle-format";
 import {
   customerLabel,
   filterCustomerVehicles,
+  uebergabeText,
   type CustomerVehicle,
 } from "@/lib/workshop-customers";
 
@@ -93,38 +95,79 @@ export function WorkshopCustomerVehicleList({
               <ul className="divide-y">
                 {sichtbar.map((v) => {
                   const kunde = customerLabel(v.customer);
+                  const uebergabe = v.uebergabe
+                    ? uebergabeText(v.uebergabe)
+                    : null;
 
                   return (
                     <li key={v.id}>
                       <Link
                         href={`/vehicles/${v.id}`}
-                        className="hover:bg-accent -mx-2 flex flex-wrap items-center justify-between gap-2 rounded-md px-2 py-3 transition-colors"
+                        className="hover:bg-accent -mx-2 block rounded-md px-2 py-3 transition-colors"
                       >
-                        <div className="min-w-0">
-                          <p className="truncate font-medium">
-                            {vehicleLabel({
-                              make: v.make,
-                              model: v.model,
-                              year: v.year,
-                            })}
-                          </p>
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="truncate font-medium">
+                              {vehicleLabel({
+                                make: v.make,
+                                model: v.model,
+                                year: v.year,
+                              })}
+                            </p>
 
-                          <p className="text-muted-foreground mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
-                            {v.licensePlate && <span>{v.licensePlate}</span>}
-                            <span>{formatMileage(v.mileageKm)}</span>
-                            {kunde && (
-                              <span className="flex items-center gap-1">
-                                <User className="h-3 w-3" />
-                                {kunde}
-                              </span>
-                            )}
-                          </p>
+                            <p className="text-muted-foreground mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+                              {v.licensePlate && <span>{v.licensePlate}</span>}
+                              <span>{formatMileage(v.mileageKm)}</span>
+                              {kunde && (
+                                <span className="flex items-center gap-1">
+                                  <User className="h-3 w-3" />
+                                  {kunde}
+                                </span>
+                              )}
+                            </p>
+                          </div>
+
+                          <span className="text-muted-foreground text-sm">
+                            angelegt {formatDate(v.createdAt.slice(0, 10))}
+                          </span>
                         </div>
 
-                        <span className="text-muted-foreground text-sm">
-                          angelegt {formatDate(v.createdAt.slice(0, 10))}
-                        </span>
+                        {/* PROJ-40: Eine laufende Übergabe ist der Zustand,
+                            der die Werkstatt am meisten angeht — sie wartet
+                            darauf. Deshalb eine eigene Zeile und keine
+                            Nebenangabe in der Reihe darüber. */}
+                        {uebergabe && (
+                          <div className="mt-2 flex flex-wrap items-center gap-2">
+                            <Badge
+                              variant={
+                                v.uebergabe?.abgelaufen
+                                  ? "outline"
+                                  : "secondary"
+                              }
+                            >
+                              {uebergabe.kennzeichen}
+                            </Badge>
+                            <span className="text-muted-foreground text-xs">
+                              {uebergabe.erklaerung}
+                            </span>
+                          </div>
+                        )}
                       </Link>
+
+                      {/* Außerhalb des Links: Ein Link im Link ist kein
+                          gültiges Markup und für die Tastaturbedienung
+                          unbrauchbar. */}
+                      {uebergabe && (
+                        <div className="mb-3 -mt-1 px-2">
+                          <Button asChild variant="outline" size="sm">
+                            <Link href={`/vehicles/${v.id}/transfer`}>
+                              {v.uebergabe?.abgelaufen
+                                ? "Erneut senden"
+                                : "Übergabe ansehen"}
+                            </Link>
+                          </Button>
+                        </div>
+                      )}
                     </li>
                   );
                 })}

@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   customerLabel,
   filterCustomerVehicles,
+  uebergabeText,
   type CustomerVehicle,
 } from "./workshop-customers";
 
@@ -24,6 +25,7 @@ function fahrzeug(teil: Partial<CustomerVehicle> = {}): CustomerVehicle {
     mileageKm: 87450,
     createdAt: "2026-09-01T10:00:00Z",
     customer: null,
+    uebergabe: null,
     ...teil,
   };
 }
@@ -127,5 +129,54 @@ describe("filterCustomerVehicles", () => {
     const karg = [fahrzeug({ licensePlate: null, customer: null, year: null })];
     expect(() => filterCustomerVehicles(karg, "irgendwas")).not.toThrow();
     expect(filterCustomerVehicles(karg, "porsche")).toHaveLength(1);
+  });
+});
+
+describe("uebergabeText (PROJ-40)", () => {
+  it("beschreibt eine laufende Übergabe mit Empfänger und Frist", () => {
+    const t = uebergabeText({
+      toEmail: "kunde@example.de",
+      expiresAt: "2026-10-05T12:00:00Z",
+      abgelaufen: false,
+    });
+
+    expect(t.kennzeichen).toBe("Übergabe offen");
+    expect(t.erklaerung).toContain("kunde@example.de");
+    expect(t.erklaerung).toContain("5.10.2026");
+  });
+
+  it("beschreibt eine abgelaufene Übergabe und beruhigt über den Besitz", () => {
+    const t = uebergabeText({
+      toEmail: "kunde@example.de",
+      expiresAt: "2026-09-01T12:00:00Z",
+      abgelaufen: true,
+    });
+
+    expect(t.kennzeichen).toBe("Übergabe abgelaufen");
+    // Die Werkstatt muss wissen, dass nichts verloren ist.
+    expect(t.erklaerung).toContain("gehört weiterhin dir");
+  });
+
+  it("nennt in beiden Fällen die Empfängeradresse", () => {
+    // Ohne sie weiß die Werkstatt nicht, bei wem sie nachfassen soll.
+    for (const abgelaufen of [true, false]) {
+      const t = uebergabeText({
+        toEmail: "wer@example.de",
+        expiresAt: "2026-10-05T12:00:00Z",
+        abgelaufen,
+      });
+      expect(t.erklaerung).toContain("wer@example.de");
+    }
+  });
+
+  it("rechnet die Frist nicht nach, sondern zeigt das gespeicherte Datum", () => {
+    // Die Spezifikation nannte sieben Tage, das Formular setzt vierzehn.
+    // Ein nachgerechnetes Datum wäre früher oder später falsch.
+    const t = uebergabeText({
+      toEmail: "k@example.de",
+      expiresAt: "2027-01-31T00:00:00Z",
+      abgelaufen: false,
+    });
+    expect(t.erklaerung).toContain("31.1.2027");
   });
 });

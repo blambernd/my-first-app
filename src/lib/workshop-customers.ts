@@ -21,12 +21,34 @@ export interface CustomerVehicle {
   createdAt: string;
   /** Hinterlegte Kundenangabe — nur für die Werkstatt sichtbar */
   customer: CustomerNote | null;
+  /** Laufende Übergabe, falls eine offen ist (PROJ-40) */
+  uebergabe: OffeneUebergabe | null;
 }
 
 export interface CustomerNote {
   name: string | null;
   phone: string | null;
   email: string | null;
+}
+
+/**
+ * Eine laufende Übergabe an einem Kundenfahrzeug (PROJ-40).
+ *
+ * Nur der jüngste offene Vorgang je Fahrzeug — mehr als einen kann es
+ * nicht geben, dafür sorgt eine Eindeutigkeitsregel in der Datenbank.
+ */
+export interface OffeneUebergabe {
+  toEmail: string;
+  expiresAt: string;
+  /**
+   * Abgelaufen, obwohl in der Datenbank noch „offen"?
+   *
+   * Der Status wechselt erst, wenn jemand die Übergabe anzunehmen versucht
+   * — bis dahin steht eine längst verfallene Einladung weiter auf „offen".
+   * Wer allein dem Status glaubt, zeigt der Werkstatt eine Übergabe als
+   * laufend an, die niemand mehr annehmen kann.
+   */
+  abgelaufen: boolean;
 }
 
 /** Wie viele Fahrzeuge höchstens geladen werden. */
@@ -69,10 +91,11 @@ export async function getCustomerVehicles(
   const vehicles = data ?? [];
   if (vehicles.length === 0) return [];
 
-  const notes = await getCustomerNotes(
-    supabase,
-    vehicles.map((v) => v.id as string)
-  );
+  const ids = vehicles.map((v) => v.id as string);
+  const [notes, uebergaben] = await Promise.all([
+    getCustomerNotes(supabase, ids),
+    getOffeneUebergaben(supabase, ids),
+  ]);
 
   return vehicles.map((v) => ({
     id: v.id as string,
@@ -83,7 +106,75 @@ export async function getCustomerVehicles(
     mileageKm: (v.mileage_km as number | null) ?? null,
     createdAt: v.created_at as string,
     customer: notes.get(v.id as string) ?? null,
+    uebergabe: uebergaben.get(v.id as string) ?? null,
   }));
+}
+
+/**
+ * Laufende Übergaben zu mehreren Fahrzeugen; bei Fehlern leer.
+ *
+ * In **einer** Abfrage für alle Fahrzeuge. Die vorhandene Funktion
+ * `get_vehicle_transfers` beantwortet dieselbe Frage, aber je Fahrzeug —
+ * bei sechzig Kundenfahrzeugen wären das sechzig Aufrufe. Die Werkstatt ist
+ * hier Besitzerin, die gewöhnliche Zugriffsregel genügt.
+ */
+async function getOffeneUebergaben(
+  supabase: SupabaseClient,
+  vehicleIds: string[]
+): Promise<Map<string, OffeneUebergabe>> {
+  const map = new Map<string, OffeneUebergabe>();
+
+  const { data, error } = await supabase
+    .from("vehicle_transfers")
+    .select("vehicle_id, to_email, expires_at")
+    .in("vehicle_id", vehicleIds)
+    .eq("status", "offen");
+
+  if (error) {
+    // Die Kennzeichnung ist Beiwerk der Liste, nicht ihr Inhalt.
+    console.error("Open transfers query failed:", error.message);
+    return map;
+  }
+
+  const jetzt = Date.now();
+
+  for (const row of data ?? []) {
+    const expiresAt = row.expires_at as string;
+    map.set(row.vehicle_id as string, {
+      toEmail: row.to_email as string,
+      expiresAt,
+      abgelaufen: Date.parse(expiresAt) < jetzt,
+    });
+  }
+
+  return map;
+}
+
+/**
+ * Wie eine laufende Übergabe in der Liste beschrieben wird.
+ *
+ * Das Ablaufdatum kommt aus der Übergabe selbst und wird **nicht** aus einer
+ * Frist gerechnet: Die Spezifikation nannte sieben Tage, das Formular setzt
+ * vierzehn. Wer die Frist nachrechnet, zeigt früher oder später ein Datum
+ * an, das nicht stimmt.
+ */
+export function uebergabeText(u: OffeneUebergabe): {
+  kennzeichen: string;
+  erklaerung: string;
+} {
+  const datum = new Date(u.expiresAt).toLocaleDateString("de-DE");
+
+  if (u.abgelaufen) {
+    return {
+      kennzeichen: "Übergabe abgelaufen",
+      erklaerung: `Die Einladung an ${u.toEmail} ist am ${datum} verfallen. Das Fahrzeug gehört weiterhin dir.`,
+    };
+  }
+
+  return {
+    kennzeichen: "Übergabe offen",
+    erklaerung: `Warte auf ${u.toEmail} — die Einladung gilt bis ${datum}.`,
+  };
 }
 
 /** Kundenangaben zu mehreren Fahrzeugen; bei Fehlern leer. */
