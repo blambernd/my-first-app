@@ -30,6 +30,13 @@ export const transferSchema = z.object({
     .min(1, "E-Mail ist erforderlich")
     .email("Ungültige E-Mail-Adresse"),
   keepAsViewer: z.boolean().default(true),
+  /**
+   * Wunsch, nach der Übergabe als Werkstatt verbunden zu bleiben (PROJ-40).
+   *
+   * Nur ein Angebot: Wirksam wird es erst, wenn der Empfänger bei der
+   * Annahme zustimmt. Deshalb heißt das Feld „offer" und nicht „keep".
+   */
+  offerWorkshopRole: z.boolean().default(false),
 });
 
 export type TransferFormData = z.infer<typeof transferSchema>;
@@ -41,6 +48,8 @@ export interface VehicleTransfer {
   to_email: string;
   token: string;
   keep_as_viewer: boolean;
+  /** PROJ-40 */
+  offer_workshop_role?: boolean;
   status: TransferStatus;
   expires_at: string;
   created_at: string;

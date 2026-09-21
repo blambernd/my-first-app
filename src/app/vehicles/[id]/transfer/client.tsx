@@ -16,6 +16,8 @@ import {
 interface TransferPageClientProps {
   /** PROJ-38: blendet das Erloesfeld ein */
   isDealer?: boolean;
+  /** Blendet die Werkstatt-Wahl ein (PROJ-40) */
+  isWorkshop?: boolean;
   currencySymbol?: string;
   vehicleId: string;
   vehicleName: string;
@@ -31,6 +33,7 @@ const PAST_STATUS_CONFIG = {
 
 export function TransferPageClient({
   isDealer = false,
+  isWorkshop = false,
   currencySymbol = "€",
   vehicleId,
   vehicleName,
@@ -76,6 +79,7 @@ export function TransferPageClient({
               vehicleId={vehicleId}
               vehicleName={vehicleName}
               isDealer={isDealer}
+              isWorkshop={isWorkshop}
               currencySymbol={currencySymbol}
               onSuccess={refresh}
             />

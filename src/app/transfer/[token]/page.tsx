@@ -20,6 +20,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { BrandLogoWithText } from "@/components/brand-logo";
+import { Checkbox } from "@/components/ui/checkbox";
 import { createClient } from "@/lib/supabase";
 import { TransferPurchaseForm } from "@/components/transfer-purchase-form";
 import type { SaleReportInput } from "@/lib/validations/sale-report";
@@ -29,6 +30,14 @@ interface TransferInfo {
   fromEmail: string;
   expiresAt: string;
   keepAsViewer: boolean;
+  /**
+   * Bietet der bisherige Besitzer an, als Werkstatt verbunden zu bleiben?
+   * (PROJ-40)
+   *
+   * Nur ein Angebot — wirksam wird es erst durch die Zustimmung hier auf
+   * dieser Seite. Ist es false, erscheint die Frage gar nicht.
+   */
+  offerWorkshopRole: boolean;
   /**
    * Zustandsnote des Fahrzeugs, falls hinterlegt (PROJ-33).
    *
@@ -63,6 +72,9 @@ export default function TransferAcceptPage() {
   // PROJ-33: Kaufpreis und Einwilligung werden VOR dem Annehmen erfasst, damit
   // der Datenpunkt in derselben Transaktion entstehen kann wie der
   // Besitzerwechsel. Das Haekchen ist nie vorbelegt.
+  // PROJ-40: `grant_workshop_role` bleibt hier bewusst ungesetzt. Die
+  // Anzeige behandelt "nicht gesetzt" als angehakt, und beim Absenden wird
+  // daraus true — aber nur, wenn die Frage überhaupt erschienen ist.
   const [kaufangaben, setKaufangaben] = useState<SaleReportInput>({
     share_anonymously: false,
   });
@@ -101,6 +113,7 @@ export default function TransferAcceptPage() {
         fromEmail: data.fromEmail,
         expiresAt: data.expiresAt,
         keepAsViewer: data.keepAsViewer,
+        offerWorkshopRole: data.offerWorkshopRole === true,
         // Liefert die Auskunft diese Felder noch nicht, wird die Zustandsnote
         // eben gefragt und der Kilometerstand nicht vorbelegt — beides ist
         // richtig, nur unbequemer.
@@ -136,7 +149,15 @@ export default function TransferAcceptPage() {
         headers: { "Content-Type": "application/json" },
         // Die Angaben gehen mit dem Annehmen zusammen an den Server, damit
         // Besitzerwechsel und Datenpunkt in einem Vorgang entstehen (PROJ-33).
-        body: JSON.stringify(kaufangaben),
+        body: JSON.stringify({
+          ...kaufangaben,
+          // Wurde die Rolle nicht angeboten, wird auch nichts gewährt —
+          // unabhängig davon, was im Zustand steht.
+          grant_workshop_role:
+            state.status === "valid" && state.info.offerWorkshopRole
+              ? kaufangaben.grant_workshop_role !== false
+              : false,
+        }),
       });
 
       if (!res.ok) {
@@ -253,6 +274,41 @@ export default function TransferAcceptPage() {
                     fahrzeugWaehrung={state.info.currency}
                     disabled={processing}
                   />
+
+                  {/* PROJ-40: Die Entscheidung liegt beim neuen Besitzer,
+                      nicht beim Absender. Vorausgewählt ja — in aller Regel
+                      will der Kunde, dass seine Werkstatt weitermacht —, aber
+                      mit einem Klick abzuwählen. */}
+                  {state.info.offerWorkshopRole && (
+                    <div className="flex items-start gap-3 rounded-md border p-4">
+                      <Checkbox
+                        id="werkstatt-verbunden"
+                        checked={kaufangaben.grant_workshop_role !== false}
+                        disabled={processing}
+                        onCheckedChange={(checked) =>
+                          setKaufangaben({
+                            ...kaufangaben,
+                            grant_workshop_role: checked === true,
+                          })
+                        }
+                      />
+                      <div className="space-y-1 leading-none">
+                        <label
+                          htmlFor="werkstatt-verbunden"
+                          className="text-sm leading-none font-medium"
+                        >
+                          {state.info.fromEmail} weiterhin Zugriff geben
+                        </label>
+                        <p className="text-muted-foreground text-sm">
+                          Die Werkstatt kann dann Scheckheft-Einträge und
+                          Dokumente hinzufügen — aber das Fahrzeug weder
+                          ändern noch löschen und niemanden einladen. Du kannst
+                          den Zugriff jederzeit unter &bdquo;Mitglieder&ldquo; wieder
+                          entziehen.
+                        </p>
+                      </div>
+                    </div>
+                  )}
 
                   <div className="flex gap-2">
                   <Button

@@ -148,6 +148,8 @@ describe("POST /api/transfers/[token]/accept — Währung", () => {
       p_mileage_km: 52000,
       p_share: true,
       p_currency: "GBP",
+      // PROJ-40 kam hinzu; ohne Angabe wird keine Rolle gewährt
+      p_grant_workshop: false,
     });
   });
 
@@ -176,5 +178,78 @@ describe("POST /api/transfers/[token]/accept — Währung", () => {
       "accept_vehicle_transfer",
       expect.objectContaining({ p_currency: null, p_share: false })
     );
+  });
+});
+
+/**
+ * Die verbleibende Werkstattrolle (PROJ-40).
+ *
+ * Geprüft wird auch hier nur die Naht: Kommt die Entscheidung des Kunden
+ * unverfälscht an der Datenbankfunktion an? Ob daraus tatsächlich eine Rolle
+ * wird, entscheidet die Funktion selbst — sie prüft zusätzlich, ob die
+ * Werkstatt sie überhaupt angeboten hat. Diese zweite Prüfung ist der
+ * eigentliche Schutz und liegt bewusst nicht hier im Browser-nahen Teil.
+ */
+describe("POST /api/transfers/[token]/accept — Werkstattrolle (PROJ-40)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockGetUser.mockResolvedValue({ data: { user: { id: "kaeufer" } } });
+    mockRpc.mockResolvedValue({ data: { success: true }, error: null });
+  });
+
+  it("reicht die Zustimmung des Kunden weiter", async () => {
+    await post({ share_anonymously: false, grant_workshop_role: true });
+
+    expect(mockRpc).toHaveBeenCalledWith(
+      "accept_vehicle_transfer",
+      expect.objectContaining({ p_grant_workshop: true })
+    );
+  });
+
+  it("reicht die Ablehnung des Kunden weiter", async () => {
+    await post({ share_anonymously: false, grant_workshop_role: false });
+
+    expect(mockRpc).toHaveBeenCalledWith(
+      "accept_vehicle_transfer",
+      expect.objectContaining({ p_grant_workshop: false })
+    );
+  });
+
+  it("gewährt ohne Angabe nichts — Schweigen ist keine Zustimmung", async () => {
+    await post({ share_anonymously: false });
+
+    expect(mockRpc).toHaveBeenCalledWith(
+      "accept_vehicle_transfer",
+      expect.objectContaining({ p_grant_workshop: false })
+    );
+  });
+
+  it("weist einen wahrheitsähnlichen Wert ab, statt ihn zu deuten", async () => {
+    // Ein "ja" aus einem zurechtgebauten Aufruf wird nicht als Zustimmung
+    // gelesen — die Prüfung verlangt einen echten Wahrheitswert. Die
+    // Anfrage scheitert dann, und das ist die richtige Antwort: Lieber eine
+    // sichtbare Ablehnung als eine stillschweigend unterstellte Zustimmung
+    // zu einer dauerhaften Zugriffsberechtigung.
+    const antwort = await post({
+      share_anonymously: false,
+      grant_workshop_role: "ja",
+    });
+
+    expect(antwort.status).toBe(400);
+    expect(mockRpc).not.toHaveBeenCalled();
+  });
+
+  it("gewährt bei unbrauchbarer Angabe keine Rolle", async () => {
+    // Die Route lehnt den ganzen Rumpf ab (Verhalten aus PROJ-33) und ruft
+    // die Datenbankfunktion gar nicht erst auf. Entscheidend für dieses
+    // Feature: Es entsteht keine Rolle. Der Kunde kann es mit einem
+    // unverbogenen Formular erneut versuchen.
+    const antwort = await post({
+      share_anonymously: false,
+      grant_workshop_role: { unsinn: true },
+    });
+
+    expect(antwort.status).toBe(400);
+    expect(mockRpc).not.toHaveBeenCalled();
   });
 });

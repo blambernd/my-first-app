@@ -95,6 +95,17 @@ export const saleReportSchema = z.object({
   currency: z
     .enum(CURRENCIES.map((c) => c.code) as [Currency, ...Currency[]])
     .optional(),
+  /**
+   * Behält der bisherige Besitzer die Werkstattrolle? (PROJ-40)
+   *
+   * Die Entscheidung des Käufers, nicht der Wunsch des Verkäufers. Sie wirkt
+   * nur, wenn die Werkstatt sie beim Anstoßen angeboten hat — das prüft die
+   * Datenbankfunktion ein zweites Mal, weil diese Angabe aus dem Browser
+   * kommt und dort verändert werden kann.
+   *
+   * Optional und ohne Vorbelegung: Fehlt sie, entsteht keine Rolle.
+   */
+  grant_workshop_role: z.boolean().optional(),
 });
 
 export type SaleReportInput = z.infer<typeof saleReportSchema>;

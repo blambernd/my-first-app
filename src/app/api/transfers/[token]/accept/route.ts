@@ -62,6 +62,12 @@ export async function POST(
     // des Fahrzeugs bei. Die Übergabe darf an einer Nebenangabe nicht
     // scheitern.
     p_currency: angaben.currency ?? null,
+    // PROJ-40: Die Entscheidung des Kunden über die verbleibende
+    // Werkstattrolle. Die Datenbankfunktion prüft zusätzlich, ob die
+    // Werkstatt sie überhaupt angeboten hat — ohne diese zweite Prüfung
+    // könnte ein zurechtgebauter Aufruf einem Vorbesitzer Schreibrechte
+    // verschaffen, die er nie angeboten hat.
+    p_grant_workshop: angaben.grant_workshop_role === true,
   });
 
   if (error) {

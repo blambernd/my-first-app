@@ -2,6 +2,7 @@ import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase-server";
 import { isDealer } from "@/lib/dealer-access";
+import { isWorkshop } from "@/lib/workshop-access";
 import { getCurrencySymbol, toCurrency } from "@/lib/currency";
 import { TransferPageClient } from "./client";
 import { TransferCostNotice } from "@/components/transfer-cost-notice";
@@ -49,7 +50,12 @@ export default async function TransferPage({ params }: TransferPageProps) {
   const pastTransfers = transfers?.past ?? [];
 
   // PROJ-38: Das Erloesfeld erscheint nur fuer gewerbliche Nutzer.
-  const dealerMode = await isDealer(supabase, user.id);
+  // Beide Selbstauskünfte nebenläufig: Sie hängen nicht voneinander ab,
+  // und jemand kann beides sein (PROJ-38, PROJ-40).
+  const [dealerMode, workshopMode] = await Promise.all([
+    isDealer(supabase, user.id),
+    isWorkshop(supabase, user.id),
+  ]);
   const currencySymbol = getCurrencySymbol(toCurrency(vehicle.currency));
 
   const vehicleName = `${vehicle.make} ${vehicle.model} (${vehicle.year})`;
@@ -77,6 +83,7 @@ export default async function TransferPage({ params }: TransferPageProps) {
 
       <TransferPageClient
         isDealer={dealerMode}
+        isWorkshop={workshopMode}
         currencySymbol={currencySymbol}
         vehicleId={id}
         vehicleName={vehicleName}

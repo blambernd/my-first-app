@@ -41,6 +41,8 @@ interface TransferFormProps {
   onSuccess: () => void;
   /** Blendet das Erlösfeld ein — nur für gewerbliche Nutzer (PROJ-38) */
   isDealer?: boolean;
+  /** Blendet die Werkstatt-Wahl ein — nur für erklärte Werkstätten (PROJ-40) */
+  isWorkshop?: boolean;
   /** Währung des Fahrzeugs, für die Beschriftung des Erlösfelds */
   currencySymbol?: string;
 }
@@ -50,6 +52,7 @@ export function TransferForm({
   vehicleName,
   onSuccess,
   isDealer = false,
+  isWorkshop = false,
   currencySymbol = "€",
 }: TransferFormProps) {
   const router = useRouter();
@@ -70,6 +73,9 @@ export function TransferForm({
     defaultValues: {
       email: "",
       keepAsViewer: true,
+      // Vorbelegt für Werkstätten: Sie geben das Fahrzeug ab, wollen aber
+      // die Wartung weiterführen. Für alle anderen bleibt die Wahl aus.
+      offerWorkshopRole: isWorkshop,
     },
   });
 
@@ -92,6 +98,9 @@ export function TransferForm({
           to_email: data.email.toLowerCase().trim(),
           token,
           keep_as_viewer: data.keepAsViewer,
+          // PROJ-40: Nur der Wunsch. Ob die Rolle entsteht, entscheidet der
+          // Empfänger bei der Annahme.
+          offer_workshop_role: isWorkshop && data.offerWorkshopRole,
           expires_at: expiresAt.toISOString(),
           status: "offen",
         })
@@ -216,6 +225,39 @@ export function TransferForm({
             </div>
           )}
 
+          {/* PROJ-40: Für Werkstätten. Beide Wahlmöglichkeiten schließen
+              sich aus — wer als Werkstatt verbunden bleibt, ist nicht auch
+              noch Betrachter. Das Anhaken des einen nimmt deshalb das andere
+              zurück. */}
+          {isWorkshop && (
+            <FormField
+              control={form.control}
+              name="offerWorkshopRole"
+              render={({ field }) => (
+                <FormItem className="flex items-start gap-3 space-y-0 rounded-md border p-4">
+                  <FormControl>
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={(checked) => {
+                        field.onChange(checked);
+                        if (checked) form.setValue("keepAsViewer", false);
+                      }}
+                    />
+                  </FormControl>
+                  <div className="space-y-1 leading-none">
+                    <FormLabel>Als Werkstatt verbunden bleiben</FormLabel>
+                    <FormDescription>
+                      Du kannst weiterhin Scheckheft-Einträge und Dokumente
+                      hinzufügen — aber nur, wenn dein Kunde dem bei der
+                      Übernahme zustimmt. Er kann die Verbindung jederzeit
+                      wieder lösen.
+                    </FormDescription>
+                  </div>
+                </FormItem>
+              )}
+            />
+          )}
+
           <FormField
             control={form.control}
             name="keepAsViewer"
@@ -224,7 +266,10 @@ export function TransferForm({
                 <FormControl>
                   <Checkbox
                     checked={field.value}
-                    onCheckedChange={field.onChange}
+                    onCheckedChange={(checked) => {
+                      field.onChange(checked);
+                      if (checked) form.setValue("offerWorkshopRole", false);
+                    }}
                   />
                 </FormControl>
                 <div className="space-y-1 leading-none">
