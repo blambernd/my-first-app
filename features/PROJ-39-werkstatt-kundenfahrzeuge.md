@@ -36,7 +36,8 @@ Der Zugriff auf Fahrzeuge, die einem anderen Nutzer gehören, bleibt **ausschlie
 ## Acceptance Criteria
 
 ### Zugang
-- [ ] In den Einstellungen existiert ein Schalter „Ich bin eine Werkstatt" (Standard: aus)
+- [x] In den Einstellungen existiert ein Schalter „Ich bin eine Werkstatt" (Standard: aus)
+- [x] Die Angabe lässt sich bereits **bei der Registrierung** treffen (nachgetragen am 2026-09-21)
 - [ ] Der Schalter ist ohne Prüfung, Freischaltung oder Nachweis bedienbar
 - [ ] Ist der Schalter aus, verhält sich die Anwendung exakt wie bisher
 - [ ] Ist der Schalter an, erscheint der Navigationspunkt „Werkstatt" — auch ohne eine einzige Einladung
@@ -531,6 +532,43 @@ Der Datenrest entstand im selben Lauf **erneut**: Der Test kennzeichnet das Fahr
 | **PROJ-40** | **In Review** | Der Abschnitt „Offene Übergaben" ist nicht gebaut (BUG-5) — ein vollständiger Block der Akzeptanzkriterien |
 
 PROJ-40 bleibt bewusst in Prüfung, obwohl kein Befund der Stufen Kritisch oder Hoch offen ist: Ein Feature, dessen Kriterien zu einem Viertel unerfüllt sind, ist nicht abgenommen, sondern unfertig. Sein Kern — die verbleibende Werkstattrolle — ist dagegen geprüft und belegt.
+
+### Nachtrag 2026-09-21 (2): Die Angabe schon bei der Registrierung
+
+Auf Wunsch nachgetragen: Wer sich anmeldet, kann gleich angeben, dass er eine Werkstatt ist. Vorher ging das erst nach der Anmeldung in den Einstellungen — eine Werkstatt landete zunächst in einem Dashboard für private Sammler, ohne zu erfahren, dass es den Werkstattbereich überhaupt gibt.
+
+**Geändert:**
+- `supabase/migrations/20260921_proj39_werkstatt_bei_registrierung.sql`
+- `src/lib/validations/auth.ts`, `src/app/(auth)/register/page.tsx`
+- `tests/PROJ-39-registrierung.spec.ts` (neu, 5 Tests)
+
+#### Der Weg
+`signUp({ options: { data } })` legt die Angaben in `raw_user_meta_data` ab; der Auslöser, der die Abo-Zeile anlegt, liest sie dort. Genau so wird seit PROJ-18 der Empfehlungscode übergeben — kein neuer Mechanismus.
+
+#### Zwei Stellen, an denen es hätte schiefgehen können
+
+**Erstens: Was aus den Anmeldeangaben gelesen werden darf.** `raw_user_meta_data` füllt der **Browser**. Wer sich registriert, bestimmt den Inhalt vollständig. Aus diesem Feld darf deshalb nur gelesen werden, was sich der Nutzer ohnehin selbst geben könnte. Bei `is_workshop` trifft das zu — es ist eine ungeprüfte Selbstauskunft, die jeder in den Einstellungen umlegen kann. Bei `plan` wäre es ein kostenloses Premium-Abo für jeden, der die Anfrage manipuliert.
+
+Nachgewiesen: Eine Registrierung mit `{is_workshop: true, plan: "premium", is_dealer: true}` ergab `plan: free`, `is_dealer: false`, `is_workshop: true`. Nur das eine Feld wird gelesen.
+
+**Zweitens: Ein Umwandlungsfehler hätte die Registrierung zerlegt.** Der erste Entwurf verwendete `(… ->> 'is_workshop')::boolean`. Ein Wert wie `"vielleicht"` lässt diese Umwandlung scheitern — und weil der Auslöser Teil der Registrierung ist, wäre damit die gesamte Anmeldung abgebrochen. `COALESCE` fängt nur NULL, keinen Umwandlungsfehler. Ersetzt durch einen Textvergleich, der nicht scheitern kann.
+
+Das ist dieselbe Stelle, die schon einmal sechs Wochen lang jede Registrierung verhindert hat (fehlender `search_path`, behoben am 2026-09-19). Der `search_path` ist erhalten geblieben und nachgeprüft.
+
+#### Geprüft
+
+| Registrierung mit | Ergebnis |
+|---|---|
+| ohne Angabe | Konto angelegt, `is_workshop: false` |
+| `is_workshop: true` | Konto angelegt, `is_workshop: true` |
+| **unsinnigem Wert** | **Konto angelegt**, `is_workshop: false` |
+| Empfehlungscode **und** `is_workshop` | beide Auslöser greifen, beides gesetzt |
+| Angriff mit `plan: premium` | abgewehrt, `plan: free` |
+
+Alle Probekonten wurden wieder gelöscht. Dazu fünf neue E2E-Tests (Wahl vorhanden, nicht vorbelegt, erklärt, AGB-Zustimmung unberührt, bedienbar bei 375 px) — alle grün, Typprüfung, Lint und Bau ohne Befund.
+
+#### Warum die Wahl nicht vorbelegt ist
+Wer eine Werkstatt ist, sagt es bewusst. Eine vorbelegte Selbstauskunft nähme jeder versehentlich mit, und die Angabe verlöre ihren Wert.
 
 ## Deployment
 

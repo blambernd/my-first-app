@@ -32,7 +32,13 @@ function RegisterForm() {
 
   const form = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
-    defaultValues: { email: "", password: "", confirmPassword: "", acceptTerms: false as unknown as true },
+    defaultValues: {
+      email: "",
+      password: "",
+      confirmPassword: "",
+      acceptTerms: false as unknown as true,
+      isWorkshop: false,
+    },
   });
 
   async function onSubmit(data: RegisterFormData) {
@@ -46,7 +52,13 @@ function RegisterForm() {
         password: data.password,
         options: {
           emailRedirectTo: `${window.location.origin}/auth/confirm${searchParams.get("redirect") ? `?redirect=${encodeURIComponent(searchParams.get("redirect")!)}` : ""}`,
-          data: referralCode ? { referral_code: referralCode } : undefined,
+          // Beides landet in raw_user_meta_data und wird beim Anlegen des
+          // Kontos von Datenbank-Auslösern gelesen: der Empfehlungscode
+          // seit PROJ-18, die Werkstatt-Angabe seit PROJ-39.
+          data: {
+            ...(referralCode ? { referral_code: referralCode } : {}),
+            ...(data.isWorkshop ? { is_workshop: true } : {}),
+          },
         },
       });
       if (error) {
@@ -182,6 +194,34 @@ function RegisterForm() {
               )}
             </div>
           </div>
+
+          {/* PROJ-39: Getrennt von der Zustimmung darüber — das eine ist
+              eine Bedingung, das andere eine Auskunft über sich selbst. */}
+          <div className="flex items-start space-x-2 rounded-md border p-3">
+            <Checkbox
+              id="isWorkshop"
+              checked={form.watch("isWorkshop") === true}
+              onCheckedChange={(checked) =>
+                form.setValue("isWorkshop", checked === true, {
+                  shouldValidate: true,
+                })
+              }
+            />
+            <div className="grid gap-1.5 leading-none">
+              <Label
+                htmlFor="isWorkshop"
+                className="text-sm font-normal leading-snug"
+              >
+                Ich bin eine Werkstatt
+              </Label>
+              <p className="text-muted-foreground text-xs">
+                Dann kannst du Fahrzeuge deiner Kunden anlegen und später an
+                sie übergeben. Lässt sich jederzeit in den Einstellungen
+                ändern.
+              </p>
+            </div>
+          </div>
+
           <Button type="submit" className="w-full" disabled={loading}>
             {loading ? "Wird registriert..." : "Registrieren"}
           </Button>
