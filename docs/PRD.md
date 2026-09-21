@@ -21,29 +21,29 @@ Eine SaaS-Plattform für Oldtimer-Besitzer, die es ermöglicht, die komplette Hi
 
 | Priority | Feature | Status |
 |----------|---------|--------|
-| P0 (MVP) | PROJ-1: User Authentication | Planned |
-| P0 (MVP) | PROJ-2: Fahrzeugprofil | Planned |
-| P0 (MVP) | PROJ-3: Digitales Scheckheft | Planned |
-| P0 (MVP) | PROJ-4: Dokumenten-Archiv | Planned |
-| P0 (MVP) | PROJ-5: Fahrzeug-Timeline | Planned |
-| P1 | PROJ-6: Rollen & Kollaboration | Planned |
-| P1 | PROJ-7: Fahrzeug-Transfer | Planned |
-| P2 | PROJ-8: Freemium-Modell | Planned |
-| P2 | PROJ-9: Ersatzteil-Suche & Preis-Alerts | Planned |
-| P1 | PROJ-10: Fahrzeug-Kurzprofil (öffentlich) | Planned |
-| P1 | PROJ-11: Marktpreis-Analyse | Planned |
-| P1 | PROJ-12: Verkaufsinserat erstellen | Planned |
-| P2 | PROJ-13: Inserat veröffentlichen | Planned |
-| P1 | PROJ-14: FAQ-Seite | Planned |
-| P1 | PROJ-15: Kontakt & Feedback | Planned |
-| P1 | PROJ-16: Verkaufsassistent | Planned |
+| P0 (MVP) | PROJ-1: User Authentication | Deployed |
+| P0 (MVP) | PROJ-2: Fahrzeugprofil | Deployed |
+| P0 (MVP) | PROJ-3: Digitales Scheckheft | Deployed |
+| P0 (MVP) | PROJ-4: Dokumenten-Archiv | Deployed |
+| P0 (MVP) | PROJ-5: Fahrzeug-Timeline | Deployed |
+| P1 | PROJ-6: Rollen & Kollaboration | Deployed |
+| P1 | PROJ-7: Fahrzeug-Transfer | Deployed |
+| P2 | PROJ-8: Freemium-Modell | Deployed |
+| P2 | PROJ-9: Ersatzteil-Suche & Preis-Alerts | Deployed |
+| P1 | PROJ-10: Fahrzeug-Kurzprofil (öffentlich) | Deployed |
+| P1 | PROJ-11: Marktpreis-Analyse | Deployed |
+| P1 | PROJ-12: Verkaufsinserat erstellen | Deployed |
+| P2 | PROJ-13: Inserat veröffentlichen | Deployed |
+| P1 | PROJ-14: FAQ-Seite | Deployed |
+| P1 | PROJ-15: Kontakt & Feedback | Deployed |
+| P1 | PROJ-16: Verkaufsassistent | Deployed |
 | P0 | PROJ-17: Landing Page | Deployed |
-| P1 | PROJ-18: Empfehlungsprogramm (Referral) | Planned |
-| P1 | PROJ-19: Veranstaltungsübersicht | Planned |
-| P0 | PROJ-20: Mobile Responsive Optimierung | Planned |
-| P0 | PROJ-21: Capacitor App Setup (iOS + Android) | Planned |
-| P1 | PROJ-22: Kamera-Integration | Planned |
-| P1 | PROJ-23: Push-Notifications (Termine) | Planned |
+| P1 | PROJ-18: Empfehlungsprogramm (Referral) | Deployed |
+| P1 | PROJ-19: Veranstaltungsübersicht | Deployed |
+| P0 | PROJ-20: Mobile Responsive Optimierung | In Progress |
+| P0 | PROJ-21: Capacitor App Setup (iOS + Android) | Deployed |
+| P1 | PROJ-22: Kamera-Integration | Deployed |
+| P1 | PROJ-23: Push-Notifications (Termine) | Deployed |
 | P1 | PROJ-24: Tankbuch & Verbrauch | Deployed |
 | P1 | PROJ-25: Wiederkehrende Kosten | Deployed |
 | P2 | PROJ-26: Einzelkosten | Deployed |
@@ -54,11 +54,13 @@ Eine SaaS-Plattform für Oldtimer-Besitzer, die es ermöglicht, die komplette Hi
 | P2 | PROJ-31: Kosten-Überblicksseite | Deployed |
 | P1 | PROJ-32: Kostendaten beim Fahrzeug-Transfer | Deployed |
 | P1 | PROJ-33: Verkaufspreis-Erhebung beim Transfer | Deployed |
-| P2 | PROJ-34: Preisübersicht aus echten Verkäufen | Planned |
-| P1 | PROJ-35: Scheckheft-Import aus Dokumenten | Planned |
-| P2 | PROJ-36: Währung pro Fahrzeug | Planned |
-| P1 | PROJ-37: Werkstatt-Dashboard | Planned |
-| P2 | PROJ-38: Händler-Bestandsübersicht | Planned |
+| P2 | PROJ-34: Preisübersicht aus echten Verkäufen | Architected |
+| P1 | PROJ-35: Scheckheft-Import aus Dokumenten | In Progress |
+| P2 | PROJ-36: Währung pro Fahrzeug | Deployed |
+| P1 | PROJ-37: Werkstatt-Dashboard | Deployed |
+| P2 | PROJ-38: Händler-Bestandsübersicht | Deployed |
+| P1 | PROJ-39: Werkstatt-Konto & Kundenfahrzeuge | Approved |
+| P1 | PROJ-40: Fahrzeug-Übergabe an den Kunden | In Review |
 
 ## Success Metrics
 - **Registrierungen:** 500 Nutzer in den ersten 3 Monaten

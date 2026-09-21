@@ -53,7 +53,9 @@
 | PROJ-36 | Währung pro Fahrzeug | Deployed | [PROJ-36-waehrung-pro-fahrzeug.md](PROJ-36-waehrung-pro-fahrzeug.md) | 2026-08-07 |
 | PROJ-37 | Werkstatt-Dashboard | Deployed | [PROJ-37-werkstatt-dashboard.md](PROJ-37-werkstatt-dashboard.md) | 2026-09-06 |
 | PROJ-38 | Händler-Bestandsübersicht | Deployed | [PROJ-38-haendler-bestand.md](PROJ-38-haendler-bestand.md) | 2026-09-06 |
+| PROJ-39 | Werkstatt-Konto & Kundenfahrzeuge | Approved | [PROJ-39-werkstatt-kundenfahrzeuge.md](PROJ-39-werkstatt-kundenfahrzeuge.md) | 2026-09-21 |
+| PROJ-40 | Fahrzeug-Übergabe an den Kunden | In Review | [PROJ-40-uebergabe-an-kunden.md](PROJ-40-uebergabe-an-kunden.md) | 2026-09-21 |
 
 <!-- Add features above this line -->
 
-## Next Available ID: PROJ-39
+## Next Available ID: PROJ-41
