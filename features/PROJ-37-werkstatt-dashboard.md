@@ -1,6 +1,6 @@
 # PROJ-37: Werkstatt-Dashboard
 
-## Status: Approved
+## Status: Deployed
 **Created:** 2026-09-06
 **Last Updated:** 2026-09-19
 
@@ -632,4 +632,37 @@ Für die Abnahme wird eine echte Werkstatt-Mitgliedschaft benötigt: ein zweites
 Offen bleiben BEFUND-A (rote PROJ-30-Tests), BEFUND-B (instabile Testsuite) und BEFUND-C (fehlende Beschriftungen in PROJ-3) — alle drei außerhalb dieses Features.
 
 ## Deployment
-_To be added by /deploy_
+
+- **Produktions-URL:** https://www.oldtimer-docs.com
+- **Ausgeliefert:** 2026-09-21
+- **Deployment:** `dpl_8LJMcRzLUU11RPmGUWYRoXsd9T9r` (Commit `cffe502`, production, READY)
+
+### Die Auslieferung hing zwei Wochen fest
+
+Beide Features waren am 2026-09-06 fertig gepusht, kamen aber nicht heraus. Ursache war ein Cron-Eintrag aus PROJ-35, der das Limit des Hobby-Kontos überschritt: Vercel lehnte daraufhin **jedes** Deployment ab, bevor ein Build startete — ohne Fehlermeldung und ohne Eintrag im Dashboard. Einzelheiten im Nachtrag der PROJ-35-Spezifikation.
+
+Nach dem Entfernen des Eintrags lief der Rollout an und brachte alle zwölf aufgestauten Commits mit.
+
+### Nach der Auslieferung geprüft
+
+| Prüfung | Ergebnis |
+|---|---|
+| Routen erreichbar | `/werkstatt` und `/bestand` antworten mit 307 zur Anmeldung |
+| Unangemeldeter Zugriff | Keine Daten im ausgelieferten Dokument |
+| Zugriffsschutz der Schnittstellen | In Produktion bestätigt (401 bzw. 404) |
+| Datenbank | Alle Migrationen angewendet und verifiziert |
+
+Geprüft mit `npx playwright test --config playwright.prod.config.ts` — die unangemeldeten Specs gegen die **ausgelieferte** Anwendung statt gegen den Entwicklungsserver: 6/6 grün.
+
+### Umgebungsvariablen
+
+Alle für dieses Feature nötigen Werte sind in Vercel gesetzt. Zwei Lücken betreffen es nicht, sind aber vermerkt:
+
+- `ANTHROPIC_API_KEY` fehlt — betrifft allein den Scheckheft-Import (PROJ-35)
+- `NEXT_PUBLIC_APP_URL` fehlt — unkritisch, alle Verwendungen haben einen Rückfall auf die Request-Herkunft
+
+### Besonderheit dieses Features
+
+Die Datenbankfunktion und die Leseregel für Fahrzeugtermine waren bereits am 2026-09-19 eingespielt und geprüft — die Auslieferung des Codes folgte erst jetzt. In der Zwischenzeit war die Seite für niemanden erreichbar, weil die Route fehlte.
+
+- **Git-Tag:** `v1.37.0-PROJ-37`

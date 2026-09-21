@@ -1,6 +1,6 @@
 # PROJ-38: Händler-Bestandsübersicht
 
-## Status: Approved
+## Status: Deployed
 **Created:** 2026-09-06
 **Last Updated:** 2026-09-19
 
@@ -456,7 +456,42 @@ Anders als bei PROJ-37 war die Migration vor Testbeginn angewendet. Für den reg
 **Danach:** Den Upgrade-Hinweis außerhalb des Beta-Modus prüfen und einen echten Übergabe-Durchlauf mit einem Wegwerf-Fahrzeug nachziehen.
 
 ## Deployment
-_To be added by /deploy_
+
+- **Produktions-URL:** https://www.oldtimer-docs.com
+- **Ausgeliefert:** 2026-09-21
+- **Deployment:** `dpl_8LJMcRzLUU11RPmGUWYRoXsd9T9r` (Commit `cffe502`, production, READY)
+
+### Die Auslieferung hing zwei Wochen fest
+
+Beide Features waren am 2026-09-06 fertig gepusht, kamen aber nicht heraus. Ursache war ein Cron-Eintrag aus PROJ-35, der das Limit des Hobby-Kontos überschritt: Vercel lehnte daraufhin **jedes** Deployment ab, bevor ein Build startete — ohne Fehlermeldung und ohne Eintrag im Dashboard. Einzelheiten im Nachtrag der PROJ-35-Spezifikation.
+
+Nach dem Entfernen des Eintrags lief der Rollout an und brachte alle zwölf aufgestauten Commits mit.
+
+### Nach der Auslieferung geprüft
+
+| Prüfung | Ergebnis |
+|---|---|
+| Routen erreichbar | `/werkstatt` und `/bestand` antworten mit 307 zur Anmeldung |
+| Unangemeldeter Zugriff | Keine Daten im ausgelieferten Dokument |
+| Zugriffsschutz der Schnittstellen | In Produktion bestätigt (401 bzw. 404) |
+| Datenbank | Alle Migrationen angewendet und verifiziert |
+
+Geprüft mit `npx playwright test --config playwright.prod.config.ts` — die unangemeldeten Specs gegen die **ausgelieferte** Anwendung statt gegen den Entwicklungsserver: 6/6 grün.
+
+### Umgebungsvariablen
+
+Alle für dieses Feature nötigen Werte sind in Vercel gesetzt. Zwei Lücken betreffen es nicht, sind aber vermerkt:
+
+- `ANTHROPIC_API_KEY` fehlt — betrifft allein den Scheckheft-Import (PROJ-35)
+- `NEXT_PUBLIC_APP_URL` fehlt — unkritisch, alle Verwendungen haben einen Rückfall auf die Request-Herkunft
+
+### Offen aus der Abnahme
+
+Ein **echter Übergabe-Durchlauf** wurde nie gefahren — er hätte das Testfahrzeug dauerhaft übertragen. Geprüft sind Reihenfolge, Ergänzungslogik und Zugriffsregeln per Datenbankprobe. Das ist die größte verbleibende Lücke, und sie betrifft den Pfad, der beim ersten echten Händlerverkauf beschritten wird.
+
+Dazu BUG-8 (Low): Beim Ergänzen eines Vorgangs bleibt das Verkaufsdatum der Kennzeichnung stehen — fachlich vertretbar, aber nirgends begründet.
+
+- **Git-Tag:** `v1.38.0-PROJ-38`
 
 ## Fehlerbehebung BUG-1 (2026-09-20)
 
