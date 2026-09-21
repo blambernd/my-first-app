@@ -203,3 +203,11 @@ Database:
 **Deployed:** 2026-04-07
 **Commit:** `feat(PROJ-7): Implement Fahrzeug-Transfer with Resend email integration`
 **Platform:** Vercel (auto-deploy on push to main)
+
+## Nachtrag 2026-09-21: Die Leseregel war seit April wirkungslos
+
+Die Regel „Invited user can view transfer" schlug die Adresse des Empfängers in `auth.users` nach. Die Rolle `authenticated` hat darauf kein Leserecht — jeder Lesezugriff auf `vehicle_transfers` scheiterte mit `42501 permission denied for table users`.
+
+Unbemerkt blieb das, weil die Anwendung zum Lesen `get_vehicle_transfers()` benutzt, eine Funktion mit erhöhten Rechten, welche die Regeln umgeht. Sichtbar wurde der Fehler erst, als PROJ-38 dem Übergabeformular ein `.select("id")` hinzufügte: Das `RETURNING` verlangt Leserecht, und damit ließ sich **keine Übergabe mehr anlegen**.
+
+Behoben am 2026-09-21 mit `20260921_bug6_transfer_leseregel.sql`: `lower(to_email) = lower(auth.email())`. Einzelheiten in der QA von PROJ-39 unter BUG-6.
