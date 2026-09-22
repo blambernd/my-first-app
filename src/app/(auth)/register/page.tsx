@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Card,
   CardContent,
@@ -19,6 +20,39 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+
+/**
+ * Die drei Kontoarten bei der Anmeldung (PROJ-39, PROJ-38).
+ *
+ * „Privat" steht zuerst und ist vorbelegt: Die weitaus meisten Konten sind
+ * das, und niemand soll eine gewerbliche Angabe versehentlich mitnehmen.
+ *
+ * Beim Händler steht der Premium-Hinweis dabei. Ihn zu verschweigen wäre
+ * die unangenehmere Überraschung — ein Betrieb, der sich anmeldet und
+ * danach vor einer Bezahlschranke steht, fühlt sich hereingelegt.
+ */
+const KONTOARTEN = [
+  {
+    wert: "privat" as const,
+    titel: "Privat",
+    beschreibung: "Ich dokumentiere meine eigenen Fahrzeuge",
+    hinweis: null,
+  },
+  {
+    wert: "werkstatt" as const,
+    titel: "Werkstatt",
+    beschreibung:
+      "Kundenfahrzeuge anlegen, Wartung dokumentieren und später an den Kunden übergeben",
+    hinweis: null,
+  },
+  {
+    wert: "haendler" as const,
+    titel: "Händler",
+    beschreibung:
+      "Fahrzeugbestand mit Standzeit, Einkauf, Verkauf und Spanne",
+    hinweis: "Premium",
+  },
+];
 
 function RegisterForm() {
   const searchParams = useSearchParams();
@@ -37,7 +71,7 @@ function RegisterForm() {
       password: "",
       confirmPassword: "",
       acceptTerms: false as unknown as true,
-      isWorkshop: false,
+      accountType: "privat",
     },
   });
 
@@ -52,12 +86,16 @@ function RegisterForm() {
         password: data.password,
         options: {
           emailRedirectTo: `${window.location.origin}/auth/confirm${searchParams.get("redirect") ? `?redirect=${encodeURIComponent(searchParams.get("redirect")!)}` : ""}`,
-          // Beides landet in raw_user_meta_data und wird beim Anlegen des
-          // Kontos von Datenbank-Auslösern gelesen: der Empfehlungscode
-          // seit PROJ-18, die Werkstatt-Angabe seit PROJ-39.
+          // Alles hier landet in raw_user_meta_data und wird beim Anlegen
+          // des Kontos von Datenbank-Auslösern gelesen: der Empfehlungscode
+          // seit PROJ-18, die Kontoart seit PROJ-39.
+          //
+          // Gesendet wird nur, was zutrifft — „privat" ist die Abwesenheit
+          // beider Angaben und braucht kein eigenes Feld.
           data: {
             ...(referralCode ? { referral_code: referralCode } : {}),
-            ...(data.isWorkshop ? { is_workshop: true } : {}),
+            ...(data.accountType === "werkstatt" ? { is_workshop: true } : {}),
+            ...(data.accountType === "haendler" ? { is_dealer: true } : {}),
           },
         },
       });
@@ -167,6 +205,63 @@ function RegisterForm() {
               </p>
             )}
           </div>
+          {/* PROJ-39 / PROJ-38: Eine Angabe über sich selbst, keine
+              Bedingung — deshalb vor der Zustimmung, die unmittelbar über
+              dem Knopf stehen soll. Als Auswahl und nicht als Haken am
+              Rand: Ein Betrieb, der sich anmeldet, soll sehen, dass die
+              Plattform ihn kennt. */}
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">
+              Wie nutzt du Oldtimer Docs?
+            </Label>
+
+            <RadioGroup
+              value={form.watch("accountType") ?? "privat"}
+              onValueChange={(wert) =>
+                form.setValue(
+                  "accountType",
+                  wert as "privat" | "werkstatt" | "haendler",
+                  { shouldValidate: true }
+                )
+              }
+              className="gap-2"
+            >
+              {KONTOARTEN.map(({ wert, titel, beschreibung, hinweis }) => (
+                <Label
+                  key={wert}
+                  htmlFor={`kontoart-${wert}`}
+                  className="hover:bg-accent has-[:checked]:border-primary has-[:checked]:bg-accent/50 flex cursor-pointer items-start gap-3 rounded-md border p-3 font-normal transition-colors"
+                >
+                  <RadioGroupItem
+                    value={wert}
+                    id={`kontoart-${wert}`}
+                    className="mt-0.5"
+                  />
+                  <span className="grid gap-1 leading-none">
+                    <span className="flex items-center gap-2 text-sm font-medium">
+                      {titel}
+                      {/* Als Kennzeichen statt angehängt an den Fließtext:
+                          Dort ginge der Hinweis unter, und genau das darf
+                          er nicht. */}
+                      {hinweis && (
+                        <span className="bg-muted text-muted-foreground rounded px-1.5 py-0.5 text-[10px] font-medium tracking-wide uppercase">
+                          {hinweis}
+                        </span>
+                      )}
+                    </span>
+                    <span className="text-muted-foreground text-xs">
+                      {beschreibung}
+                    </span>
+                  </span>
+                </Label>
+              ))}
+            </RadioGroup>
+
+            <p className="text-muted-foreground text-xs">
+              Lässt sich jederzeit in den Einstellungen ändern.
+            </p>
+          </div>
+
           <div className="flex items-start space-x-2">
             <Checkbox
               id="acceptTerms"
@@ -192,33 +287,6 @@ function RegisterForm() {
                   {form.formState.errors.acceptTerms.message}
                 </p>
               )}
-            </div>
-          </div>
-
-          {/* PROJ-39: Getrennt von der Zustimmung darüber — das eine ist
-              eine Bedingung, das andere eine Auskunft über sich selbst. */}
-          <div className="flex items-start space-x-2 rounded-md border p-3">
-            <Checkbox
-              id="isWorkshop"
-              checked={form.watch("isWorkshop") === true}
-              onCheckedChange={(checked) =>
-                form.setValue("isWorkshop", checked === true, {
-                  shouldValidate: true,
-                })
-              }
-            />
-            <div className="grid gap-1.5 leading-none">
-              <Label
-                htmlFor="isWorkshop"
-                className="text-sm font-normal leading-snug"
-              >
-                Ich bin eine Werkstatt
-              </Label>
-              <p className="text-muted-foreground text-xs">
-                Dann kannst du Fahrzeuge deiner Kunden anlegen und später an
-                sie übergeben. Lässt sich jederzeit in den Einstellungen
-                ändern.
-              </p>
             </div>
           </div>
 

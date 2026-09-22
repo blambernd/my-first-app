@@ -37,7 +37,7 @@ Der Zugriff auf Fahrzeuge, die einem anderen Nutzer gehören, bleibt **ausschlie
 
 ### Zugang
 - [x] In den Einstellungen existiert ein Schalter „Ich bin eine Werkstatt" (Standard: aus)
-- [x] Die Angabe lässt sich bereits **bei der Registrierung** treffen (nachgetragen am 2026-09-21)
+- [x] Die Kontoart lässt sich bereits **bei der Registrierung** wählen — Privat, Werkstatt oder Händler (nachgetragen am 2026-09-21, erweitert am 2026-09-22)
 - [ ] Der Schalter ist ohne Prüfung, Freischaltung oder Nachweis bedienbar
 - [ ] Ist der Schalter aus, verhält sich die Anwendung exakt wie bisher
 - [ ] Ist der Schalter an, erscheint der Navigationspunkt „Werkstatt" — auch ohne eine einzige Einladung
@@ -595,6 +595,43 @@ Der neue Abschluss setzt nichts voraus: Findet er keinen Vorgang, tut er nichts;
 **Geprüft, indem der Schadenszustand absichtlich wiederhergestellt wurde** — derselbe Bestandsvorgang, der am 2026-09-21 sieben Tests lahmlegte. Danach lief die Suite erneut und räumte hinter sich auf.
 
 Nebenbei: `AUTH_FILE` wird in der Datei selbst definiert statt aus `auth.setup.ts` importiert. Jene Datei enthält einen `setup(...)`-Aufruf, der beim Import ausgeführt würde und die ganze Spezifikation zerlegt — was sie beim ersten Versuch auch tat.
+
+### Nachtrag 2026-09-22 (2): Kontoart statt einzelner Haken
+
+Die Registrierung fragt jetzt nach der **Kontoart** — Privat, Werkstatt oder Händler — statt nur nach einem Ankreuzfeld für Werkstätten. Händler konnten sich vorher gar nicht als solche anmelden; ihr Schalter lag ausschließlich in den Einstellungen.
+
+**Geändert:** `src/lib/validations/auth.ts`, `src/app/(auth)/register/page.tsx`, `supabase/migrations/20260922_proj39_kontoart_bei_registrierung.sql`, `tests/PROJ-39-registrierung.spec.ts` (9 Tests).
+
+#### Vier Entscheidungen
+
+**Auswahl statt Haken am Rand.** Ein Betrieb, der sich anmeldet, soll sehen, dass die Plattform ihn kennt. Drei Karten mit je einem Satz, was sie freischalten, leisten das; ein Kästchen unter den AGB nicht.
+
+**Einfachauswahl, obwohl ein Betrieb reparieren und verkaufen kann.** Bei der Anmeldung zählt der Haupteinstieg. Wer beides braucht, legt den zweiten Schalter später in den Einstellungen um. Eine Mehrfachauswahl an dieser Stelle kostet mehr Klarheit, als sie Fälle abdeckt.
+
+**„Privat" steht zuerst und ist vorbelegt.** Die weitaus meisten Konten sind das, und niemand soll eine gewerbliche Angabe versehentlich mitnehmen.
+
+**Der Premium-Hinweis steht beim Händler — als Kennzeichen, nicht im Fließtext.** Ihn zu verschweigen wäre die unangenehmere Überraschung: Ein Betrieb, der sich anmeldet und danach vor einer Bezahlschranke steht, fühlt sich hereingelegt. Angehängt an den Beschreibungstext ginge er unter.
+
+#### Reihenfolge im Formular
+Die Kontoart steht **vor** der AGB-Zustimmung. Erst die Angaben, dann die Zustimmung, dann Absenden — die Zustimmung ist das Letzte vor dem Knopf. In der ersten Fassung stand sie dazwischen.
+
+#### Sicherheit
+Der Auslöser liest jetzt auch `is_dealer` aus den Anmeldeangaben. Dasselbe Argument wie bei `is_workshop`: eine ungeprüfte Selbstauskunft, die jeder in den Einstellungen umlegen kann, ohne Zugriff auf fremde Daten — und der Bestandsbereich dahinter verlangt ohnehin ein Premium-Abo, das über diesen Weg nicht zu bekommen ist.
+
+| Registrierung mit | Ergebnis |
+|---|---|
+| ohne Angabe | `is_workshop: false`, `is_dealer: false` |
+| Werkstatt | nur `is_workshop` |
+| Händler | nur `is_dealer` |
+| unsinnigen Werten | beide `false`, **Konto entsteht trotzdem** |
+| **Angriff:** `plan: premium`, `status`, `trial_end` | abgewehrt — `plan: free` |
+
+Alle fünf Probekonten wurden wieder gelöscht.
+
+#### Geprüft
+9 E2E-Tests (alle drei Arten vorhanden, Privat vorbelegt, Umstellen nimmt die vorige Wahl zurück, jede Art erklärt sich, Premium-Kennzeichen beim Händler, Änderbarkeit ausgewiesen, AGB-Zustimmung unberührt, bedienbar bei 375 px). Dazu Typprüfung, Lint und Produktionsbau ohne Befund.
+
+Im Gesamtlauf der Einheitentests fielen drei Tests in Dateien aus, die dieses Vorhaben nicht berührt — isoliert sind sie grün, und es waren teils andere als am Vortag. Das ist das bekannte Zeitverhalten unter Last.
 
 ## Deployment
 

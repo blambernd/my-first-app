@@ -27,20 +27,24 @@ export const registerSchema = z
         message: "Du musst den AGB und der Datenschutzerklärung zustimmen",
       }),
     /**
-     * Selbstauskunft „Ich bin eine Werkstatt" (PROJ-39).
+     * Wie das Konto genutzt wird (PROJ-39, PROJ-38).
      *
-     * Freiwillig und ohne Prüfung — sie schaltet nur eine Ansicht frei und
-     * verschafft keinen Zugriff auf fremde Fahrzeuge. Wer sie hier
-     * ausgelassen hat, findet sie später in den Einstellungen.
+     * Eine Selbstauskunft ohne Prüfung. Sie schaltet Ansichten frei und
+     * verschafft **keinen** Zugriff auf fremde Fahrzeuge — deshalb ist sie
+     * ungeprüft unbedenklich. Jederzeit in den Einstellungen änderbar.
      *
-     * `optional` und bewusst **nicht** `.default(false)`: Ein Vorgabewert
-     * machte Eingabe- und Ausgabetyp des Schemas verschieden, womit sich
-     * der Formular-Resolver nicht mehr typisieren lässt. Ein Pflichtfeld
-     * wiederum ließe jede Prüfung scheitern, die das Feld nicht mitschickt
-     * — eine freiwillige Angabe darf das nicht. Die Vorbelegung steht im
-     * Formular selbst.
+     * Einfachauswahl, obwohl ein Betrieb reparieren **und** verkaufen kann:
+     * Bei der Anmeldung zählt der Haupteinstieg, und wer beides braucht,
+     * legt den zweiten Schalter später um. Eine Mehrfachauswahl an dieser
+     * Stelle kostet mehr Klarheit, als sie Fälle abdeckt.
+     *
+     * `optional` und bewusst **nicht** `.default()`: Ein Vorgabewert machte
+     * Eingabe- und Ausgabetyp des Schemas verschieden, womit sich der
+     * Formular-Resolver nicht mehr typisieren lässt. Ein Pflichtfeld
+     * wiederum ließe jede Prüfung scheitern, die das Feld nicht mitschickt.
+     * Die Vorbelegung steht im Formular selbst.
      */
-    isWorkshop: z.boolean().optional(),
+    accountType: z.enum(["privat", "werkstatt", "haendler"]).optional(),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwörter stimmen nicht überein",
