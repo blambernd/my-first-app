@@ -1,6 +1,6 @@
 # PROJ-40: Fahrzeug-Übergabe an den Kunden
 
-## Status: In Review
+## Status: Deployed
 **Created:** 2026-09-21
 **Last Updated:** 2026-09-21
 
@@ -597,4 +597,55 @@ Der neue Abschluss setzt nichts voraus: Findet er keinen Vorgang, tut er nichts;
 Nebenbei: `AUTH_FILE` wird in der Datei selbst definiert statt aus `auth.setup.ts` importiert. Jene Datei enthält einen `setup(...)`-Aufruf, der beim Import ausgeführt würde und die ganze Spezifikation zerlegt — was sie beim ersten Versuch auch tat.
 
 ## Deployment
-_To be added by /deploy_
+
+- **Produktions-URL:** https://www.oldtimer-docs.com
+- **Ausgeliefert:** 2026-09-22
+- **Deployment:** `71659e6` (production, READY)
+- **Git-Tag:** `v1.40.0-PROJ-40`
+
+Der Code ging in mehreren Schritten heraus: der Kern mit `08ed70e` am 2026-09-21, die offenen Übergaben mit `b3012b2`, die letzten Behebungen mit `71659e6`.
+
+### Vor der Auslieferung geprüft
+
+| Prüfung | Ergebnis |
+|---|---|
+| Produktionsbau | erfolgreich |
+| Lint | keine Fehler |
+| Einheitentests | 817 von 817 |
+| PROJ-38-Suite (Regression) | 12 von 12 |
+| Werkstatt-Suiten | 21 von 21 |
+| Befunde Kritisch/Hoch | keine offen |
+| Migrationen eingespielt | im Systemkatalog nachgeprüft |
+| Geheimnisse im Repository | keine |
+
+### Nach der Auslieferung geprüft
+
+Gegen die **ausgelieferte** Anwendung: **15 von 15 grün**, dazu Proben an der Datenbank.
+
+| Prüfung | Ergebnis |
+|---|---|
+| `accept_vehicle_transfer` **mit** `p_grant_workshop` | antwortet |
+| dieselbe Funktion **ohne** den Parameter | antwortet — die alte Signatur bleibt bedienbar |
+| `vehicle_transfers` lesbar | HTTP 200 (vor BUG-6: 403) |
+| `get_transfer_by_token` Statuslogik | `invalid` bei unbekanntem Schlüssel |
+| `/werkstatt`, `/bestand` unangemeldet | Weiterleitung zur Anmeldung |
+| Kundendaten im ausgelieferten Dokument | keine |
+
+### Was belegt ist — und was nicht
+
+**Belegt:** Der Kern des Features. Vier vollständige Übergabe-Durchläufe in einer sich selbst zurückrollenden Transaktion haben gezeigt, dass die verbleibende Werkstattrolle ausschließlich aus Angebot **und** Zustimmung entsteht, dass ein Angriffsversuch ohne Angebot ins Leere läuft, dass die Kundenangabe verschwindet und dass sich die klassische Übergabe unverändert verhält.
+
+**Nicht belegt:** Fünf Kriterien, die die Annahmeseite aus Sicht des Empfängers und den Weg für Empfänger ohne Konto betreffen. Sie sind gebaut und im ausgelieferten Dokument nachweisbar, aber nie durch einen **vollzogenen** Übergang geprüft — das hätte ein Fahrzeug dauerhaft übertragen und ein zweites Konto verlangt.
+
+Der erste echte Händler- oder Werkstattverkauf beschreitet diesen Pfad zum ersten Mal vollständig. Das ist die verbleibende Unsicherheit dieses Features, und sie steht hier, damit sie niemand übersieht.
+
+### Befunde aus der Abnahme — alle behoben
+
+| Befund | Stufe | Wo |
+|---|---|---|
+| BUG-1/2/3 Selbstauskünfte nicht speicherbar | Kritisch/Hoch | `3c5bdf9` |
+| BUG-6 keine Übergabe anlegbar | Kritisch | `e4b4f46` |
+| BUG-4 Kopfzeile, BUG-7 Kundenadresse, BEFUND-T Testsuite | Mittel/Hoch | `71659e6` |
+| BUG-5 „Offene Übergaben" nicht gebaut | Mittel | `b3012b2` |
+
+Drei davon betrafen **ausgelieferten** Code aus PROJ-38 und PROJ-7 — gefunden bei der Abnahme dieses Features, nicht durch einen Nutzerbericht.
