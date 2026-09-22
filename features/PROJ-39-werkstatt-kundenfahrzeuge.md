@@ -633,6 +633,28 @@ Alle fünf Probekonten wurden wieder gelöscht.
 
 Im Gesamtlauf der Einheitentests fielen drei Tests in Dateien aus, die dieses Vorhaben nicht berührt — isoliert sind sie grün, und es waren teils andere als am Vortag. Das ist das bekannte Zeitverhalten unter Last.
 
+### Nachtrag 2026-09-22 (3): BUG-8 — der Navigationspunkt verschwand beim Seitenwechsel
+
+**Gemeldet:** „Beim Klick auf das Logo verschwindet das Werkstatt-Icon mit dem Bereich."
+
+**Ursache:** Drei der fünf Seiten mit Kopfzeile ermittelten den Navigationspunkt selbst, statt `getNavigationFlags` zu benutzen — und zählten dabei nur die **betreuten** Fahrzeuge:
+
+```
+hasWorkshopAccess={workshopVehicleCount > 0}
+```
+
+Wer sich selbst als Werkstatt erklärt hatte, ohne je eingeladen worden zu sein, verlor den Punkt, sobald er den Werkstattbereich verließ. Beim Bau von PROJ-39 wurde `getNavigationFlags` um die Selbstauskunft erweitert — in der Annahme, alle Seiten benutzten sie. Dashboard und Bestandsseite taten es nicht.
+
+**Derselbe Fehler spiegelverkehrt:** Die Werkstattseite gab `isDealer` gar nicht weiter. Ein Händler verlor dort seinen Bestand-Punkt.
+
+**Behoben:** Dashboard und Bestandsseite nutzen jetzt `getNavigationFlags`; die Werkstattseite reicht `isDealer` durch. Vier von fünf Seiten laufen damit über dieselbe Funktion. Die Werkstattseite behält ihre eigene Ermittlung, weil sie die Zahl der betreuten Fahrzeuge ohnehin für die Umleitung braucht.
+
+**Nachgewiesen mit einem Konto, das ausschließlich die Selbstauskunft trägt** — als Werkstatt registriert, **keine einzige Einladung**. Der Punkt bleibt auf dem Dashboard, im Werkstattbereich, nach dem Klick aufs Logo und in den Einstellungen. Das Probekonto wurde wieder gelöscht.
+
+Dazu fünf dauerhafte Tests in `PROJ-39-werkstattrolle.spec.ts`, die den gemeldeten Weg abdecken.
+
+**Was daraus folgt:** Eine gemeinsame Funktion nützt nichts, solange einzelne Seiten an ihr vorbei rechnen. Wer eine weitere Seite mit Kopfzeile anlegt, nimmt `getNavigationFlags` — jede eigene Rechnung veraltet beim nächsten Bereich.
+
 ## Deployment
 
 - **Produktions-URL:** https://www.oldtimer-docs.com

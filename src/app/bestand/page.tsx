@@ -10,7 +10,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { toCurrency } from "@/lib/currency";
 import { isDealer } from "@/lib/dealer-access";
-import { getWorkshopVehicleCount } from "@/lib/workshop-access";
+import { getNavigationFlags } from "@/lib/navigation-access";
 import {
   getEffectivePlan,
   hasPremiumAccess,
@@ -77,8 +77,10 @@ export default async function BestandPage() {
     redirect("/dashboard");
   }
 
-  const hasWorkshopAccess =
-    (await getWorkshopVehicleCount(supabase, user.id)) > 0;
+  // Beide Wege in den Werkstattbereich zaehlen (PROJ-39): Einladung oder
+  // Selbstauskunft. Die blosse Zaehlung uebersah Werkstaetten ohne
+  // Einladung, und der Navigationspunkt verschwand beim Seitenwechsel.
+  const { hasWorkshopAccess } = await getNavigationFlags(supabase, user.id);
 
   const { data: subscription } = await supabase
     .from("subscriptions")

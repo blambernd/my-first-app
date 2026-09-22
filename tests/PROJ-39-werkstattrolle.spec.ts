@@ -119,3 +119,57 @@ test.describe("PROJ-39: Werkstatt-Konto", () => {
     expect(ueberlauf).toBe(false);
   });
 });
+
+/**
+ * Der Navigationspunkt darf beim Seitenwechsel nicht verschwinden.
+ *
+ * Gemeldet am 2026-09-22: „Beim Klick auf das Logo verschwindet das
+ * Werkstatt-Icon mit dem Bereich." Ursache war, dass das Dashboard nur die
+ * betreuten Fahrzeuge zählte und die Selbstauskunft übersah — wer sich
+ * selbst als Werkstatt erklärt hatte, ohne eingeladen zu sein, verlor den
+ * Punkt, sobald er den Werkstattbereich verließ.
+ *
+ * Diese Tests laufen unter dem Werkstatt-Testkonto, das über eine
+ * **Einladung** hereinkommt. Sie decken damit den Weg ab, der auch vorher
+ * funktionierte; den zweiten Weg — reine Selbstauskunft — prüft der
+ * Abnahmelauf, weil er kontoweiten Zustand verändert.
+ */
+test.describe("PROJ-39: Der Werkstatt-Punkt bleibt beim Wechsel", () => {
+  const seiten = ["/dashboard", "/settings", "/werkstatt"];
+
+  for (const seite of seiten) {
+    test(`Auf ${seite} ist der Werkstatt-Punkt sichtbar`, async ({ page }) => {
+      await page.goto(seite);
+      await expect(
+        page.getByRole("link", { name: "Werkstatt" }).first()
+      ).toBeVisible({ timeout: 30000 });
+    });
+  }
+
+  test("Vom Werkstattbereich über das Logo zurück — der Punkt bleibt", async ({
+    page,
+  }) => {
+    // Genau der gemeldete Weg.
+    await page.goto("/werkstatt");
+    await expect(
+      page.getByRole("heading", { name: "Werkstatt", level: 1 })
+    ).toBeVisible({ timeout: 30000 });
+
+    // Das Logo in der Kopfzeile führt aufs Dashboard.
+    await page.locator("header a[href='/dashboard']").first().click();
+    await page.waitForURL(/\/dashboard/, { timeout: 30000 });
+
+    await expect(
+      page.getByRole("link", { name: "Werkstatt" }).first()
+    ).toBeVisible({ timeout: 30000 });
+  });
+
+  test("Und zurück in den Werkstattbereich", async ({ page }) => {
+    await page.goto("/dashboard");
+    await page.getByRole("link", { name: "Werkstatt" }).first().click();
+    await expect(page).toHaveURL(/\/werkstatt/);
+    await expect(
+      page.getByRole("heading", { name: "Werkstatt", level: 1 })
+    ).toBeVisible({ timeout: 30000 });
+  });
+});

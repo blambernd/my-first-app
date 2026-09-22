@@ -14,7 +14,7 @@ import { Car, Wrench } from "lucide-react";
 import type { VehicleWithImages } from "@/lib/validations/vehicle";
 import { ROLE_LABELS, type MemberRole } from "@/lib/validations/member";
 import { toCurrency } from "@/lib/currency";
-import { isDealer } from "@/lib/dealer-access";
+import { getNavigationFlags } from "@/lib/navigation-access";
 import {
   getEffectivePlan,
   canAddVehicle,
@@ -74,8 +74,18 @@ export default async function DashboardPage() {
   const effectivePlan = subscription ? getEffectivePlan(subscription) : isBetaMode ? "premium" : "free";
   const canAdd = canAddVehicle(effectivePlan, typedVehicles.length);
 
-  // PROJ-38: Navigationspunkt „Bestand" — serverseitig, wie bei PROJ-37
-  const dealerMode = await isDealer(supabase, user.id);
+  // Welche zusätzlichen Navigationspunkte erscheinen (PROJ-37, PROJ-38,
+  // PROJ-39).
+  //
+  // Über `getNavigationFlags`, nicht über eine eigene Rechnung: Diese Seite
+  // prüfte früher nur `workshopVehicleCount > 0` und übersah damit
+  // Werkstätten ohne Einladung. Wer sich selbst als Werkstatt erklärt hatte,
+  // verlor den Navigationspunkt, sobald er vom Werkstattbereich aufs Logo
+  // klickte. Die gemeinsame Funktion kennt beide Wege.
+  const { hasWorkshopAccess, isDealer: dealerMode } = await getNavigationFlags(
+    supabase,
+    user.id
+  );
 
   // PROJ-36: Die Währung steht nur an den Kacheln, wenn sie tatsächlich etwas
   // unterscheidet. Wer alles in Euro führt — der Normalfall — soll neben jedem
@@ -93,7 +103,7 @@ export default async function DashboardPage() {
     <div className="bg-muted/40">
       <AccountHeader
         email={user.email || ""}
-        hasWorkshopAccess={workshopVehicleCount > 0}
+        hasWorkshopAccess={hasWorkshopAccess}
         isDealer={dealerMode}
       />
 
@@ -189,7 +199,7 @@ export default async function DashboardPage() {
         <EventsOverview />
       </main>
       <MobileBottomNav
-        hasWorkshopAccess={workshopVehicleCount > 0}
+        hasWorkshopAccess={hasWorkshopAccess}
         isDealer={dealerMode}
       />
     </div>

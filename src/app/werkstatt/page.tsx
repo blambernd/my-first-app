@@ -3,6 +3,7 @@ import Link from "next/link";
 import { AlertTriangle } from "lucide-react";
 import { createClient } from "@/lib/supabase-server";
 import { getWorkshopVehicleCount, isWorkshop } from "@/lib/workshop-access";
+import { isDealer } from "@/lib/dealer-access";
 import { getCustomerVehicles, type CustomerVehicle } from "@/lib/workshop-customers";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AccountHeader } from "@/components/account-header";
@@ -82,9 +83,10 @@ export default async function WerkstattPage() {
   // belegen würde, war ja gerade fehlgeschlagen. Ein Nutzer ohne jede
   // Werkstatt-Rolle bekam dadurch Navigationspunkt und Störungsmeldung zu
   // sehen, die beide von Kundenfahrzeugen sprachen, die es nicht gibt.
-  const [betreuteFahrzeuge, werkstattModus] = await Promise.all([
+  const [betreuteFahrzeuge, werkstattModus, haendlerModus] = await Promise.all([
     getWorkshopVehicleCount(supabase, user.id),
     isWorkshop(supabase, user.id),
+    isDealer(supabase, user.id),
   ]);
 
   if (betreuteFahrzeuge === 0 && !werkstattModus) {
@@ -185,7 +187,11 @@ export default async function WerkstattPage() {
 
   return (
     <div className="bg-muted/40 min-h-screen">
-      <AccountHeader email={user.email || ""} hasWorkshopAccess />
+      <AccountHeader
+          email={user.email || ""}
+          hasWorkshopAccess
+          isDealer={haendlerModus}
+        />
 
       <main className="container mx-auto px-4 py-8 pb-20 md:pb-8">
         <div className="mb-8">
@@ -245,7 +251,7 @@ export default async function WerkstattPage() {
         </div>
       </main>
 
-      <MobileBottomNav hasWorkshopAccess />
+      <MobileBottomNav hasWorkshopAccess isDealer={haendlerModus} />
     </div>
   );
 }
