@@ -43,6 +43,13 @@ interface TransferFormProps {
   isDealer?: boolean;
   /** Blendet die Werkstatt-Wahl ein — nur für erklärte Werkstätten (PROJ-40) */
   isWorkshop?: boolean;
+  /**
+   * Vorschlag für die Empfängeradresse (BUG-7).
+   *
+   * Nur ein Vorschlag: Das Feld bleibt frei änderbar. Der Kunde, dem das
+   * Fahrzeug gehört, muss nicht derselbe sein, an den übergeben wird.
+   */
+  kundenAdresse?: string | null;
   /** Währung des Fahrzeugs, für die Beschriftung des Erlösfelds */
   currencySymbol?: string;
 }
@@ -53,6 +60,7 @@ export function TransferForm({
   onSuccess,
   isDealer = false,
   isWorkshop = false,
+  kundenAdresse = null,
   currencySymbol = "€",
 }: TransferFormProps) {
   const router = useRouter();
@@ -71,7 +79,7 @@ export function TransferForm({
   const form = useForm<TransferFormData>({
     resolver: zodResolver(transferSchema) as Resolver<TransferFormData>,
     defaultValues: {
-      email: "",
+      email: kundenAdresse ?? "",
       keepAsViewer: true,
       // Vorbelegt für Werkstätten: Sie geben das Fahrzeug ab, wollen aber
       // die Wartung weiterführen. Für alle anderen bleibt die Wahl aus.

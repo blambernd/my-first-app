@@ -465,10 +465,10 @@ Die Rolle `authenticated` hat auf `auth.users` **kein Leserecht** — in Supabas
 | BUG-1 Selbstauskunft nicht speicherbar | Kritisch | **behoben** |
 | BUG-2 derselbe Fehler bei PROJ-38 | Kritisch | **behoben** |
 | BUG-3 falsche Erfolgsmeldung | Hoch | **behoben** |
-| BUG-4 Kopfzeile bricht PROJ-37-Test | Mittel | offen |
+| BUG-4 Kopfzeile bricht PROJ-37-Test | Mittel | **behoben** |
 | BUG-5 „Offene Übergaben" nicht gebaut | Mittel | offen |
 | BUG-6 keine Übergabe anlegbar (PROJ-38/PROJ-7) | Kritisch | **behoben** |
-| BEFUND-T Datenrest blockiert Tests | Hoch | **aufgelöst** |
+| BEFUND-T Datenrest blockiert Tests | Hoch | **behoben** (Abschluss ergänzt) |
 
 ### Nachtrag 2026-09-21 (3): BUG-6 behoben
 
@@ -569,6 +569,32 @@ Alle Probekonten wurden wieder gelöscht. Dazu fünf neue E2E-Tests (Wahl vorhan
 
 #### Warum die Wahl nicht vorbelegt ist
 Wer eine Werkstatt ist, sagt es bewusst. Eine vorbelegte Selbstauskunft nähme jeder versehentlich mit, und die Angabe verlöre ihren Wert.
+
+### Nachtrag 2026-09-22: BUG-4, BUG-7 und BEFUND-T behoben
+
+#### BUG-4 — der Test zog nach, nicht der Text
+
+Die Kopfzeile des Werkstattbereichs sagt „betreute Fahrzeuge" statt wie früher „betreute Kundenfahrzeuge". Geprüft wurde, was richtig ist — und das ist der neue Text: Seit der Bereich **zwei** Gruppen führt und die eigenen „Meine Kundenfahrzeuge" heißen, wäre „betreute Kundenfahrzeuge" in der Kopfzeile nicht mehr zu unterscheiden. Angepasst wurde deshalb `PROJ-37-werkstattrolle.spec.ts:80`, mit einer Begründung an Ort und Stelle.
+
+#### BUG-7 — die Kundenadresse wird vorgeschlagen
+
+Hat die Werkstatt eine E-Mail zum Kunden hinterlegt, steht sie beim Anstoßen der Übergabe schon im Feld. Sie bleibt frei änderbar: Der Kunde, dem das Fahrzeug gehört, muss nicht derselbe sein, an den übergeben wird.
+
+Der Nutzen ist kein Komfort, sondern Fehlervermeidung. Eine von Hand abgetippte Adresse ist die häufigste Fehlerquelle bei einer Übergabe — sie geht an niemanden, und es fällt erst auf, wenn der Kunde nicht reagiert.
+
+Geladen wird nur für erklärte Werkstätten; ein Fehler dabei bleibt folgenlos, dann ist das Feld eben leer.
+
+#### BEFUND-T — die Testsuite befreit sich jetzt selbst
+
+`PROJ-38-bestand-auth.spec.ts` hat einen Abschluss bekommen, der unabhängig vom Ausgang der Tests läuft und einen liegengebliebenen Bestandsvorgang über die Oberfläche zurücknimmt.
+
+Das Problem war nicht der einzelne Datenrest, sondern dass die Suite aus diesem Zustand nicht mehr herausfand: Der Test, der zurücknehmen würde, sucht das Fahrzeug zuerst im Bestand — wo es nach dem Kennzeichnen nicht mehr steht. Ein einziger Abbruch legte damit sieben Tests dauerhaft lahm.
+
+Der neue Abschluss setzt nichts voraus: Findet er keinen Vorgang, tut er nichts; scheitert er selbst, färbt er den Lauf nicht zusätzlich rot.
+
+**Geprüft, indem der Schadenszustand absichtlich wiederhergestellt wurde** — derselbe Bestandsvorgang, der am 2026-09-21 sieben Tests lahmlegte. Danach lief die Suite erneut und räumte hinter sich auf.
+
+Nebenbei: `AUTH_FILE` wird in der Datei selbst definiert statt aus `auth.setup.ts` importiert. Jene Datei enthält einen `setup(...)`-Aufruf, der beim Import ausgeführt würde und die ganze Spezifikation zerlegt — was sie beim ersten Versuch auch tat.
 
 ## Deployment
 

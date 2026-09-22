@@ -18,6 +18,8 @@ interface TransferPageClientProps {
   isDealer?: boolean;
   /** Blendet die Werkstatt-Wahl ein (PROJ-40) */
   isWorkshop?: boolean;
+  /** Hinterlegte Kundenadresse als Vorschlag (PROJ-40, BUG-7) */
+  kundenAdresse?: string | null;
   currencySymbol?: string;
   vehicleId: string;
   vehicleName: string;
@@ -34,6 +36,7 @@ const PAST_STATUS_CONFIG = {
 export function TransferPageClient({
   isDealer = false,
   isWorkshop = false,
+  kundenAdresse = null,
   currencySymbol = "€",
   vehicleId,
   vehicleName,
@@ -80,6 +83,7 @@ export function TransferPageClient({
               vehicleName={vehicleName}
               isDealer={isDealer}
               isWorkshop={isWorkshop}
+              kundenAdresse={kundenAdresse}
               currencySymbol={currencySymbol}
               onSuccess={refresh}
             />

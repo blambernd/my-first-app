@@ -56,6 +56,26 @@ export default async function TransferPage({ params }: TransferPageProps) {
     isDealer(supabase, user.id),
     isWorkshop(supabase, user.id),
   ]);
+
+  // PROJ-40 / BUG-7: Hat die Werkstatt eine Adresse zum Kunden hinterlegt,
+  // wird sie vorgeschlagen. Sie steht ohnehin am Fahrzeug, und sie hier
+  // noch einmal abzutippen ist die häufigste Fehlerquelle bei einer
+  // Übergabe: Eine vertippte Adresse geht an niemanden und fällt erst auf,
+  // wenn der Kunde nicht reagiert.
+  //
+  // Nur für erklärte Werkstätten — sonst existiert die Angabe nicht. Ein
+  // Fehler hier bleibt folgenlos: Dann ist das Feld eben leer.
+  let kundenAdresse: string | null = null;
+
+  if (workshopMode) {
+    const { data: kunde } = await supabase
+      .from("vehicle_customers")
+      .select("customer_email")
+      .eq("vehicle_id", id)
+      .maybeSingle();
+
+    kundenAdresse = kunde?.customer_email ?? null;
+  }
   const currencySymbol = getCurrencySymbol(toCurrency(vehicle.currency));
 
   const vehicleName = `${vehicle.make} ${vehicle.model} (${vehicle.year})`;
@@ -84,6 +104,7 @@ export default async function TransferPage({ params }: TransferPageProps) {
       <TransferPageClient
         isDealer={dealerMode}
         isWorkshop={workshopMode}
+        kundenAdresse={kundenAdresse}
         currencySymbol={currencySymbol}
         vehicleId={id}
         vehicleName={vehicleName}

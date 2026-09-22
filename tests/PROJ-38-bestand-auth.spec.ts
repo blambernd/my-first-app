@@ -1,4 +1,14 @@
 import { test, expect, type Page } from "@playwright/test";
+import path from "path";
+
+/**
+ * Die abgelegte Sitzung des Testnutzers.
+ *
+ * Bewusst hier definiert und **nicht** aus `auth.setup.ts` importiert: Jene
+ * Datei enthält selbst einen `setup(...)`-Aufruf, der beim Import
+ * ausgeführt würde und die ganze Spezifikation zerlegt.
+ */
+const AUTH_FILE = path.join(process.cwd(), "playwright/.auth/user.json");
 
 /**
  * Angemeldete Tests für PROJ-38 (Händler-Bestandsübersicht).
@@ -25,6 +35,67 @@ function bestandsZeile(page: Page) {
 
 test.describe("PROJ-38: Bestand (angemeldet, Händlermodus)", () => {
   test.skip(!process.env.E2E_EMAIL, "E2E_EMAIL nicht gesetzt");
+
+  /**
+   * Aufräumen, was auch immer vorher geschah (BEFUND-T).
+   *
+   * ## Warum das hier stehen muss
+   *
+   * Der Test weiter unten kennzeichnet das Fahrzeug als verkauft und nimmt
+   * das am Ende zurück. Bricht er dazwischen ab — aus welchem Grund auch
+   * immer —, bleibt ein Bestandsvorgang stehen. Das Fahrzeug verschwindet
+   * dann aus der Bestandsliste, und **jeder folgende Lauf scheitert**: Am
+   * 2026-09-21 fielen dadurch sieben Tests reproduzierbar aus, bis der
+   * Vorgang von Hand entfernt wurde.
+   *
+   * Schlimmer noch: Ausgerechnet der Test, der zurücknehmen würde, sucht
+   * das Fahrzeug zuerst im Bestand — wo es nicht mehr steht. Die Suite kam
+   * aus diesem Zustand nicht mehr heraus.
+   *
+   * Dieser Abschluss läuft unabhängig vom Ausgang der Tests und setzt
+   * nichts voraus: Findet er keinen Vorgang, tut er nichts.
+   */
+  test.afterAll(async ({ browser }) => {
+    const context = await browser.newContext({ storageState: AUTH_FILE });
+    const page = await context.newPage();
+
+    try {
+      await page.goto("/bestand", { timeout: 30000 });
+
+      // Die Verkauft-Liste, nicht der Bestand — dort steht ein
+      // liegengebliebener Vorgang.
+      const aktionen = page
+        .getByRole("button", { name: /Aktionen für .*E2E-Testfahrzeug/i })
+        .first();
+
+      if (!(await aktionen.isVisible({ timeout: 8000 }).catch(() => false))) {
+        return; // Nichts liegengeblieben — der Normalfall.
+      }
+
+      await aktionen.click();
+
+      const eintrag = page.getByRole("menuitem", {
+        name: /zurücknehmen|löschen/i,
+      });
+      if (!(await eintrag.isVisible({ timeout: 5000 }).catch(() => false))) {
+        return;
+      }
+      await eintrag.click();
+
+      const bestaetigen = page.getByRole("button", {
+        name: /^(Zurücknehmen|Endgültig löschen)$/,
+      });
+      if (await bestaetigen.isVisible({ timeout: 5000 }).catch(() => false)) {
+        await bestaetigen.click();
+        await page.waitForTimeout(2000);
+      }
+    } catch {
+      // Ein gescheitertes Aufräumen darf den Lauf nicht zusätzlich rot
+      // färben — die Testergebnisse stehen bereits fest.
+    } finally {
+      await context.close();
+    }
+  });
 
   test("AC: Der Navigationspunkt erscheint für gewerbliche Nutzer", async ({
     page,
@@ -62,7 +133,10 @@ test.describe("PROJ-38: Bestand (angemeldet, Händlermodus)", () => {
     await expect(zeile).toHaveCount(1);
     await expect(zeile).toContainText("E2E-Testfahrzeug Wegwerf (1970)");
     // Die Standzeit steht als Text da, nicht nur als Farbe.
-    await expect(zeile).toContainText(/seit \d+ Tagen im Bestand|heute zugegangen/);
+    // „Tage?n" deckt auch den Singular ab: Bei genau einem Tag Standzeit
+    // schreibt die Seite „seit 1 Tag im Bestand". Der Ausdruck kannte nur
+    // den Plural und schlug deshalb an genau einem Tag im Jahr fehl.
+    await expect(zeile).toContainText(/seit \d+ Tage?n? im Bestand|heute zugegangen/);
   });
 
   test("AC: Der Einkaufspreis stammt aus dem Kaufpreisfeld", async ({ page }) => {

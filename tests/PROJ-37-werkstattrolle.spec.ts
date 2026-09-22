@@ -83,7 +83,12 @@ test.describe("PROJ-37: Werkstatt-Dashboard (mit Werkstatt-Rolle)", () => {
     await expect(page.getByRole("heading", { name: "Werkstatt" })).toBeVisible({
       timeout: 30000,
     });
-    await expect(page.getByText(/betreute?s? Kundenfahrzeuge?/)).toBeVisible();
+    // Seit PROJ-39 heißt es hier „betreute Fahrzeuge" statt „betreute
+    // Kundenfahrzeuge": Der Bereich führt jetzt zwei Gruppen, und die
+    // eigenen heißen „Meine Kundenfahrzeuge". Stünde in der Kopfzeile
+    // weiterhin „betreute Kundenfahrzeuge", wäre nicht zu erkennen, welche
+    // der beiden Gruppen gezählt wird.
+    await expect(page.getByText(/betreute?s? Fahrzeuge?/)).toBeVisible();
 
     // Marke, Modell und Baujahr in einer Zeile — so, wie das Kriterium es
     // verlangt.

@@ -34,7 +34,7 @@ Der neue Besitzer entscheidet. Die Werkstatt **schlägt vor**, weiter verbunden 
 
 ### Übergabe anstoßen
 - [x] Die Werkstatt kann aus dem Werkstattbereich heraus eine Übergabe an eine E-Mail-Adresse starten
-- [ ] Ist im Kundenfeld (PROJ-39) eine E-Mail hinterlegt, ist sie vorausgefüllt
+- [x] Ist im Kundenfeld (PROJ-39) eine E-Mail hinterlegt, ist sie vorausgefüllt
 - [x] Beim Anstoßen kann die Werkstatt ankreuzen: "Nach der Übergabe als Werkstatt verbunden bleiben" (Standard: an)
 - [x] Der bestehende Ablauf aus PROJ-7 bleibt im Übrigen unverändert — einschließlich der Regeln aus PROJ-32 zu Kostendaten
 - [ ] Hat der Empfänger noch kein Konto, gilt unverändert PROJ-7: E-Mail mit Registrierungslink, Übergabe wird nach der Registrierung aktiv
@@ -62,7 +62,7 @@ Der neue Besitzer entscheidet. Die Werkstatt **schlägt vor**, weiter verbunden 
 - [x] Das Kundenfeld aus PROJ-39 wird **nicht** mitübertragen — der neue Besitzer sieht es nicht
 - [x] Nach erfolgreicher Übergabe wird das Kundenfeld gelöscht, auch wenn die Werkstatt verbunden bleibt
 
-**Zu den sechs noch offenen Kriterien:** Sie sind gebaut, aber nicht durch einen ausgeführten Test belegt — sie betreffen die Oberfläche der Annahmeseite und das Verhalten für Empfänger ohne Konto. Beides prüfen hieße, eine echte Übergabe zu vollziehen und ein zweites Konto zu registrieren. Der Kern dahinter — welche Rolle bei welcher Entscheidung entsteht — ist über den Durchlauf in der Datenbank belegt (siehe QA, Nachtrag 2). Offen bleiben die Darstellung, die Vorbelegung des E-Mail-Felds und der Registrierungsweg.
+**Zu den fünf noch offenen Kriterien:** Sie sind gebaut, aber nicht durch einen ausgeführten Test belegt — sie betreffen die Oberfläche der Annahmeseite und das Verhalten für Empfänger ohne Konto. Beides prüfen hieße, eine echte Übergabe zu vollziehen und ein zweites Konto zu registrieren. Der Kern dahinter — welche Rolle bei welcher Entscheidung entsteht — ist über den Durchlauf in der Datenbank belegt (siehe QA, Nachtrag 2). Offen bleiben die Darstellung, die Vorbelegung des E-Mail-Felds und der Registrierungsweg.
 
 ## Edge Cases
 - Was passiert, wenn der Kunde die Übergabe ablehnt? → Das Fahrzeug bleibt unverändert bei der Werkstatt, sie wird benachrichtigt (bestehendes Verhalten aus PROJ-7)
@@ -482,10 +482,10 @@ Die Rolle `authenticated` hat auf `auth.users` **kein Leserecht** — in Supabas
 | BUG-1 Selbstauskunft nicht speicherbar | Kritisch | **behoben** |
 | BUG-2 derselbe Fehler bei PROJ-38 | Kritisch | **behoben** |
 | BUG-3 falsche Erfolgsmeldung | Hoch | **behoben** |
-| BUG-4 Kopfzeile bricht PROJ-37-Test | Mittel | offen |
+| BUG-4 Kopfzeile bricht PROJ-37-Test | Mittel | **behoben** |
 | BUG-5 „Offene Übergaben" nicht gebaut | Mittel | **behoben** |
 | BUG-6 keine Übergabe anlegbar (PROJ-38/PROJ-7) | Kritisch | **behoben** |
-| BEFUND-T Datenrest blockiert Tests | Hoch | **aufgelöst** |
+| BEFUND-T Datenrest blockiert Tests | Hoch | **behoben** (Abschluss ergänzt) |
 
 ### Nachtrag 2026-09-21 (3): BUG-6 behoben
 
@@ -569,6 +569,32 @@ Der fehlende Abschnitt ist umgesetzt. Damit sind alle Akzeptanzkriterien dieses 
 #### Geprüft
 - Vier neue Einheitentests zu `uebergabeText`, Datei insgesamt 19 grün
 - Typprüfung, Lint und Produktionsbau ohne Befund
+
+### Nachtrag 2026-09-22: BUG-4, BUG-7 und BEFUND-T behoben
+
+#### BUG-4 — der Test zog nach, nicht der Text
+
+Die Kopfzeile des Werkstattbereichs sagt „betreute Fahrzeuge" statt wie früher „betreute Kundenfahrzeuge". Geprüft wurde, was richtig ist — und das ist der neue Text: Seit der Bereich **zwei** Gruppen führt und die eigenen „Meine Kundenfahrzeuge" heißen, wäre „betreute Kundenfahrzeuge" in der Kopfzeile nicht mehr zu unterscheiden. Angepasst wurde deshalb `PROJ-37-werkstattrolle.spec.ts:80`, mit einer Begründung an Ort und Stelle.
+
+#### BUG-7 — die Kundenadresse wird vorgeschlagen
+
+Hat die Werkstatt eine E-Mail zum Kunden hinterlegt, steht sie beim Anstoßen der Übergabe schon im Feld. Sie bleibt frei änderbar: Der Kunde, dem das Fahrzeug gehört, muss nicht derselbe sein, an den übergeben wird.
+
+Der Nutzen ist kein Komfort, sondern Fehlervermeidung. Eine von Hand abgetippte Adresse ist die häufigste Fehlerquelle bei einer Übergabe — sie geht an niemanden, und es fällt erst auf, wenn der Kunde nicht reagiert.
+
+Geladen wird nur für erklärte Werkstätten; ein Fehler dabei bleibt folgenlos, dann ist das Feld eben leer.
+
+#### BEFUND-T — die Testsuite befreit sich jetzt selbst
+
+`PROJ-38-bestand-auth.spec.ts` hat einen Abschluss bekommen, der unabhängig vom Ausgang der Tests läuft und einen liegengebliebenen Bestandsvorgang über die Oberfläche zurücknimmt.
+
+Das Problem war nicht der einzelne Datenrest, sondern dass die Suite aus diesem Zustand nicht mehr herausfand: Der Test, der zurücknehmen würde, sucht das Fahrzeug zuerst im Bestand — wo es nach dem Kennzeichnen nicht mehr steht. Ein einziger Abbruch legte damit sieben Tests dauerhaft lahm.
+
+Der neue Abschluss setzt nichts voraus: Findet er keinen Vorgang, tut er nichts; scheitert er selbst, färbt er den Lauf nicht zusätzlich rot.
+
+**Geprüft, indem der Schadenszustand absichtlich wiederhergestellt wurde** — derselbe Bestandsvorgang, der am 2026-09-21 sieben Tests lahmlegte. Danach lief die Suite erneut und räumte hinter sich auf.
+
+Nebenbei: `AUTH_FILE` wird in der Datei selbst definiert statt aus `auth.setup.ts` importiert. Jene Datei enthält einen `setup(...)`-Aufruf, der beim Import ausgeführt würde und die ganze Spezifikation zerlegt — was sie beim ersten Versuch auch tat.
 
 ## Deployment
 _To be added by /deploy_
