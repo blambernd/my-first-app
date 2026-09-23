@@ -4,7 +4,11 @@ import { AlertTriangle } from "lucide-react";
 import { createClient } from "@/lib/supabase-server";
 import { getWorkshopVehicleCount, isWorkshop } from "@/lib/workshop-access";
 import { isDealer } from "@/lib/dealer-access";
-import { getCustomerVehicles, type CustomerVehicle } from "@/lib/workshop-customers";
+import {
+  getCustomerVehicles,
+  getEigeneTermine,
+  type CustomerVehicle,
+} from "@/lib/workshop-customers";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AccountHeader } from "@/components/account-header";
 import { MobileBottomNav } from "@/components/mobile-bottom-nav";
@@ -174,6 +178,37 @@ export default async function WerkstattPage() {
   // abgefangen.
   if (!werkstattModus && betreute.length === 0 && !uebersichtGestoert) {
     redirect("/dashboard");
+  }
+
+  // Die Termine der eigenen Kundenfahrzeuge kommen dazu (PROJ-39).
+  //
+  // Sie fehlten: Die Liste speiste sich allein aus `get_workshop_dashboard`,
+  // und die Funktion kennt nur betreute Fahrzeuge. Eine Werkstatt ohne
+  // Einladung sah deshalb dauerhaft eine leere Karte „Anstehende Arbeiten"
+  // — obwohl das Kriterium beide Gruppen verlangt.
+  if (eigeneFahrzeuge.length > 0) {
+    const labelEigene = new Map(
+      eigeneFahrzeuge.map((v) => [
+        v.id,
+        vehicleLabel({ make: v.make, model: v.model, year: v.year }),
+      ])
+    );
+
+    const eigeneTermine = await getEigeneTermine(
+      supabase,
+      eigeneFahrzeuge.map((v) => v.id)
+    );
+
+    dues = [
+      ...dues,
+      ...eigeneTermine.map((t) => ({
+        vehicleId: t.vehicleId,
+        vehicleLabel: labelEigene.get(t.vehicleId) ?? "",
+        label: dueLabel(t.source, t.labelKey),
+        dueDate: t.dueDate,
+        source: t.source,
+      })),
+    ];
   }
 
   // Der Stichtag wird einmal serverseitig gesetzt und durchgereicht, damit

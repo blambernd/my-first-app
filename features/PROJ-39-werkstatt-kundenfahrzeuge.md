@@ -58,7 +58,7 @@ Der Zugriff auf Fahrzeuge, die einem anderen Nutzer gehören, bleibt **ausschlie
 - [ ] Der Werkstattbereich trennt sichtbar zwei Gruppen: „Meine Kundenfahrzeuge" (Werkstatt ist Besitzer) und „Betreute Fahrzeuge" (per Einladung, Bestand aus PROJ-37)
 - [ ] Beide Gruppen sind auch dann benannt, wenn eine davon leer ist
 - [ ] Ist die Werkstatt bei einem Fahrzeug Besitzer, stehen ihr dort alle Aktionen offen; bei betreuten Fahrzeugen gelten unverändert die Rechte der Werkstattrolle aus PROJ-6
-- [ ] Die Karte „Anstehende Arbeiten" aus PROJ-37 berücksichtigt beide Gruppen
+- [x] Die Karte „Anstehende Arbeiten" aus PROJ-37 berücksichtigt beide Gruppen
 - [ ] Der Kopfbereich zählt beide Gruppen getrennt aus
 
 ## Edge Cases
@@ -654,6 +654,29 @@ Wer sich selbst als Werkstatt erklärt hatte, ohne je eingeladen worden zu sein,
 Dazu fünf dauerhafte Tests in `PROJ-39-werkstattrolle.spec.ts`, die den gemeldeten Weg abdecken.
 
 **Was daraus folgt:** Eine gemeinsame Funktion nützt nichts, solange einzelne Seiten an ihr vorbei rechnen. Wer eine weitere Seite mit Kopfzeile anlegt, nimmt `getNavigationFlags` — jede eigene Rechnung veraltet beim nächsten Bereich.
+
+### Nachtrag 2026-09-23: BUG-9 — die Terminliste kannte nur betreute Fahrzeuge
+
+**Gemeldet:** „Anstehende Arbeiten in der Werkstattübersicht werden nicht angezeigt."
+
+**Ursache:** Die Liste speiste sich ausschließlich aus `get_workshop_dashboard()`, und diese Funktion kennt nur **betreute** Fahrzeuge. Eigene Kundenfahrzeuge lieferten keine Termine. Bei einer Werkstatt ohne Einladung wurde die Funktion nicht einmal aufgerufen — die Karte blieb dauerhaft leer.
+
+**Das Kriterium stand in dieser Spezifikation als unerfüllt:** „Die Karte „Anstehende Arbeiten" aus PROJ-37 berücksichtigt beide Gruppen". Beim Bau wurde es übersehen, bei der Abnahme nur geprüft, ob die **Karte** noch da ist — nicht, ob sie etwas enthält. Ein Test, der die Überschrift findet, sagt nichts über den Inhalt.
+
+**Behoben:** `getEigeneTermine()` in `workshop-customers.ts` holt die Termine der eigenen Fahrzeuge aus denselben zwei Quellen, die auch die Datenbankfunktion benutzt — Scheckheft-Einträge mit Wiedervorlage und eigens gepflegte Fahrzeugtermine. Die Werkstattseite führt beide Gruppen zusammen, bevor die Liste gebaut wird.
+
+Hier genügen die gewöhnlichen Zugriffsregeln: Die Werkstatt ist Besitzerin dieser Fahrzeuge. Schlägt eine der beiden Quellen fehl, verliert die Liste deren Einträge, nicht ihre Existenz.
+
+**Nachgewiesen** mit einem Konto, das ausschließlich die Selbstauskunft trägt, einem eigenen Kundenfahrzeug und je einem Termin aus beiden Quellen:
+
+| Quelle | Erscheint |
+|---|---|
+| Fahrzeugtermin TÜV/HU, in 10 Tagen | ja, mit Fahrzeugnamen und Frist |
+| Scheckheft-Eintrag „Inspektion", in 30 Tagen | ja, richtig einsortiert |
+
+Das Probekonto wurde samt Fahrzeug und Terminen wieder gelöscht.
+
+**Was daraus folgt:** Ein Test, der prüft, ob eine Karte **da** ist, prüft nicht, ob sie **etwas zeigt**. Bei Listen, die aus mehreren Quellen gespeist werden, gehört je Quelle ein Datensatz in die Prüfung — sonst bleibt der Ausfall einer Quelle unsichtbar.
 
 ## Deployment
 

@@ -150,6 +150,85 @@ async function getOffeneUebergaben(
   return map;
 }
 
+/** Ein anstehender Termin an einem eigenen Kundenfahrzeug (PROJ-39). */
+export interface EigenerTermin {
+  vehicleId: string;
+  /** Der Schlüssel, aus dem die Beschriftung entsteht */
+  labelKey: string;
+  /** ISO-Datum (JJJJ-MM-TT) */
+  dueDate: string;
+  source: "service_entry" | "vehicle_due_date";
+}
+
+/**
+ * Anstehende Termine an den eigenen Kundenfahrzeugen.
+ *
+ * ## Warum das hier noch einmal steht
+ *
+ * Die Terminliste des Werkstattbereichs speiste sich ausschließlich aus
+ * `get_workshop_dashboard()` — und die Funktion kennt nur **betreute**
+ * Fahrzeuge. Eigene Kundenfahrzeuge lieferten dadurch keine Termine, und
+ * bei einer Werkstatt ohne Einladung blieb die Karte „Anstehende Arbeiten"
+ * dauerhaft leer. Das Akzeptanzkriterium verlangt beide Gruppen.
+ *
+ * Dieselben zwei Quellen wie dort: ein Scheckheft-Eintrag mit
+ * Wiedervorlage und ein eigens gepflegter Fahrzeugtermin. Sie sind
+ * getrennt gewachsen und ergeben für die Werkstatt eine Liste.
+ *
+ * Hier genügen die gewöhnlichen Zugriffsregeln — die Werkstatt ist
+ * Besitzerin dieser Fahrzeuge.
+ */
+export async function getEigeneTermine(
+  supabase: SupabaseClient,
+  vehicleIds: string[]
+): Promise<EigenerTermin[]> {
+  if (vehicleIds.length === 0) return [];
+
+  const [ausEintraegen, ausTerminen] = await Promise.all([
+    supabase
+      .from("service_entries")
+      .select("vehicle_id, entry_type, next_due_date")
+      .in("vehicle_id", vehicleIds)
+      .not("next_due_date", "is", null),
+    supabase
+      .from("vehicle_due_dates")
+      .select("vehicle_id, due_type, due_date")
+      .in("vehicle_id", vehicleIds),
+  ]);
+
+  const termine: EigenerTermin[] = [];
+
+  if (ausEintraegen.error) {
+    console.error("Own service dues query failed:", ausEintraegen.error.message);
+  } else {
+    for (const r of ausEintraegen.data ?? []) {
+      termine.push({
+        vehicleId: r.vehicle_id as string,
+        labelKey: r.entry_type as string,
+        dueDate: r.next_due_date as string,
+        source: "service_entry",
+      });
+    }
+  }
+
+  if (ausTerminen.error) {
+    console.error("Own due dates query failed:", ausTerminen.error.message);
+  } else {
+    for (const r of ausTerminen.data ?? []) {
+      termine.push({
+        vehicleId: r.vehicle_id as string,
+        labelKey: r.due_type as string,
+        dueDate: r.due_date as string,
+        source: "vehicle_due_date",
+      });
+    }
+  }
+
+  // Eine fehlgeschlagene Quelle nimmt der Liste ihre Einträge, nicht ihre
+  // Existenz: Die übrigen Termine bleiben sichtbar.
+  return termine;
+}
+
 /**
  * Wie eine laufende Übergabe in der Liste beschrieben wird.
  *
